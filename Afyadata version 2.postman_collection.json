@@ -1,0 +1,214 @@
+{
+	"info": {
+		"_postman_id": "4dc4710c-1879-404a-91c2-1302faa3735c",
+		"name": "Afyadata version 2",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "5473752",
+		"_collection_link": "https://warped-flare-703576.postman.co/workspace/Afyadata~ddd41325-1d15-4fe2-8b3a-31f14554c37d/collection/5473752-4dc4710c-1879-404a-91c2-1302faa3735c?action=share&source=collection_link&creator=5473752"
+	},
+	"item": [
+		{
+			"name": "Login",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "username",
+							"value": "admin",
+							"type": "text"
+						},
+						{
+							"key": "password",
+							"value": "21@sacids",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "https://afyadata-v2.sacids.org/api/v1/token/",
+					"protocol": "https",
+					"host": [
+						"afyadata-v2",
+						"sacids",
+						"org"
+					],
+					"path": [
+						"api",
+						"v1",
+						"token",
+						""
+					],
+					"query": [
+						{
+							"key": "code",
+							"value": "+255",
+							"disabled": true
+						},
+						{
+							"key": "mobile",
+							"value": "0717705746",
+							"disabled": true
+						},
+						{
+							"key": "password",
+							"value": "12345678",
+							"disabled": true
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "List Projects",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4MTQ5MDA3LCJpYXQiOjE3NDcyODUwMDcsImp0aSI6IjJjYTM5OWE0ODg0NTQ3OGJiODk3MjNjYTA3ZDMyNzc1IiwidXNlcl9pZCI6MSwidXNlciI6eyJpZCI6MSwidXNlcm5hbWUiOiJhZG1pbiIsImVtYWlsIjoiYWZ5YWRhdGFAc2FjaWRzLm9yZyIsImZpcnN0X25hbWUiOiJTYWNpZHMgQWRtaW5pc3RyYXRvciIsImxhc3RfbmFtZSI6IlNhY2lkcyBBZG1pbmlzdHJhdG9yIiwiZ3JvdXBzIjpbXX19.u-Iqnm89VEAX6nJIWqMn8lQb3glGMJt25vmoB0l-IoY",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://afyadata-v2.sacids.org/api/v1/projects",
+					"protocol": "https",
+					"host": [
+						"afyadata-v2",
+						"sacids",
+						"org"
+					],
+					"path": [
+						"api",
+						"v1",
+						"projects"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Project Information",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4MTQ5MDA3LCJpYXQiOjE3NDcyODUwMDcsImp0aSI6IjJjYTM5OWE0ODg0NTQ3OGJiODk3MjNjYTA3ZDMyNzc1IiwidXNlcl9pZCI6MSwidXNlciI6eyJpZCI6MSwidXNlcm5hbWUiOiJhZG1pbiIsImVtYWlsIjoiYWZ5YWRhdGFAc2FjaWRzLm9yZyIsImZpcnN0X25hbWUiOiJTYWNpZHMgQWRtaW5pc3RyYXRvciIsImxhc3RfbmFtZSI6IlNhY2lkcyBBZG1pbmlzdHJhdG9yIiwiZ3JvdXBzIjpbXX19.u-Iqnm89VEAX6nJIWqMn8lQb3glGMJt25vmoB0l-IoY",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://afyadata-v2.sacids.org/api/v1/project/detail/1980d6d4-e0d3-42b2-b380-f82ca7ed8feb",
+					"protocol": "https",
+					"host": [
+						"afyadata-v2",
+						"sacids",
+						"org"
+					],
+					"path": [
+						"api",
+						"v1",
+						"project",
+						"detail",
+						"1980d6d4-e0d3-42b2-b380-f82ca7ed8feb"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Request Access",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4MTQ5MDA3LCJpYXQiOjE3NDcyODUwMDcsImp0aSI6IjJjYTM5OWE0ODg0NTQ3OGJiODk3MjNjYTA3ZDMyNzc1IiwidXNlcl9pZCI6MSwidXNlciI6eyJpZCI6MSwidXNlcm5hbWUiOiJhZG1pbiIsImVtYWlsIjoiYWZ5YWRhdGFAc2FjaWRzLm9yZyIsImZpcnN0X25hbWUiOiJTYWNpZHMgQWRtaW5pc3RyYXRvciIsImxhc3RfbmFtZSI6IlNhY2lkcyBBZG1pbmlzdHJhdG9yIiwiZ3JvdXBzIjpbXX19.u-Iqnm89VEAX6nJIWqMn8lQb3glGMJt25vmoB0l-IoY",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"code\": \"2022\" \n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://afyadata-v2.sacids.org/api/v1/project/request-access",
+					"protocol": "https",
+					"host": [
+						"afyadata-v2",
+						"sacids",
+						"org"
+					],
+					"path": [
+						"api",
+						"v1",
+						"project",
+						"request-access"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "List Forms",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4MTQ5MDA3LCJpYXQiOjE3NDcyODUwMDcsImp0aSI6IjJjYTM5OWE0ODg0NTQ3OGJiODk3MjNjYTA3ZDMyNzc1IiwidXNlcl9pZCI6MSwidXNlciI6eyJpZCI6MSwidXNlcm5hbWUiOiJhZG1pbiIsImVtYWlsIjoiYWZ5YWRhdGFAc2FjaWRzLm9yZyIsImZpcnN0X25hbWUiOiJTYWNpZHMgQWRtaW5pc3RyYXRvciIsImxhc3RfbmFtZSI6IlNhY2lkcyBBZG1pbmlzdHJhdG9yIiwiZ3JvdXBzIjpbXX19.u-Iqnm89VEAX6nJIWqMn8lQb3glGMJt25vmoB0l-IoY",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"code\": \"2022\" \n}"
+				},
+				"url": {
+					"raw": "https://afyadata-v2.sacids.org/api/v1/form-definition/1980d6d4-e0d3-42b2-b380-f82ca7ed8feb",
+					"protocol": "https",
+					"host": [
+						"afyadata-v2",
+						"sacids",
+						"org"
+					],
+					"path": [
+						"api",
+						"v1",
+						"form-definition",
+						"1980d6d4-e0d3-42b2-b380-f82ca7ed8feb"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

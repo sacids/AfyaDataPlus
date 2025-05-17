@@ -13,5 +13,5 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
-  ]
+, "app/Data/index2.tsx", "app/Data/messages.js", "app/Project/_layout.js", "store/FormStore.js", "app/Data/_layout.js", "app/Data/index.js"  ]
 }
