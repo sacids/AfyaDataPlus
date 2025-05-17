@@ -1,0 +1,49 @@
+
+@token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4MjkwOTcwLCJpYXQiOjE3NDc0MjY5NzAsImp0aSI6ImIwNzA4ZDM0ODk3ZTQ5Yzg4Y2MzNmExYzVmN2VkMzM3IiwidXNlcl9pZCI6MSwidXNlciI6eyJpZCI6MSwidXNlcm5hbWUiOiJhZG1pbiIsImVtYWlsIjoiYWZ5YWRhdGFAc2FjaWRzLm9yZyIsImZpcnN0X25hbWUiOiJTYWNpZHMgQWRtaW5pc3RyYXRvciIsImxhc3RfbmFtZSI6IlNhY2lkcyBBZG1pbmlzdHJhdG9yIiwiZ3JvdXBzIjpbXX19.n5UuqAKr-2cULuw7PiRQ0LhTntvK82kg3ejIEspTBL8"
+
+
+### Login
+POST https://afyadata-v2.sacids.org/api/v1/register HTTP/1.1
+Content-Type: application/json
+
+{
+    "username": "test1", 
+    "password": "21@sacids", 
+    "passwordConfirm": "kitimoto", 
+    "fullName": "Test", 
+    "phoneNumber": "0787878787"
+}
+
+### Login
+POST https://afyadata-v2.sacids.org/api/v1/token/ HTTP/1.1
+Content-Type: Content-Type: application/json
+
+{
+    "username": "admin",
+    "password": "21@sacids",
+}
+
+### List Projects
+GET https://afyadata-v2.sacids.org/api/v1/projects HTTP/1.1
+Authorization: Bearer {{token}}
+
+### Project Information
+GET https://afyadata-v2.sacids.org/api/v1/project/detail/1980d6d4-e0d3-42b2-b380-f82ca7ed8feb HTTP/1.1
+Authorization: Bearer {{token}}
+
+### Request Access
+POST https://afyadata-v2.sacids.org/api/v1/project/request-access HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "code": "2022"
+}
+
+### List Forms
+GET https://afyadata-v2.sacids.org/api/v1/form-definition HTTP/1.1
+Authorization: Bearer {{token}}
+
+### List Forms
+GET https://afyadata-v2.sacids.org/api/v1/form-defn-meta/1980d6d4-e0d3-42b2-b380-f82ca7ed8feb HTTP/1.1
+Authorization: Bearer {{token}}
