@@ -11,7 +11,7 @@ const { all, create } = require('mathjs');
    let str = 'not(2 == 0  and  6 == 0  and  2 == 0  and  5 == 0)';
 
 
-   console.log('Normalized expression:', str);
+   //console.log('Normalized expression:', str);
    const result = math.evaluate(str);
-   console.log('Result:', result); // Outputs: 1
-   console.log('Boolean result:', !!result); // Outputs: true
+   //console.log('Result:', result); // Outputs: 1
+   //console.log('Boolean result:', !!result); // Outputs: true

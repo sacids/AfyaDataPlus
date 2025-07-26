@@ -11,7 +11,6 @@ export default function FormDataDetailScreen() {
   const { id } = useLocalSearchParams();
   const [formData, setFormData] = useState(null);
   const [formDefn, setFormDefn] = useState(null);
-  console.log('id', id);
 
 
   const theme = useTheme();

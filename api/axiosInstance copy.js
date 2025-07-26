@@ -17,7 +17,7 @@ api.interceptors.request.use(
 
     if (token) {
       config.headers.Authorization = tt ? `Bearer ${token}` : `Bearer fake`;
-      console.log('first one', tt, config.headers.Authorization)
+      //console.log('first one', tt, config.headers.Authorization)
     }
     return config;
   },
@@ -42,7 +42,7 @@ api.interceptors.response.use(
 
         const { access, refresh } = response.data;
 
-        console.log('response refresh token', response.data)
+        //console.log('response refresh token', response.data)
 
         // Extract token strings from arrays
         const accessToken = Array.isArray(access) ? access[0] : access;
@@ -54,13 +54,13 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
 
-        console.log(refreshError);
+        //console.log(refreshError);
         // Refresh token failed, login user
         const username = await SecureStore.getItemAsync('username');
         const password = await SecureStore.getItemAsync('password');
 
         const response = await api.post('/api/v1/token/', { username, password });
-        console.log('response login user', response.data)
+        //console.log('response login user', response.data)
 
         const { access, refresh } = response.data;
 
@@ -78,15 +78,15 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       try {
 
-        console.log('invalid login')
+        //console.log('invalid login')
         const username = await SecureStore.getItemAsync('username');
         const password = await SecureStore.getItemAsync('password');
 
-        console.log('username', username);
-        console.log('password', password);
+        //console.log('username', username);
+        //console.log('password', password);
 
         const response = await api.post('/api/v1/token/', { username, password });
-        console.log('response', response.data)
+        //console.log('response', response.data)
         const { accessToken, refreshToken } = response.data;
         await SecureStore.setItemAsync('accessToken', accessToken);
         await SecureStore.setItemAsync('refreshToken', refreshToken);
@@ -94,14 +94,14 @@ api.interceptors.response.use(
         return api(originalRequest);
 
       } catch (e) {
-        console.log(e);
+        //console.log(e);
         const authStore = getAuthStore();
         await authStore.logout();
         return Promise.reject(e);
       }
 
     } else {
-      console.log('reject error')
+      //console.log('reject error')
       return Promise.reject(error);
     }
 

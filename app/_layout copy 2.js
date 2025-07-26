@@ -37,10 +37,6 @@ export default function FormLayout() {
 
     if (initialRedirectDone) return;
 
-    console.log('Layout - User:', user);
-
-
-
 
     const initialRoute = user ? '/Tabs' : '/start';
 

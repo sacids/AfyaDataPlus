@@ -129,7 +129,7 @@ export const dropTables = async () => {
         await db.execAsync(PROJECT_SQL);
         await db.execAsync(MESSAGES_SQL);
         await db.execAsync(MIGRATION_SQL);
-        console.log('Tables dropped');
+        //console.log('Tables dropped');
     } catch (e) {
         console.error('Failed to drop tables:', e);
         throw e;
@@ -144,17 +144,16 @@ const getTableVersions = async () => {
 
 // Migrate tables
 const migrateTables = async () => {
-    console.log('Migrating tables');
     const tableArray = await getTableVersions();
     const currentTableVersions = tableArray.reduce((acc, { table_name, version }) => {
         acc[table_name] = version;
         return acc;
     }, {});
-    console.log('Current table versions:', JSON.stringify(currentTableVersions, null, 1));
+    //console.log('Current table versions:', JSON.stringify(currentTableVersions, null, 1));
 
     for (let tableName in TABLE_VERSIONS) {
         const newVersion = TABLE_VERSIONS[tableName];
-        console.log('Migrating table:', tableName, newVersion);
+        //console.log('Migrating table:', tableName, newVersion);
 
         if (
             (tableName in currentTableVersions && newVersion > currentTableVersions[tableName]) ||
@@ -203,7 +202,6 @@ const migrateTables = async () => {
 
 // Delete table data
 export const deleteTableData = async (tableName, whereClause, params = []) => {
-    console.log('Deleting table data:', tableName, whereClause, params);
 
     if (!tableName || !whereClause) {
         throw new Error('tableName and whereClause are required.');
@@ -318,7 +316,7 @@ export const update = async (tableName, data, whereClause, whereArgs = []) => {
         const setClause = keys.map((key) => `${key} = ?`).join(', ');
         const values = [...keys.map((key) => data[key]), ...whereArgs];
         const sql = `UPDATE ${tableName} SET ${setClause} WHERE ${whereClause};`;
-        console.log('Updating sql:', sql, values);
+        //console.log('Updating sql:', sql, values);
         const result = await db.runAsync(sql, values);
         return result.changes;
     } catch (error) {

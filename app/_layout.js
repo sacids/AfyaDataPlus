@@ -102,7 +102,7 @@ export default function FormLayout() {
             },
             body: JSON.stringify({ username, password }),
           });
-          console.log('login ',BASE_URL+'/api/v1/token/', username, password, response)
+          //console.log('login ',BASE_URL+'/api/v1/token/', username, password, response)
           if (!response.ok) {
             throw new Error(`Login failed: ${response.status} ${response.statusText}`);
           }
@@ -133,9 +133,6 @@ export default function FormLayout() {
 
   useEffect(() => {
     if (isLoading || initialRedirectDone) return;
-
-    console.log('Layout - User:', user);
-
     const initialRoute = user ? '/Tabs' : '/start';
     router.replace(initialRoute);
     setInitialRedirectDone(true);
