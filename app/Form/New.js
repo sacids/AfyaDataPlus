@@ -16,7 +16,6 @@ import { useTheme } from '../../context/ThemeContext';
 
 const New = () => {
   const { id } = useLocalSearchParams();
-  console.log('id', id);
   const [schema, setSchema] = useState(null);
   const [loading, setLoading] = useState(true);
   const [menuVisible, setMenuVisible] = useState(false);
@@ -46,7 +45,7 @@ const New = () => {
         const FormDefn = await select('form_defn', 'id = ?', id);
         //console.log('META', JSON.stringify(FormDefn[0].meta, null, 2));
         const parsedSchema = parseSchema(FormDefn[0]);
-        console.log('parsedSchema', JSON.stringify(parsedSchema.meta.default_language, null, 2));
+        //console.log('parsedSchema', JSON.stringify(parsedSchema.meta.default_language, null, 2));
         setSchema(parsedSchema);
         if (parsedSchema.meta.default_language) {
           setLanguage('::' + parsedSchema.meta.default_language);

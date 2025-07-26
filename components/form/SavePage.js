@@ -43,7 +43,6 @@ const SavePage = () => {
                 synced: 0,
                 form_data: JSON.stringify(formData),
             })
-            console.log('saved succesfully')
             router.dismissTo('/Tabs')
         } catch (e) {
             console.log(e)

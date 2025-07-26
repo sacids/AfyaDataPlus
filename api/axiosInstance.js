@@ -84,7 +84,7 @@ api.interceptors.request.use(
     if (token) {
       // Use fake token for testing when simulateInvalidToken is true
       config.headers.Authorization = `Bearer ${simulateInvalidToken ? 'fake' : token}`;
-      console.log('Token attached:', simulateInvalidToken ? 'INVALID (test)' : 'VALID');
+      //console.log('Token attached:', simulateInvalidToken ? 'INVALID (test)' : 'VALID');
     }
 
     return config;
@@ -112,16 +112,16 @@ api.interceptors.response.use(
       return api(originalRequest);
 
     } catch (refreshError) {
-      console.log('Refresh failed, attempting full login...', refreshError);
+      //console.log('Refresh failed, attempting full login...', refreshError);
 
       try {
         // Second attempt: Try to login with stored credentials
-        console.log('attempting login')
+        //console.log('attempting login')
         const newAccessToken = await attemptLogin();
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return api(originalRequest);
       } catch (loginError) {
-        console.log('Login failed, logging out...');
+        //console.log('Login failed, logging out...');
 
         // Final fallback: Logout the user
         const authStore = getAuthStore();

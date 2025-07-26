@@ -42,7 +42,7 @@ const RegisterScreen = () => {
             //const password = generateRandomPassword();
             const password = await generatePassword(username);
 
-            console.log('fullName', phoneNumber, username, password)
+            //console.log('fullName', phoneNumber, username, password)
             const response = await api.post('/api/v1/register', {
                 fullName,
                 phoneNumber,
@@ -52,18 +52,12 @@ const RegisterScreen = () => {
             });
 
 
-
-            console.log('response', response.data);
-
             const { access, refresh, user } = response.data;
 
 
             // Extract token strings from arrays
             const accessToken = Array.isArray(access) ? access[0] : access;
             const refreshToken = Array.isArray(refresh) ? refresh[0] : refresh;
-
-            console.log('accessToken', accessToken);
-            console.log('refreshToken', refreshToken);
 
             // Store tokens as strings
             await SecureStore.setItemAsync('accessToken', accessToken);

@@ -39,8 +39,6 @@ const FormPage = ({ pageIndex }) => {
     formDirection,
   } = useFormStore();
 
-  console.log('language formpage', language)
-
   const page = schema?.pages?.[pageIndex];
   const isLastPage = schema ? pageIndex === schema.pages.length : false;
 

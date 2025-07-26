@@ -34,7 +34,7 @@ export default function ChatScreen() {
 
   const loadMessages = async () => {
     const data = await select('messages', 'formDataUUID = ?', [formData_id]);
-    console.log('data', data);
+    //console.log('data', data);
     setMessages(data);
     setTimeout(() => {
       flatListRef.current?.scrollToEnd({ animated: false });

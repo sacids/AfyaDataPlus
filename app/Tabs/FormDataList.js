@@ -56,7 +56,7 @@ export default function FormDataList() {
   const fetchData = async () => {
     try {
       const results = await getFormData(currentProject?.project);
-      console.log('form data list', currentProject?.project);
+      //console.log('form data list', currentProject?.project);
       setData(results);
       setFilteredData(results);
     } catch (error) {
@@ -159,16 +159,13 @@ export default function FormDataList() {
                 const formData = new FormData();
                 const directoryPath = `${FileSystem.documentDirectory}${item.original_uuid}`;
 
-                console.log('directory path', directoryPath)
                 const dirInfo = await FileSystem.getInfoAsync(directoryPath);
                 if (dirInfo.exists) {
                   const files = await FileSystem.readDirectoryAsync(directoryPath);
-                  console.log('files', files)
                   // Process each file in the directory
                   for (const file of files) {
                     // Check if file matches the expected pattern (fieldName_imageName)
                     const match = file.match(/^(.+?)__(.+)$/);
-                    console.log('match', match)
                     if (match) {
                       const [, fieldName, imageName] = match;
                       // Full path to image
@@ -182,7 +179,7 @@ export default function FormDataList() {
                         );
 
                         // Add compressed image to FormData
-                        console.log('adding compressed image', fieldName, manipulatedImage.uri)
+                        //console.log('adding compressed image', fieldName, manipulatedImage.uri)
                         formData.append(fieldName, {
                           uri: manipulatedImage.uri,
                           type: 'image/jpeg',
@@ -199,14 +196,12 @@ export default function FormDataList() {
                 for (const field in item) {
                   formData.append(field, item[field]);
                 }
-
-                console.log('Starting submission...', JSON.stringify(formData, null, 4));
                 const result = await postData('form-data', formData, {
                   headers: {
                     'Content-Type': 'multipart/form-data'
                   }
                 });
-                console.log('Submission result:', result);
+                //console.log('Submission result:', result);
 
                 if (!result.error) {
                   await update(
@@ -233,7 +228,7 @@ export default function FormDataList() {
                 {
                   text: 'OK',
                   onPress: async () => {
-                    console.log('Submission completed');
+                    //console.log('Submission completed');
 
                     await fetchData();
                     clearSelections();
@@ -251,14 +246,12 @@ export default function FormDataList() {
   const actOnData = (item) => {
 
     if (item.status.toLowerCase() === 'finalized') {
-      console.log('Status is finalized, showing alert');
       submitForms([item]);
 
       // For cross-platform support, use Alert.alert with buttons
 
 
     } else if (item.status.toLowerCase() === 'sent') {
-      console.log('sent item', item.id);
       router.push(`/Data/?id=${item.id}`);
     } else {
       // draft thus edit the form
