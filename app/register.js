@@ -1,7 +1,7 @@
 // components/RegisterScreen.js
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     Image,
     StyleSheet,
@@ -10,11 +10,12 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import api from '../api/axiosInstance';
 import { useTheme } from '../context/ThemeContext';
-import { useAuthStore } from '../store/authStore'; // Verify this path
+import { useAuthStore } from '../store/authStore';
 import { getDeviceId } from '../utils/deviceUtils';
-import { generateRandomPassword } from '../utils/passwordUtils';
+import { generatePassword } from '../utils/passwordUtils';
 
 const logo = require('../assets/images/AfyaDataLogo.png');
 
@@ -23,6 +24,7 @@ const RegisterScreen = () => {
     const [fullName, setFullName] = useState('');
     const [phoneNumber, setPhoneNumber] = useState('');
     const [isFormValid, setIsFormValid] = useState(false);
+    const insets = useSafeAreaInsets();
 
     const { user, setUser } = useAuthStore();
 
@@ -36,8 +38,11 @@ const RegisterScreen = () => {
     const handleRegister = async () => {
         try {
 
-            const username = getDeviceId();
-            const password = generateRandomPassword();
+            const username = getDeviceId()
+            //const password = generateRandomPassword();
+            const password = await generatePassword(username);
+
+            console.log('fullName', phoneNumber, username, password)
             const response = await api.post('/api/v1/register', {
                 fullName,
                 phoneNumber,
@@ -47,17 +52,24 @@ const RegisterScreen = () => {
             });
 
 
-            const { access, refresh, user } = response.data;
 
+            console.log('response', response.data);
+
+            const { access, refresh, user } = response.data;
 
 
             // Extract token strings from arrays
             const accessToken = Array.isArray(access) ? access[0] : access;
             const refreshToken = Array.isArray(refresh) ? refresh[0] : refresh;
 
+            console.log('accessToken', accessToken);
+            console.log('refreshToken', refreshToken);
+
             // Store tokens as strings
             await SecureStore.setItemAsync('accessToken', accessToken);
             await SecureStore.setItemAsync('refreshToken', refreshToken);
+            await SecureStore.setItemAsync('username', username);
+            await SecureStore.setItemAsync('password', password);
 
             setUser(user); // Update user in Zustand store
             router.replace('/Tabs'); // Navigate to Tabs
@@ -99,7 +111,7 @@ const RegisterScreen = () => {
     });
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { paddingBottom: insets.bottom }]}>
             <Image
                 source={logo}
                 style={{ width: 120, height: 120, resizeMode: 'contain', marginBottom: 30 }}
@@ -126,14 +138,6 @@ const RegisterScreen = () => {
             >
                 <Text style={styles.buttonText}>Register</Text>
             </TouchableOpacity>
-
-
-            <View>
-                <Text>User: {JSON.stringify(user)}</Text>
-                <TouchableOpacity style={styles.button} onPress={() => setUser({ name: 'Test' })}>
-                    <Text style={styles.buttonText}>Set User</Text>
-                </TouchableOpacity>
-            </View>
         </View>
     );
 };

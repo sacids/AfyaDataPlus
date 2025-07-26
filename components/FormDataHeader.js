@@ -20,9 +20,9 @@ const FormDataHeader = ({ data }) => {  // Changed to properly destructure props
         },
         tag: {
             backgroundColor: theme.colors.tagBackground,
-            paddingVertical: 8,
-            paddingHorizontal: 10,
-            borderRadius: 15,
+            paddingVertical: 4,
+            paddingHorizontal: 12,
+            borderRadius: 10,
             marginRight: 10,
         },
         selectedTag: {
@@ -82,4 +82,4 @@ const FormDataHeader = ({ data }) => {  // Changed to properly destructure props
     );
 };
 
-export default FormDataHeader;
+export default FormDataHeader; 

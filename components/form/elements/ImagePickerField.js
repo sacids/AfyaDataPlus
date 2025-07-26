@@ -1,10 +1,9 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, Image, Alert } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
-import { useFormStore } from '../../../store/FormStore';
+import * as ImagePicker from 'expo-image-picker';
+import { Alert, Image, Text, TouchableOpacity, View } from 'react-native';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
+import { useFormStore } from '../../../store/FormStore';
 
 const ImagePickerField = ({ element, value }) => {
   const { updateFormData, errors, formUUID } = useFormStore();
@@ -37,10 +36,13 @@ const ImagePickerField = ({ element, value }) => {
           await FileSystem.makeDirectoryAsync(folderPath, { intermediates: true });
         }
 
-        const destPath = `${folderPath}${element.name}_${filename}`;
+        const newFileName = `${element.name}__${filename}`
+        const destPath = `${folderPath}${newFileName}`;
         await FileSystem.copyAsync({ from: originalUri, to: destPath });
 
-        updateFormData(element.name, destPath); // Save full persistent path
+        updateFormData(element.name, newFileName); // Save full persistent path
+        console.log(destPath, newFileName)
+
       } catch (err) {
         console.error('Image saving failed', err);
         Alert.alert('Error', 'Failed to save the image.');

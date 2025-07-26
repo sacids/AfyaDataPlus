@@ -13,6 +13,8 @@ import {
 import { insert, select } from '@/utils/database';
 import { useTheme } from '../../context/ThemeContext';
 import { useId } from './_layout';
+import { getStyles } from '../../constants/styles';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ChatScreen() {
   const { colors, isDark } = useTheme();
@@ -20,6 +22,9 @@ export default function ChatScreen() {
   const [input, setInput] = useState('');
   const flatListRef = useRef(null);
   const formData_id = useId();
+  const insets = useSafeAreaInsets();
+  const theme = useTheme();
+  const styles = getStyles(theme);
 
   useEffect(() => {
     (async () => {
@@ -48,7 +53,7 @@ export default function ChatScreen() {
     return (
       <View
         style={[
-          styles.messageContainer,
+          lstyles.messageContainer,
           isMe ? {
             alignSelf: 'flex-end',
             backgroundColor: colors.primary,
@@ -60,8 +65,8 @@ export default function ChatScreen() {
           },
         ]}
       >
-        <Text style={[styles.messageText, { color: colors.text }]}>{item.text}</Text>
-        <Text style={[styles.timestamp, { color: colors.secText }]}>
+        <Text style={[lstyles.messageText, { color: colors.text }]}>{item.text}</Text>
+        <Text style={[lstyles.timestamp, { color: colors.secText }]}>
           {new Date(item.created_at || Date.now()).toLocaleTimeString().slice(0, 5)}
         </Text>
       </View>
@@ -71,7 +76,7 @@ export default function ChatScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={[lstyles.container, { backgroundColor: colors.background, paddingBottom: insets.bottom }]}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       <FlatList
@@ -79,24 +84,24 @@ export default function ChatScreen() {
         data={messages}
         renderItem={renderItem}
         keyExtractor={(item) => item.id?.toString()}
-        contentContainerStyle={styles.chat}
+        contentContainerStyle={lstyles.chat}
       />
-      <View style={[styles.inputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
+      <View style={[lstyles.inputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}>
         <TextInput
           value={input}
           onChangeText={setInput}
-          style={[styles.input, { color: colors.text }]}
+          style={[lstyles.input, { color: colors.text }]}
           placeholder="Type a message"
           placeholderTextColor={colors.label}
         />
-        <TouchableOpacity onPress={handleSend} style={[styles.sendButton, { backgroundColor: colors.buttonBackground }]}>
+        <TouchableOpacity onPress={handleSend} style={[lstyles.sendButton, { backgroundColor: colors.buttonBackground }]}>
           <Text style={{ color: colors.buttonText, fontSize: 18 }}>➤</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
   );
 }
-const styles = StyleSheet.create({
+const lstyles = StyleSheet.create({
   container: {
     flex: 1,
   },

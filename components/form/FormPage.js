@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { getStyles } from '../../constants/styles';
 import { useTheme } from '../../context/ThemeContext';
@@ -38,6 +38,8 @@ const FormPage = ({ pageIndex }) => {
     validateAndNavigate,
     formDirection,
   } = useFormStore();
+
+  console.log('language formpage', language)
 
   const page = schema?.pages?.[pageIndex];
   const isLastPage = schema ? pageIndex === schema.pages.length : false;
@@ -110,7 +112,7 @@ const FormPage = ({ pageIndex }) => {
   if (isLastPage) {
     return (
       <View style={styles.pageContainer}>
-        <SavePage  />
+        <SavePage />
       </View>
     );
   }
@@ -139,6 +141,8 @@ const FormPage = ({ pageIndex }) => {
         {page.fields.flatMap((fieldGroup, groupIndex) =>
           Object.entries(fieldGroup).map(([colName, field]) => {
             if (field.type === 'calculate') return null;
+
+            //console.log(JSON.stringify(field, null,3))
 
             const Component = elementComponents[field.type];
             if (!Component) {

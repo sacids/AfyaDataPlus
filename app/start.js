@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
-import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Onboarding from 'react-native-onboarding-swiper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 
 
@@ -9,6 +9,7 @@ const OnboardingScreen = () => {
   const { colors } = useTheme();
 
   const logo = require('../assets/images/AfyaDataLogo.png');
+  const insets = useSafeAreaInsets();
 
   const themedStyles = StyleSheet.create({
     title: {
@@ -121,7 +122,7 @@ const OnboardingScreen = () => {
       nextLabel="Next"
       skipLabel="Skip"
       bottomBarHighlight={false}
-      containerStyles={{ paddingBottom: 30 }}
+      containerStyles={{ paddingBottom: insets.bottom }}
     />
   );
 };

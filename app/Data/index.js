@@ -1,23 +1,34 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import FormDataView from '../../components/form/FormDataView';
+import { getStyles } from '../../constants/styles';
+import { useTheme } from '../../context/ThemeContext';
 import { select } from '../../utils/database';
-
 
 export default function FormDataDetailScreen() {
   const { id } = useLocalSearchParams();
   const [formData, setFormData] = useState(null);
+  const [formDefn, setFormDefn] = useState(null);
   console.log('id', id);
+
+
+  const theme = useTheme();
+  const styles = getStyles(theme);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     const fetchData = async () => {
       const results = await select('form_data', 'id = ?', [id]);
+      const res2 = await select('form_defn', 'form_id = ?', [results[0].form]);
       setFormData(results[0]);
+      setFormDefn(JSON.parse(res2[0].form_defn));
     };
     fetchData();
   }, [id]);
 
-  if (!formData) {
+  if (!formData && !formDefn) {
     return (
       <View style={styles.container}>
         <Text>Loading...</Text>
@@ -25,31 +36,16 @@ export default function FormDataDetailScreen() {
     );
   }
 
-  const parsedFormData = JSON.parse(formData.form_data || '{}');
+  console.log(formDefn)
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView>
-        <Text style={styles.title}>{formData.title}</Text>
-        <Text style={styles.label}>Created By: {formData.created_by_name}</Text>
-        <Text style={styles.label}>
-          Created On: {new Date(formData.created_on).toLocaleDateString()}
-        </Text>
-        <Text style={styles.label}>Status: {formData.status}</Text>
-        <Text style={styles.label}>
-          Last Modified: {new Date(formData.status_date).toLocaleDateString()}
-        </Text>
-        <Text style={styles.label}>Form: {formData.form}</Text>
-        <Text style={styles.label}>Form Data:</Text>
-        <Text style={styles.json}>
-          {JSON.stringify(parsedFormData, null, 2)}
-        </Text>
-      </ScrollView>
+    <SafeAreaView style={[styles.pageContainer, { paddingBottom: insets.bottom }]}>
+      <FormDataView schema={formDefn} formData={formData} />
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const lstyles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,

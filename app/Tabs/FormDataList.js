@@ -1,5 +1,7 @@
 
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -20,13 +22,14 @@ import FormDataItem from '../../components/FormDataItem';
 import { getFormData, update } from '../../utils/database';
 
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getStyles } from '../../constants/styles';
 import { useTheme } from '../../context/ThemeContext';
 
 
 import { useFilterStore } from '../../store/filterStore';
 import useProjectStore from '../../store/projectStore';
-import { getForms } from '../../utils/services';
+import { getForms, postData } from '../../utils/services';
 
 
 export default function FormDataList() {
@@ -44,6 +47,7 @@ export default function FormDataList() {
   const resetSwipeRef = useRef(null);
   const selectedTag = useFilterStore((state) => state.filter);
   const { currentProject, setCurrentProject } = useProjectStore();
+  const insets = useSafeAreaInsets();
 
   const theme = useTheme();
   const styles = getStyles(theme);
@@ -51,7 +55,8 @@ export default function FormDataList() {
 
   const fetchData = async () => {
     try {
-      const results = await getFormData(currentProject?.id);
+      const results = await getFormData(currentProject?.project);
+      console.log('form data list', currentProject?.project);
       setData(results);
       setFilteredData(results);
     } catch (error) {
@@ -131,10 +136,127 @@ export default function FormDataList() {
     }
   };
 
+  const submitForms = async (data = []) => {
+
+    const success_forms = [];
+    const failed_forms = [];
+
+    Alert.alert(
+      'Confirm Submission',
+      'Are you sure you want to submit this form(s)?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+          onPress: () => console.log('Submission cancelled')
+        },
+        {
+          text: 'Submit',
+          onPress: async () => {
+            for (const item of data) {
+              try {
+
+                const formData = new FormData();
+                const directoryPath = `${FileSystem.documentDirectory}${item.original_uuid}`;
+
+                console.log('directory path', directoryPath)
+                const dirInfo = await FileSystem.getInfoAsync(directoryPath);
+                if (dirInfo.exists) {
+                  const files = await FileSystem.readDirectoryAsync(directoryPath);
+                  console.log('files', files)
+                  // Process each file in the directory
+                  for (const file of files) {
+                    // Check if file matches the expected pattern (fieldName_imageName)
+                    const match = file.match(/^(.+?)__(.+)$/);
+                    console.log('match', match)
+                    if (match) {
+                      const [, fieldName, imageName] = match;
+                      // Full path to image
+                      const imagePath = `${directoryPath}/${file}`;
+                      try {
+                        // Compress image
+                        const manipulatedImage = await ImageManipulator.manipulateAsync(
+                          imagePath,
+                          [{ resize: { width: 800, height: 800 } }],
+                          { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+                        );
+
+                        // Add compressed image to FormData
+                        console.log('adding compressed image', fieldName, manipulatedImage.uri)
+                        formData.append(fieldName, {
+                          uri: manipulatedImage.uri,
+                          type: 'image/jpeg',
+                          name: `${fieldName}_${Date.now()}.jpg`
+                        });
+                      } catch (resizeError) {
+                        console.error(`Error compressing image ${file}:`, resizeError);
+                      }
+                    }
+
+                  }
+                }
+
+                for (const field in item) {
+                  formData.append(field, item[field]);
+                }
+
+                console.log('Starting submission...', JSON.stringify(formData, null, 4));
+                const result = await postData('form-data', formData, {
+                  headers: {
+                    'Content-Type': 'multipart/form-data'
+                  }
+                });
+                console.log('Submission result:', result);
+
+                if (!result.error) {
+                  await update(
+                    'form_data',
+                    { status: 'sent', status_date: new Date().toISOString() },
+                    'id = ?',
+                    [item.id]
+                  );
+
+                  success_forms.push(item.form);
+                } else {
+                  failed_forms.push(item.form);
+                }
+              } catch (error) {
+                console.error('Submission error:', error);
+                failed_forms.push(item.form);
+              }
+            }
+
+            Alert.alert(
+              'Submission Results',
+              `Successfully submitted ${success_forms.length} out of ${data.length} form(s)`,
+              [
+                {
+                  text: 'OK',
+                  onPress: async () => {
+                    console.log('Submission completed');
+
+                    await fetchData();
+                    clearSelections();
+                  }
+                }
+              ]
+            );
+          }
+        }
+      ],
+      { cancelable: false }
+    );
+
+  }
   const actOnData = (item) => {
 
     if (item.status.toLowerCase() === 'finalized') {
-      Alert.alert('info', 'Sending finalized data');
+      console.log('Status is finalized, showing alert');
+      submitForms([item]);
+
+      // For cross-platform support, use Alert.alert with buttons
+
+
     } else if (item.status.toLowerCase() === 'sent') {
       console.log('sent item', item.id);
       router.push(`/Data/?id=${item.id}`);
@@ -183,11 +305,6 @@ export default function FormDataList() {
   useEffect(() => {
     async function initialize() {
       try {
-        //console.log('Initializing database...');
-
-
-        //await initializeDummyData();
-
 
         await fetchData();
       } catch (error) {
@@ -196,11 +313,8 @@ export default function FormDataList() {
       }
     }
     initialize();
-  }, []);
-
-  useEffect(() => {
-    fetchData();
   }, [currentProject]);
+
 
   useEffect(() => {
     let tempData = [...data]; // Start with a fresh copy of the original data
@@ -237,7 +351,7 @@ export default function FormDataList() {
 
 
   return (
-    <View style={styles.pageContainer}>
+    <View style={[styles.pageContainer, { paddingBottom: insets.bottom, paddingTop: insets.top }]}>
       {selectedIds.length > 0 && (
         <View style={[lstyles.actionBar, styles.pageContainer]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15 }}>
@@ -262,7 +376,7 @@ export default function FormDataList() {
             <TouchableOpacity onPress={() => handleBulkAction('delete')}>
               <MaterialIcons name="delete" size={26} color={theme.colors.text} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => alert('Send not implemented')}>
+            <TouchableOpacity onPress={() => submitForms(data.filter(item => selectedIds.includes(item.id)))}>
               <MaterialCommunityIcons name="upload-multiple" size={26} color={theme.colors.text} />
             </TouchableOpacity>
           </View>
@@ -299,17 +413,18 @@ export default function FormDataList() {
       )}
 
       {showSearchBar && (
-        <View style={[styles.searchBar]}>
+        <View style={[lstyles.actionBar, styles.pageContainer]}>
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholder="Search..."
-            style={styles.searchInput}
+            style={styles.textInput}
           />
+          <Ionicons name="close-circle-outline" size={30} color={theme.colors.text} onPress={() => { setSearchQuery(''); setShowSearchBar(false) }} />
         </View>
       )}
 
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15, paddingTop: 40, paddingBottom: 10 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15, paddingVertical: 5 }}>
         <Text
           style={[styles.pageTitle, { flexShrink: 1 }]}
           numberOfLines={1}
@@ -336,7 +451,7 @@ export default function FormDataList() {
                   borderRadius: 6,
                 }}
               />
-              <TouchableOpacity onPress={syncSurveys}><Text style={[styles.label, { paddingVertical: 8, fontSize: 14 }]}>Sync Surveys</Text></TouchableOpacity>
+              {currentProject && <TouchableOpacity onPress={syncSurveys}><Text style={[styles.label, { paddingVertical: 8, fontSize: 14 }]}>Sync Surveys</Text></TouchableOpacity>}
               <TouchableOpacity onPress={() => goToStack('/Project/List')}><Text style={[styles.label, { paddingVertical: 8, fontSize: 14 }]}>My Projects</Text></TouchableOpacity>
               <TouchableOpacity onPress={() => goToStack('/Project/Join')}><Text style={[styles.label, { paddingVertical: 8, fontSize: 14 }]}>Join a Project</Text></TouchableOpacity>
               <TouchableOpacity><Text style={[styles.label, { paddingVertical: 8, fontSize: 14 }]}>Help and Feedback</Text></TouchableOpacity>

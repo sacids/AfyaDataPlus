@@ -4,6 +4,7 @@ import { Tabs } from 'expo-router';
 import * as NavigationBar from 'expo-navigation-bar';
 import { useEffect } from 'react';
 import { Platform } from "react-native";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '../../context/ThemeContext';
 
@@ -13,6 +14,7 @@ export default function TabsLayout() {
 
 
     const theme = useTheme();
+    const insets = useSafeAreaInsets();
 
     useEffect(() => {
         if (Platform.OS === 'android') {
@@ -38,7 +40,7 @@ export default function TabsLayout() {
                     borderColor: theme.colors.background,
                     borderTopColor: theme.colors.background,
                     backgroundColor: theme.colors.background,
-                    height: 65,
+                    height: 65 + insets.bottom,
                     paddingTop: 10,
 
                 },

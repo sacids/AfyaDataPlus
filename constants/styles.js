@@ -77,6 +77,14 @@ export const getStyles = (theme) =>
     placeholderText: {
       color: '#999',
     },
+    searchBar: {
+      backgroundColor: theme.colors.inputBackground,
+      padding: 3,
+      borderRadius: 8,
+      borderColor: theme.colors.inputBorder,
+      borderWidth: 1,
+    },
+
 
 
 

@@ -1,6 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import useProjectStore from '../../store/projectStore';
 import { select } from '../../utils/database';
@@ -48,8 +48,10 @@ const ProjectListScreen = () => {
         projectCard: {
             backgroundColor: 'rgba(255, 255, 255, 0.1)',
             borderRadius: 8,
-            padding: 15,
+            padding: 8,
             marginBottom: 10,
+            borderColor: theme.colors.inputBorder,
+            borderWidth: 1,
         },
         projectHeader: {
             flexDirection: 'row',
@@ -79,18 +81,20 @@ const ProjectListScreen = () => {
         },
         statItem: {
             backgroundColor: 'rgba(255, 255, 255, 0.2)',
-            borderRadius: 4,
-            padding: 8,
-            minWidth: 70,
+            borderRadius: 8,
+            paddingHorizontal: 8,
+            paddingVertical: 4,
             alignItems: 'center',
+            flexDirection: 'row',
+            gap: 2,
         },
         statLabel: {
             color: '#ccc',
-            fontSize: 12,
+            fontSize: 9,
         },
         statValue: {
             color: 'white',
-            fontSize: 16,
+            fontSize: 9,
             fontWeight: 'bold',
         },
         listContent: {
@@ -162,6 +166,7 @@ const ProjectListScreen = () => {
     }, []);
 
     const handleProjectPress = (project) => {
+        console.log('project', JSON.stringify(project, null, 2));
         setCurrentProject(project);
         router.back();
     };
@@ -213,33 +218,24 @@ const ProjectListScreen = () => {
 
                         <View style={styles.statsContainer}>
                             <View style={styles.statItem}>
-                                <Text style={styles.statLabel}>Forms</Text>
                                 <Text style={styles.statValue}>{item.formDefnCount}</Text>
+                                <Text style={styles.statLabel}>Forms</Text>
                             </View>
 
                             <View style={styles.statItem}>
-                                <Text style={styles.statLabel}>Total</Text>
                                 <Text style={styles.statValue}>{item.formDataTotal}</Text>
+                                <Text style={styles.statLabel}>Total</Text>
                             </View>
 
                             <View style={styles.statItem}>
-                                <Text style={styles.statLabel}>Drafts</Text>
                                 <Text style={styles.statValue}>{item.formDataDrafts}</Text>
-                            </View>
-
-                            <View style={styles.statItem}>
-                                <Text style={styles.statLabel}>Finalized</Text>
+                                <Text style={styles.statLabel}>Draft</Text>
                                 <Text style={styles.statValue}>{item.formDataFinalized}</Text>
-                            </View>
-
-                            <View style={styles.statItem}>
-                                <Text style={styles.statLabel}>Sent</Text>
+                                <Text style={styles.statLabel}>Fin</Text>
                                 <Text style={styles.statValue}>{item.formDataSent}</Text>
-                            </View>
-
-                            <View style={styles.statItem}>
-                                <Text style={styles.statLabel}>Archived</Text>
+                                <Text style={styles.statLabel}>Sent</Text>
                                 <Text style={styles.statValue}>{item.formDataArchived}</Text>
+                                <Text style={styles.statLabel}>Arch</Text>
                             </View>
                         </View>
                     </TouchableOpacity>

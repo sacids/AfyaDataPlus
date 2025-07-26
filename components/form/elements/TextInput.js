@@ -19,7 +19,7 @@ const TextInputField = ({ element, value }) => {
         ]}
         value={value}
         onChangeText={(text) => updateFormData(element.name, text)}
-        placeholder={element['label' + language]}
+        placeholder=""
         placeholderTextColor="#999"
       />
       {errors[element.name] && (
