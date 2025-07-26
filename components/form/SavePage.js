@@ -1,12 +1,14 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { getStyles } from '../../constants/styles';
 import { useTheme } from '../../context/ThemeContext';
-import { replaceVariables } from '../../lib/form/validation';
+import { evaluateCustomFunctions, replaceVariables } from '../../lib/form/validation';
 import { useFormStore } from '../../store/FormStore';
 import { insert } from '../../utils/database';
+import { useAuthStore } from '../../store/authStore';
+
 
 const SavePage = () => {
 
@@ -14,7 +16,8 @@ const SavePage = () => {
     const theme = useTheme();
     const styles = getStyles(theme);
 
-    const [title, setTitle] = useState("");
+    const [title, setTitle] = useState(null);
+    const { user } = useAuthStore();
 
     const {
         schema,
@@ -31,11 +34,12 @@ const SavePage = () => {
                 uuid: formUUID,
                 original_uuid: formUUID,
                 title: title,
-                created_by: 1,
-                created_by_name: "Admin",
+                created_by: user.id,
+                created_by_name: user.fullName,
                 created_on: new Date().toISOString(),
                 status: status,
                 status_date: new Date().toISOString(),
+                deleted: 0,
                 synced: 0,
                 form_data: JSON.stringify(formData),
             })
@@ -48,8 +52,8 @@ const SavePage = () => {
 
     useEffect(() => {
         const instance_name = schema.meta.instance_name
-        const tt = replaceVariables("'" + instance_name + "'", formData)
-        console.log(tt)
+        const tt1 = replaceVariables(instance_name, formData)
+        const tt = evaluateCustomFunctions(tt1, formData)
         setTitle(tt)
     }, []);
 
@@ -65,7 +69,7 @@ const SavePage = () => {
                     <TextInput
                         multiline={false}
                         style={[styles.inputBase, styles.textInput]}
-                        value={title ? "Untitled Form" : title}
+                        value={title ? title : "Untitled Form"}
                         onChangeText={(e) => { setTitle(e) }}
                     />
                     <View style={{ flexDirection: "row", backgroundColor: "#bde1f2", borderRadius: 10, padding: 15, fontSize: 16 }}>

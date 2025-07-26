@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -53,6 +53,8 @@ const JoinProjectScreen = () => {
       setProjects(data);
     } catch (error) {
       console.error('Error fetching projects:', error);
+      console.log('Error fetching projects:', error);
+
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -99,28 +101,30 @@ const JoinProjectScreen = () => {
     <View
       style={{
         backgroundColor: theme.colors.inputBackground,
-        padding: 16,
+        padding: 8,
         borderRadius: 8,
         marginBottom: 12,
+        borderColor: theme.colors.inputBorder,
+        borderWidth: 1,
       }}>
       <View style={{ flex: 1, }}>
         <Text style={styles.title}>{item.title}</Text>
-        <Text style={{ color: theme.colors.secText, marginVertical: 6 }}>
+        <Text style={{ color: theme.colors.secText, marginVertical: 6, fontSize: 10 }}>
           {item.description}
         </Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 6 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginVertical: 6 }}>
           {item.tags?.map((tag, idx) => (
             <View
               key={idx}
               style={{
                 backgroundColor: theme.colors.inputBorder,
-                borderRadius: 12,
+                borderRadius: 6,
                 paddingVertical: 4,
-                paddingHorizontal: 8,
+                paddingHorizontal: 6,
                 marginRight: 6,
                 marginBottom: 6,
               }}>
-              <Text style={{ fontSize: 12, color: theme.colors.text }}>{tag}</Text>
+              <Text style={{ fontSize: 8, color: theme.colors.text }}>{tag}</Text>
             </View>
           ))}
         </View>

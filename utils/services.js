@@ -99,3 +99,13 @@ export const getForms = async (project_id, setStatus) => {
         clearInterval(activityInterval);
     }
 };
+
+export const postData = async (endpoint, data = {}, headers = {}) => {
+    try {
+        const response = await api.post(`api/v1/${endpoint}`, data, headers);
+        return response.data;
+    } catch (error) {
+        console.error(`Error fetching ${endpoint}:`, error);
+        return null;
+    }
+};

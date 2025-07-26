@@ -32,7 +32,7 @@ let PROJECT_SQL = `CREATE TABLE IF NOT EXISTS projects (
 let FORM_DEFN_SQL = `CREATE TABLE IF NOT EXISTS form_defn (
   id INTEGER PRIMARY KEY NOT NULL,
   project TEXT NOT NULL,
-  form_id TEXT NOT NULL,
+  form_id TEXT NOT NULL UNIQUE,
   depends_on INTEGER DEFAULT 0,
   title TEXT NOT NULL, 
   version TEXT DEFAULT 0, 
@@ -57,7 +57,7 @@ let FORM_DATA_SQL = `CREATE TABLE IF NOT EXISTS form_data (
   project INTEGER NOT NULL DEFAULT 1,
   form TEXT NOT NULL, 
   title TEXT,
-  uuid TEXT NOT NULL, 
+  uuid TEXT NOT NULL UNIQUE, 
   original_uuid TEXT,
   gps TEXT,
   deleted INTEGER DEFAULT 0, 
@@ -300,8 +300,9 @@ export const getFormData = async (project_id) => {
     try {
         //console.log("Project ID type:", typeof project_id);
         let query = `SELECT fd.*, fdef.title AS form_title FROM form_data fd JOIN form_defn fdef ON fd.form = CAST(fdef.form_id AS TEXT) WHERE deleted = ? AND fd.project = ?;`
+        //query = `SELECT * FROM form_data;`
         const result = await db.getAllAsync(query, [0, project_id]);
-        //console.log('get form data', query, project_id)
+        //console.log('get form data', JSON.stringify(result, null, 2));
         return result;
     } catch (error) {
         console.error('Error getting form data:', error);
