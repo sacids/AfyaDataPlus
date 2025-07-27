@@ -12,11 +12,25 @@ export const useFormStore = create((set, get) => ({
   language: '::Default',
   formDirection: 'next',
 
-  setSchema: (schema) => set({ schema, formData: {}, errors: {}, currentPage: 0, formUUID: randomUUID() }),
+  //setSchema: (schema) => set({ schema, formData: {}, errors: {}, currentPage: 0, formUUID: randomUUID() }),
+  setSchema: (schema, formData = null, formUUID = null) => set(() => {
+    //console.log('setSchema called:', { schema, formUUID });
+    return {
+      schema,
+      formData: formData !== null ? formData : {},
+      errors: {},
+      currentPage: 0,
+      formUUID: formUUID !== null ? formUUID : randomUUID(),
+    };
+  }),
 
   setPage: (page) => set({ currentPage: page }),
 
   setLanguage: (language) => set({ language }),
+
+  setFormData: (data) => set({ formData: data }),
+
+  setFormUUID: (uuid) => set({ formUUID: uuid }),
 
   setFormDirection: (direction) => set({ formDirection: direction }),
 
@@ -31,7 +45,7 @@ export const useFormStore = create((set, get) => ({
 
     set({ formDirection: direction });
 
-    if(direction === 'next') {
+    if (direction === 'next') {
       const currentPageSchema = schema.pages[currentPage];
       const { isValid, errors } = validatePage(currentPageSchema, formData);
       if (!isValid) {

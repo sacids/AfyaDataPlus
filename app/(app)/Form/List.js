@@ -1,11 +1,11 @@
 import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, FlatList, Text, TouchableOpacity, View } from 'react-native';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
 import useProjectStore from '../../../store/projectStore';
-import { insert, select } from '../../../utils/database';
+import { select } from '../../../utils/database';
 
 const ListEmptyForms = () => {
 
@@ -30,34 +30,10 @@ const ListEmptyForms = () => {
     };
 
 
-    const addFormDefn = () => {
-
-        const data = {
-
-            'title': 'Barns',
-            'form_id': 2,
-            'version': '1.0',
-            'short_title': 'Barns',
-            'code': '201',
-            'form_type': 'form',
-            'form_actions': 'edit, delete, add_new',
-            'form_category': 'OU',
-            'description': 'Barns',
-            'compulsory': 'yes',
-            'sort_order': 0,
-            'active': 1,
-            'form_defn': JSON.stringify(
-
-            )
-        }
-
-        insert('form_defn', data);
-    }
-
 
     const renderItem = ({ item }) => {
         return (
-            <TouchableOpacity onPress={() => router.push(`/Form/New?id=${item.id}`)}>
+            <TouchableOpacity onPress={() => router.push(`/Form/New?fdefn_id=${item.id}`)}>
                 <View style={{
                     padding: 15,
                     paddingLeft: 20,

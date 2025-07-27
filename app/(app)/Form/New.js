@@ -4,31 +4,61 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import FormBuilder from '../../../components/form/FormBuilder';
 import { parseSchema } from '../../../lib/form/schemaParser';
-import { select } from '../../../utils/database';
+import { insert, select } from '../../../utils/database';
 
 import { useFormStore } from '../../../store/FormStore';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
+import { evaluateCustomFunctions, replaceVariables } from '../../../lib/form/validation';
+import { useAuthStore } from '../../../store/authStore';
 
 
 
 const New = () => {
-  const { id } = useLocalSearchParams();
-  const [schema, setSchema] = useState(null);
+  const { fdefn_id, fdata_id } = useLocalSearchParams();
+  // const [schema, setSchema] = useState(null);
+  // const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(true);
   const [menuVisible, setMenuVisible] = useState(false);
-  const { language, setLanguage } = useFormStore();
+  const { language, setLanguage, schema, setSchema, formData, setFormData, formUUID, setFormUUID } = useFormStore();
   const insets = useSafeAreaInsets();
-
+  const { user } = useAuthStore();
 
   const theme = useTheme();
   const styles = getStyles(theme);
 
-  const saveAsDraft = () => {
+  const saveAsDraft = async () => {
     // Save the form as a draft
-    console.log('Saving form as draft');
+
+    const instance_name = schema.meta.instance_name
+    const temp = replaceVariables(instance_name, formData)
+    const title = evaluateCustomFunctions(temp, formData)
+
+    try {
+
+      //console.log("Saving form", formUUID);
+
+      await insert("form_data", {
+        form: schema.form,
+        project: schema.project,
+        uuid: formUUID,
+        original_uuid: formUUID,
+        title: title,
+        created_by: user.id,
+        created_by_name: user.fullName ?? user.id,
+        created_on: new Date().toISOString(),
+        status: 'draft',
+        status_date: new Date().toISOString(),
+        deleted: 0,
+        synced: 0,
+        form_data: JSON.stringify(formData),
+      })
+      router.dismissTo('/Tabs')
+    } catch (e) {
+      console.log(e)
+    }
   };
 
 
@@ -42,15 +72,36 @@ const New = () => {
   useEffect(() => {
     async function loadForm() {
       try {
-        const FormDefn = await select('form_defn', 'id = ?', id);
-        //console.log('META', JSON.stringify(FormDefn[0].meta, null, 2));
-        const parsedSchema = parseSchema(FormDefn[0]);
-        //console.log('parsedSchema', JSON.stringify(parsedSchema.meta.default_language, null, 2));
-        setSchema(parsedSchema);
-        if (parsedSchema.meta.default_language) {
-          setLanguage('::' + parsedSchema.meta.default_language);
-        } else {
-          setLanguage('::Default');
+        if (fdata_id) {
+          const FormDataItem = await select('form_data', 'id = ?', fdata_id);
+          const FormDefn = await select('form_defn', 'form_id = ?', FormDataItem[0].form);
+
+          const FD = JSON.parse(FormDataItem[0].form_data);
+          const FUUID = FormDataItem[0].uuid;
+          //console.log('old uuid', FUUID)
+          setFormUUID(FUUID);
+          setFormData(FD);
+
+          const parsedSchema = parseSchema(FormDefn[0]);
+          setSchema(parsedSchema, FD, FUUID);
+
+          if (parsedSchema.meta.default_language) {
+            setLanguage('::' + parsedSchema.meta.default_language);
+          } else {
+            setLanguage('::Default');
+          }
+          return;
+        }
+        if (fdefn_id) {
+          const FormDefn = await select('form_defn', 'id = ?', fdefn_id);
+          const parsedSchema = parseSchema(FormDefn[0]);
+          setSchema(parsedSchema);
+          if (parsedSchema.meta.default_language) {
+            setLanguage('::' + parsedSchema.meta.default_language);
+          } else {
+            setLanguage('::Default');
+          }
+          return;
         }
 
       } catch (error) {
@@ -62,7 +113,7 @@ const New = () => {
     }
 
     loadForm();
-  }, [id]);
+  }, [fdata_id, fdefn_id]);
 
   if (loading) {
     return (
@@ -121,6 +172,8 @@ const New = () => {
 
       <FormBuilder
         schema={schema}
+        formData={formData}
+        formUUID={formUUID}
         config={{ useSwipe: true, useButtons: true }}
       />
     </View>
