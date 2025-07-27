@@ -5,10 +5,13 @@ import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
 import { useFormStore } from '../../../store/FormStore';
 
+
 const ImagePickerField = ({ element, value }) => {
   const { updateFormData, errors, formUUID } = useFormStore();
   const theme = useTheme();
   const styles = getStyles(theme);
+
+  const folderPath = `${FileSystem.documentDirectory}${formUUID}/`;
 
   const pickImage = async (fromCamera = false) => {
     const permission = fromCamera
@@ -54,20 +57,35 @@ const ImagePickerField = ({ element, value }) => {
     <View style={styles.container}>
       <Text style={styles.label}>{element.label}</Text>
 
-      {value ? (
-        <Image
-          source={{ uri: value }}
-          style={{ width: 100, height: 100, marginBottom: 10, borderRadius: 4 }}
-        />
-      ) : (
-        <Text style={{ color: '#999', marginBottom: 10 }}>No image selected</Text>
-      )}
+      <View
+        style={[
+          styles.mapContainer,
+          errors[element.name] ? styles.inputError : null,
+          {
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: theme.colors.inputBackground,
+          },
+        ]}
+      >
+        {value ? (
+          <Image
+            source={{ uri: folderPath + value }}
+            style={[{ width: 165, height: 165, borderRadius: 4 }, styles.noLocation]}
+          />
+        ) : (
 
-      <View style={{ flexDirection: 'row', gap: 10 }}>
-        <TouchableOpacity onPress={() => pickImage(false)} style={styles.button}>
+          <View style={[styles.map, styles.noLocation]}>
+            <Text style={styles.placeholderText}>No image selected</Text>
+          </View>
+        )}
+      </View>
+
+      <View style={{ flexDirection: 'row', flex: 1, gap: 10 }}>
+        <TouchableOpacity onPress={() => pickImage(false)} style={[{ flex: 1 }, styles.button]}>
           <Text style={styles.buttonText}>Gallery</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => pickImage(true)} style={styles.button}>
+        <TouchableOpacity onPress={() => pickImage(true)} style={[{ flex: 1 }, styles.button]}>
           <Text style={styles.buttonText}>Camera</Text>
         </TouchableOpacity>
       </View>

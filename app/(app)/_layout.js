@@ -43,9 +43,9 @@ const AuthScreen = ({ onAuthenticated }) => {
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
             <Image
                 source={require('../../assets/images/AfyaDataLogo.png')}
-                style={{ width: 120, height: 120, contentFit: 'contain', marginBottom: 60 }}
+                style={{ width: 120, height: 120, contentFit: 'contain', marginBottom: 80 }}
             />
-            <Text style={{ fontSize: 14, color: colors.text, marginBottom: 20, textAlign: 'center', paddingHorizontal: 20 }}>
+            <Text style={{ fontSize: 14, color: colors.text, marginBottom: 30, textAlign: 'center', paddingHorizontal: 20 }}>
                 Authenticate with Device PIN, Fingerprint, or Face ID
             </Text>
             {error ? <Text style={{ color: 'red', marginBottom: 16, textAlign: 'center', paddingHorizontal: 20 }}>{error}</Text> : null}
@@ -56,7 +56,7 @@ const AuthScreen = ({ onAuthenticated }) => {
                 }}
                 onPress={handleDeviceAuth}
             >
-                <Ionicons name="finger-print-sharp" size={50} color={colors.primary} />
+                <Ionicons name="finger-print-sharp" size={60} color={colors.primary} />
 
             </TouchableOpacity>
         </View>
@@ -93,7 +93,7 @@ export default function ProtectedLayout() {
         }
     }, [user, isChecking, isDeviceSecurityEnrolled, isAuthenticated]);
 
-    console.log('user', user);
+    //console.log('user', user);
 
     if (!user) {
         router.replace('/(auth)/start');
