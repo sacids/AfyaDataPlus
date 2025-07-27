@@ -6,7 +6,7 @@ import { router, useLocalSearchParams, withLayoutContext } from 'expo-router';
 import { createContext, useContext } from 'react';
 import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme } from '../../../context/ThemeContext';
 
 
 const { Navigator } = createMaterialTopTabNavigator();

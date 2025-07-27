@@ -3,10 +3,10 @@ import React, { useState } from 'react';
 import { Text, View } from 'react-native';
 
 
-import { getStyles } from '../../constants/styles';
-import { useTheme } from '../../context/ThemeContext';
+import { getStyles } from '../../../constants/styles';
+import { useTheme } from '../../../context/ThemeContext';
 
-const SettingsScreen = () => {
+const MessagesScreen = () => {
 
     const router = useRouter();
     const [data, setData] = useState([]);
@@ -19,10 +19,10 @@ const SettingsScreen = () => {
     return (
         <View style={styles.pageContainer}>
 
-            <Text style={styles.pageTitle}>SettingsScreen</Text>
+            <Text style={styles.pageTitle}>MessagesScreen</Text>
         </View>
     )
 }
 
-export default SettingsScreen
+export default MessagesScreen
 

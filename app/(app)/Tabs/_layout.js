@@ -6,7 +6,7 @@ import { useEffect } from 'react';
 import { Platform } from "react-native";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme } from '../../../context/ThemeContext';
 
 
 

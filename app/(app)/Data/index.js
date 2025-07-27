@@ -2,10 +2,10 @@ import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import FormDataView from '../../components/form/FormDataView';
-import { getStyles } from '../../constants/styles';
-import { useTheme } from '../../context/ThemeContext';
-import { select } from '../../utils/database';
+import FormDataView from '../../../components/form/FormDataView';
+import { getStyles } from '../../../constants/styles';
+import { useTheme } from '../../../context/ThemeContext';
+import { select } from '../../../utils/database';
 
 export default function FormDataDetailScreen() {
   const { id } = useLocalSearchParams();

@@ -2,12 +2,13 @@
   "expo": {
     "name": "AfyaDataPlus",
     "slug": "AfyaDataPlus",
-    "version": "1.2.1",
+    "version": "1.2.2",
     "orientation": "portrait",
     "icon": "./assets/images/AfyaDataLogoIcon.png",
     "scheme": "afyadataplus",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "permissions": ["faceID", "fingerprint"],
     "ios": {
       "supportsTablet": true
     },

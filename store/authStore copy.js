@@ -2,6 +2,7 @@ import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+// Custom storage adapter for expo-secure-store
 const secureStorage = {
     getItem: async (key) => {
         const value = await SecureStore.getItemAsync(key);
@@ -15,6 +16,7 @@ const secureStorage = {
     },
 };
 
+// Create the Zustand store
 const useAuthStore = create(
     persist(
         (set) => ({
@@ -23,9 +25,6 @@ const useAuthStore = create(
             logout: async () => {
                 await SecureStore.deleteItemAsync('accessToken');
                 await SecureStore.deleteItemAsync('refreshToken');
-                await SecureStore.deleteItemAsync('username');
-                await SecureStore.deleteItemAsync('password');
-                await SecureStore.deleteItemAsync('user');
                 set({ user: null });
             },
         }),
@@ -36,4 +35,10 @@ const useAuthStore = create(
     )
 );
 
-export { useAuthStore };
+// Export a function to get the raw store instance
+const getAuthStore = () => ({
+    setUser: (user) => useAuthStore.getState().setUser(user),
+    logout: () => useAuthStore.getState().logout(),
+});
+
+export { getAuthStore, useAuthStore };

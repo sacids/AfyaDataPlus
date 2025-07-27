@@ -1,104 +1,30 @@
 import axios from 'axios';
+import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { config } from '../constants/config';
-import { getAuthStore } from '../store/authStore';
+import { useAuthStore } from '../store/authStore';
+import { getDeviceId } from '../utils/deviceUtils';
+import { generatePassword } from '../utils/passwordUtils';
 
-// Create axios instance
 const api = axios.create({
   baseURL: config.BASE_URL,
 });
 
-/**
- * Helper function to extract token from possible array response
- */
-const extractToken = (token) => {
-  return Array.isArray(token) ? token[0] : token;
-};
-
-/**
- * Attempts to login with stored credentials
- */
-const attemptLogin = async () => {
-  try {
-    const username = await SecureStore.getItemAsync('username');
-    const password = await SecureStore.getItemAsync('password');
-
-    if (!username || !password) {
-      throw new Error('No credentials stored');
-    }
-
-    const response = await api.post('/api/v1/token/', { username, password });
-    const { access, refresh } = response.data;
-
-    const accessToken = extractToken(access);
-    const refreshToken = extractToken(refresh);
-
-    await SecureStore.setItemAsync('accessToken', accessToken);
-    await SecureStore.setItemAsync('refreshToken', refreshToken);
-
-    return accessToken;
-  } catch (error) {
-    console.error('Login failed:', error);
-    throw error;
-  }
-};
-
-/**
- * Attempts to refresh the access token
- */
-const attemptRefresh = async () => {
-  try {
-    const refreshToken = await SecureStore.getItemAsync('refreshToken');
-    if (!refreshToken) {
-      throw new Error('No refresh token available');
-    }
-
-    const response = await api.post('/api/v1/token/refresh/', { refreshToken });
-    const { access, refresh } = response.data;
-
-    const newAccessToken = extractToken(access);
-    const newRefreshToken = extractToken(refresh);
-
-    await SecureStore.setItemAsync('accessToken', newAccessToken);
-    await SecureStore.setItemAsync('refreshToken', newRefreshToken);
-
-    return newAccessToken;
-  } catch (error) {
-    console.error('Token refresh failed:', error);
-    throw error;
-  }
-};
-
-// Request interceptor
 api.interceptors.request.use(
   async (config) => {
-    // Test code to simulate intermittent token failures
-    // const curTime = String(Math.floor(Date.now() / 1000));
-    // const lastDigit = parseInt(curTime.charAt(curTime.length - 1), 10);
-    //const simulateInvalidToken = lastDigit % 3 === 0;
-
-    const simulateInvalidToken = false
-
     const token = await SecureStore.getItemAsync('accessToken');
-
     if (token) {
-      // Use fake token for testing when simulateInvalidToken is true
-      config.headers.Authorization = `Bearer ${simulateInvalidToken ? 'fake' : token}`;
-      //console.log('Token attached:', simulateInvalidToken ? 'INVALID (test)' : 'VALID');
+      config.headers.Authorization = `Bearer ${token}`;
     }
-
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Response interceptor
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-
-    // Skip retry logic if already retried or not a 401 error
     if (error.response?.status !== 401 || originalRequest._retry) {
       return Promise.reject(error);
     }
@@ -106,28 +32,43 @@ api.interceptors.response.use(
     originalRequest._retry = true;
 
     try {
-      // First attempt: Try to refresh the token
-      const newAccessToken = await attemptRefresh();
-      originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-      return api(originalRequest);
+      // First, try to refresh the token
+      const refreshToken = await SecureStore.getItemAsync('refreshToken');
+      if (refreshToken) {
+        const response = await axios.post(`${config.BASE_URL}/api/v1/token/refresh/`, { refresh: refreshToken });
+        const { access, refresh } = response.data;
 
-    } catch (refreshError) {
-      //console.log('Refresh failed, attempting full login...', refreshError);
-
-      try {
-        // Second attempt: Try to login with stored credentials
-        //console.log('attempting login')
-        const newAccessToken = await attemptLogin();
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        await SecureStore.setItemAsync('accessToken', access);
+        await SecureStore.setItemAsync('refreshToken', refresh);
+        originalRequest.headers.Authorization = `Bearer ${access}`;
         return api(originalRequest);
-      } catch (loginError) {
-        //console.log('Login failed, logging out...');
-
-        // Final fallback: Logout the user
-        const authStore = getAuthStore();
-        await authStore.logout();
-        return Promise.reject(loginError);
       }
+
+      // If no refresh token, attempt login with deterministic credentials
+      const username = getDeviceId();
+      const password = await generatePassword(username);
+
+      const response = await axios.post(`${config.BASE_URL}/api/v1/token/`, {
+        username,
+        password,
+      });
+
+      const { access, refresh, user } = response.data;
+
+      await SecureStore.setItemAsync('accessToken', access);
+      await SecureStore.setItemAsync('refreshToken', refresh);
+      await SecureStore.setItemAsync('username', username);
+      await SecureStore.setItemAsync('password', password);
+      await SecureStore.setItemAsync('user', JSON.stringify(user));
+
+      useAuthStore.getState().setUser(user);
+      originalRequest.headers.Authorization = `Bearer ${access}`;
+      return api(originalRequest);
+    } catch (authError) {
+      console.error('Authentication failed:', authError);
+      await useAuthStore.getState().logout();
+      router.replace('/(auth)/start');
+      return Promise.reject(authError);
     }
   }
 );

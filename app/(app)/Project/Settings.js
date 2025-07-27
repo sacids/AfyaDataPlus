@@ -3,10 +3,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { useTheme } from '../../context/ThemeContext';
-import useProjectStore from '../../store/projectStore';
-import { useThemeStore } from '../../store/ThemeStore';
-import { createTables, dropTables } from '../../utils/database';
+import { useTheme } from '../../../context/ThemeContext';
+import useProjectStore from '../../../store/projectStore';
+import { useThemeStore } from '../../../store/ThemeStore';
+import { createTables, dropTables } from '../../../utils/database';
 
 const Settings = () => {
     const { colors, isDark } = useTheme();

@@ -12,11 +12,11 @@ import {
 import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import api from '../../api/axiosInstance';
-import { getStyles } from '../../constants/styles';
-import { useTheme } from '../../context/ThemeContext';
-import useProjectStore from '../../store/projectStore';
-import { insert } from '../../utils/database';
+import api from '../../../api/axiosInstance';
+import { getStyles } from '../../../constants/styles';
+import { useTheme } from '../../../context/ThemeContext';
+import useProjectStore from '../../../store/projectStore';
+import { insert } from '../../../utils/database';
 
 const listProjects = async () => {
 
