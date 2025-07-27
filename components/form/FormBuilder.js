@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { Gesture } from 'react-native-gesture-handler';
 import Animated from 'react-native-reanimated';
 import { getStyles } from '../../constants/styles';
@@ -7,14 +7,14 @@ import { useFormStore } from '../../store/FormStore';
 import FormPage from './FormPage';
 import NavigationButtons from './NavigationButtons';
 
-const FormBuilder = ({ schema, config = { useSwipe: true, useButtons: true } }) => {
+const FormBuilder = ({ schema, formData, formUUID, config = { useSwipe: true, useButtons: true } }) => {
   const { setSchema, currentPage, validateAndNavigate } = useFormStore();
 
   const colors = useTheme();
   const styles = getStyles(colors);
 
   useEffect(() => {
-    setSchema(schema);
+    setSchema(schema, formData, formUUID);
   }, [schema]);
 
   const swipeGesture = Gesture.Pan()

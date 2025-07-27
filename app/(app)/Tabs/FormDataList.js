@@ -247,15 +247,11 @@ export default function FormDataList() {
 
     if (item.status.toLowerCase() === 'finalized') {
       submitForms([item]);
-
-      // For cross-platform support, use Alert.alert with buttons
-
-
     } else if (item.status.toLowerCase() === 'sent') {
       router.push(`/Data/?id=${item.id}`);
     } else {
       // draft thus edit the form
-      router.push('/Form/New?id=' + item.id);
+      router.push('/Form/New?fdata_id=' + item.id);
 
     }
 
