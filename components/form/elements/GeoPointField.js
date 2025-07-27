@@ -69,7 +69,7 @@ const GeoPoint = ({ element, value }) => {
           styles.mapContainer,
           errors[element.name] ? styles.inputError : null,
         ]}
-      >
+      > 
         {geoValue ? (
           <>
             <MapView
