@@ -262,7 +262,7 @@ export const insert = async (tableName, data) => {
 
         const sql = `INSERT OR REPLACE INTO ${tableName} (${filteredKeys.join(', ')}) VALUES (${placeholders});`;
         const result = await db.runAsync(sql, values);
-        console.log('Inserting sql:', sql, values, result);
+        //console.log('Inserting sql:', sql, values, result);
         return result;
     } catch (error) {
         console.error('Error inserting data:', error);
