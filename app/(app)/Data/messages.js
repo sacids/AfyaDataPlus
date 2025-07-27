@@ -11,9 +11,9 @@ import {
 } from 'react-native';
 
 import { insert, select } from '@/utils/database';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme } from '@/context/ThemeContext';
 import { useId } from './_layout';
-import { getStyles } from '../../constants/styles';
+import { getStyles } from '@/constants/styles';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ChatScreen() {

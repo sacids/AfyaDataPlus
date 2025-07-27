@@ -2,11 +2,11 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import useProjectStore from '../../store/projectStore';
-import { select } from '../../utils/database';
+import useProjectStore from '../../../store/projectStore';
+import { select } from '../../../utils/database';
 
 
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme } from '../../../context/ThemeContext';
 
 const ProjectListScreen = () => {
     const router = useRouter();

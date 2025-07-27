@@ -2,15 +2,15 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
-import FormBuilder from '../../components/form/FormBuilder';
-import { parseSchema } from '../../lib/form/schemaParser';
-import { select } from '../../utils/database';
+import FormBuilder from '../../../components/form/FormBuilder';
+import { parseSchema } from '../../../lib/form/schemaParser';
+import { select } from '../../../utils/database';
 
-import { useFormStore } from '../../store/FormStore';
+import { useFormStore } from '../../../store/FormStore';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getStyles } from '../../constants/styles';
-import { useTheme } from '../../context/ThemeContext';
+import { getStyles } from '../../../constants/styles';
+import { useTheme } from '../../../context/ThemeContext';
 
 
 

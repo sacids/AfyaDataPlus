@@ -3,10 +3,10 @@ import React, { useState } from 'react';
 import { Text, View } from 'react-native';
 
 
-import { getStyles } from '../../constants/styles';
-import { useTheme } from '../../context/ThemeContext';
+import { getStyles } from '../../../constants/styles';
+import { useTheme } from '../../../context/ThemeContext';
 
-const FormInfoList = () => {
+const SettingsScreen = () => {
 
     const router = useRouter();
     const [data, setData] = useState([]);
@@ -19,10 +19,10 @@ const FormInfoList = () => {
     return (
         <View style={styles.pageContainer}>
 
-            <Text style={styles.pageTitle}>FormInfoList</Text>
+            <Text style={styles.pageTitle}>SettingsScreen</Text>
         </View>
     )
 }
 
-export default FormInfoList
+export default SettingsScreen
 

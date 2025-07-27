@@ -2,10 +2,10 @@ import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, FlatList, Text, TouchableOpacity, View } from 'react-native';
-import { getStyles } from '../../constants/styles';
-import { useTheme } from '../../context/ThemeContext';
-import useProjectStore from '../../store/projectStore';
-import { insert, select } from '../../utils/database';
+import { getStyles } from '../../../constants/styles';
+import { useTheme } from '../../../context/ThemeContext';
+import useProjectStore from '../../../store/projectStore';
+import { insert, select } from '../../../utils/database';
 
 const ListEmptyForms = () => {
 

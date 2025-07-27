@@ -35,7 +35,7 @@ const SavePage = () => {
                 original_uuid: formUUID,
                 title: title,
                 created_by: user.id,
-                created_by_name: user.fullName,
+                created_by_name: user.fullName ?? user.id,
                 created_on: new Date().toISOString(),
                 status: status,
                 status_date: new Date().toISOString(),
