@@ -44,7 +44,7 @@ const ImagePickerField = ({ element, value }) => {
         await FileSystem.copyAsync({ from: originalUri, to: destPath });
 
         updateFormData(element.name, newFileName); // Save full persistent path
-        console.log(destPath, newFileName)
+        //console.log(destPath, newFileName)
 
       } catch (err) {
         console.error('Image saving failed', err);
