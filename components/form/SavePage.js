@@ -26,7 +26,7 @@ const SavePage = () => {
     } = useFormStore();
 
     const saveForm = async (status) => {
-        console.log("Saving form");
+        //console.log("Saving form");
         try {
             await insert("form_data", {
                 form: schema.form,

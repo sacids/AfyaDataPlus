@@ -35,7 +35,7 @@ export default function FormDataDetailScreen() {
     );
   }
 
-  console.log(formDefn)
+  //console.log(formDefn)
 
   return (
     <SafeAreaView style={[styles.pageContainer, { paddingBottom: insets.bottom }]}>

@@ -30,7 +30,7 @@ const joinProject = async (code) => {
   const response = await api.post('/api/v1/project/request-access', {
     code
   });
-  console.log(JSON.stringify(response.data, null, 2))
+  //console.log(JSON.stringify(response.data, null, 2))
   return response.data;
 };
 

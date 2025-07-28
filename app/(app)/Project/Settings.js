@@ -47,7 +47,7 @@ const Settings = () => {
         const fetchProjects = async () => {
             try {
                 const data = await select('projects');
-                console.log('projects', data)
+                //console.log('projects', data)
                 setProjects(data);
             } catch (error) {
                 console.error('Error fetching projects:', error);

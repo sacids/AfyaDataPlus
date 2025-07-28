@@ -190,7 +190,7 @@ const migrateTables = async () => {
                 [tableName, newVersion]
             );
 
-            console.log(`${tableName} migration complete.`);
+            //console.log(`${tableName} migration complete.`);
         } else {
             await db.runAsync(
                 `INSERT INTO migration (table_name, version) VALUES (?, ?) ON CONFLICT(table_name) DO NOTHING;`,
