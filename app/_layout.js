@@ -1,4 +1,4 @@
-import { router, Slot } from 'expo-router';
+import { Stack } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
@@ -74,20 +74,22 @@ export default function RootLayout() {
         const storedUser = await SecureStore.getItemAsync('user');
         const username = await SecureStore.getItemAsync('username');
 
-        if (!user && storedUser && username) {
-          // Load user from SecureStore for offline access
-          setUser(JSON.parse(storedUser));
-        } else if (!user && username) {
-          // Try auto-login if no user but username exists
+        if (storedUser && username) {
+          try {
+            const parsedUser = JSON.parse(storedUser);
+            setUser(parsedUser);
+          } catch (parseError) {
+            console.error('Error parsing stored user:', parseError);
+            setUser(null);
+          }
+        } else if (username) {
           await attemptAutoLogin();
-        } else if (!user) {
-          // No user or username; redirect to start
-          router.replace('/(auth)/start');
+        } else {
+          setUser(null);
         }
       } catch (error) {
         console.error('Initialization error:', error);
         setUser(null);
-        router.replace('/(auth)/start');
       } finally {
         setIsLoading(false);
       }
@@ -115,12 +117,11 @@ export default function RootLayout() {
       } catch (error) {
         console.error('Auto-login failed:', error);
         setUser(null);
-        router.replace('/(auth)/start');
       }
     }
 
     initialize();
-  }, []);
+  }, []); // Empty dependency array to run only once on mount
 
   if (isLoading) {
     return (
@@ -136,7 +137,14 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <Slot />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Protected guard={!user}>
+            <Stack.Screen name="(auth)/start" />
+          </Stack.Protected>
+          <Stack.Protected guard={!!user}>
+            <Stack.Screen name="(app)" initialRouteName="Tabs/FormDataList" />
+          </Stack.Protected>
+        </Stack>
         <ThemedStatusBar />
       </GestureHandlerRootView>
     </ThemeProvider>

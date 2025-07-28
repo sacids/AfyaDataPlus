@@ -18,7 +18,7 @@ const FormDataView = ({ schema, formData }) => {
     const parsedFormData = JSON.parse(formData.form_data || '{}');
     const folderPath = `${FileSystem.documentDirectory}${formData.original_uuid}/`;
 
-    console.log('language', language);
+    //console.log('language', language);
 
     let page_holder = []
     let group_holder = []
@@ -76,7 +76,7 @@ const FormDataView = ({ schema, formData }) => {
 
                     field_holder.push(
                         <View key={`${pageIndex}-${groupIndex}-${colName}`} style={[{ marginBottom: 15 }]}>
-                            <Text style={[styles.label, { fontSize: 12 }]}>{field.label}</Text>
+                            <Text style={[styles.label, { fontSize: 14 }]}>{field.label}</Text>
                             {tmp}
                         </View>
                     )
@@ -132,7 +132,7 @@ const FormDataView = ({ schema, formData }) => {
 
                     field_holder.push(
                         <View key={`${pageIndex}-${groupIndex}-${colName}`} style={[{ marginBottom: 15 }]}>
-                            <Text style={[styles.label, { fontSize: 12 }]}>{field.label}</Text>
+                            <Text style={[styles.label, { fontSize: 14 }]}>{field.label}</Text>
                             {tmp}
                         </View>
                     )
@@ -150,7 +150,7 @@ const FormDataView = ({ schema, formData }) => {
                                 tmp.push(
                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }} key={option}>
                                         <Ionicons name="chevron-forward-outline" size={14} color={theme.colors.text} />
-                                        <Text style={[styles.textInput, { fontWeight: "bold", fontSize: 12 }]}>
+                                        <Text style={[styles.textInput, { fontWeight: "bold", fontSize: 14 }]}>
                                             {currentField['options'][option]['label' + language] || ''}
                                         </Text>
                                     </View>
@@ -160,7 +160,7 @@ const FormDataView = ({ schema, formData }) => {
                     }
                     field_holder.push(
                         <View key={`${pageIndex}-${groupIndex}-${colName}`} style={{ marginBottom: 15 }}>
-                            <Text style={[styles.label, { fontSize: 12 }]}>{field.label}</Text>
+                            <Text style={[styles.label, { fontSize: 14 }]}>{field.label}</Text>
                             <View style={{}}>{tmp}</View>
                         </View>
                     )
@@ -175,24 +175,32 @@ const FormDataView = ({ schema, formData }) => {
 
                     field_holder.push(
                         <View key={`${pageIndex}-${groupIndex}-${colName}`} style={{ marginBottom: 15 }}>
-                            <Text style={[styles.label, { fontSize: 12 }]}>{field.label}</Text>
-                            <Text style={[styles.textInput, { fontWeight: "bold", fontSize: 12 }]}>{value}</Text>
+                            <Text style={[styles.label, { fontSize: 14 }]}>{field.label}</Text>
+                            <Text style={[styles.textInput, { fontWeight: "bold", fontSize: 14 }]}>{value}</Text>
                         </View>
                     )
                 } else if (field.type === 'image') {
                     let tmp = (
-                        <Image
-                            source={{ uri: folderPath + parsedFormData[field.name] }}
-                            style={{ width: 100, height: 100 }}
-                            contentFit='contain'
-                            onError={(e) => console.log('Image failed to load', e.nativeEvent.error)}
-                            key={`${pageIndex}-${groupIndex}-${colName}`}
-                        />
+                        <View style={[
+                            styles.mapContainer,
+                            {
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: theme.colors.inputBackground,
+                            },]}>
+                            <Image
+                                source={{ uri: folderPath + parsedFormData[field.name] }}
+                                style={[{ width: 165, height: 165, borderRadius: 4 }, styles.noLocation]}
+                                contentFit='contain'
+                                onError={(e) => console.log('Image failed to load', e.nativeEvent.error)}
+                                key={`${pageIndex}-${groupIndex}-${colName}`}
+                            />
+                        </View>
                     )
 
                     field_holder.push(
                         <View key={`${pageIndex}-${groupIndex}-${colName}`} style={{ marginBottom: 15 }}>
-                            <Text style={[styles.label, { fontSize: 12 }]}>{field.label}</Text>
+                            <Text style={[styles.label, { fontSize: 14 }]}>{field.label}</Text>
                             {tmp}
                         </View>
                     )
@@ -200,8 +208,8 @@ const FormDataView = ({ schema, formData }) => {
                 } else {
                     field_holder.push(
                         <View key={`${pageIndex}-${groupIndex}-${colName}`} style={{ marginBottom: 15 }}>
-                            <Text style={[styles.label, { fontSize: 12 }]}>{field.label}</Text>
-                            <Text style={[styles.textInput, { fontWeight: "bold", fontSize: 12 }]}>{parsedFormData[field.name]}</Text>
+                            <Text style={[styles.label, { fontSize: 14 }]}>{field.label}</Text>
+                            <Text style={[styles.textInput, { fontWeight: "bold", fontSize: 14 }]}>{parsedFormData[field.name]}</Text>
                         </View>
                     )
                 }
@@ -217,7 +225,7 @@ const FormDataView = ({ schema, formData }) => {
         group_holder.length > 0 &&
             page_holder.push(
                 <View key={pageIndex} style={[styles.inputBase, { marginBottom: 20 }]}>
-                    <Text style={[styles.textInput, { color: theme.colors.primary, marginBottom: 10 }]}>{page.label}</Text>
+                    <Text style={[styles.textInput, { fontSize: 16, marginBottom: 10 }]}>{page.label}</Text>
                     {group_holder}
                 </View>
             )

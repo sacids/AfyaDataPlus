@@ -11,7 +11,7 @@ const NoteField = ({ element, value }) => {
   const theme = useTheme();
   const styles = getStyles(theme);
 
-  console.log("Note element", element.label, value);
+  //console.log("Note element", element.label, value);
   let label = replaceVariables(element['label' + language], formData);
 
   return (
