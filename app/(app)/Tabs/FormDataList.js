@@ -3,7 +3,7 @@ import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-ic
 import * as FileSystem from 'expo-file-system';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -27,6 +27,7 @@ import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
 
 
+import { useFocusEffect } from '@react-navigation/native';
 import { useFilterStore } from '../../../store/filterStore';
 import useProjectStore from '../../../store/projectStore';
 import { getForms, postData } from '../../../utils/services';
@@ -290,17 +291,33 @@ export default function FormDataList() {
     setMenuVisible(false);
     await getForms(currentProject?.project, setGetFormStatus);
   };
+  async function initialize() {
+    try {
+
+      await fetchData();
+    } catch (error) {
+      console.error('Error during initialization:', error);
+      Alert.alert('Error', 'Failed to initialize data: ' + error.message);
+    }
+  }
+
+  useFocusEffect(
+    useCallback(() => {
+      // Code to run every time the screen is focused
+      console.log('FormDataList screen is focused');
+
+      initialize();
+
+      return () => {
+        // Optional cleanup when the screen loses focus
+        console.log('FormDataList screen is unfocused');
+      };
+    }, []) // Empty dependency array for useCallback
+  );
 
   useEffect(() => {
-    async function initialize() {
-      try {
 
-        await fetchData();
-      } catch (error) {
-        console.error('Error during initialization:', error);
-        Alert.alert('Error', 'Failed to initialize data: ' + error.message);
-      }
-    }
+
     initialize();
   }, [currentProject]);
 

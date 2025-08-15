@@ -8,7 +8,7 @@ Content-Type: application/json
 
 {
     "username": "test1", 
-    "password": "21@sacids", 
+    "password": "kitimoto", 
     "passwordConfirm": "kitimoto", 
     "fullName": "Test", 
     "phoneNumber": "0787878787"
@@ -19,8 +19,8 @@ POST https://afyadata-v2.sacids.org/api/v1/token/ HTTP/1.1
 Content-Type: application/json
 
 {
-    "username": "AP3A.240905.015.A2.S911BXXS8DYF13",
-    "password": "a049d53d7d8ab6df9ddcd635d5f2bb31b13a6bcd109d5b70883f40c263e10cdb"
+    "username": "test1",
+    "password": "kitimoto"
 }
 
 ### List Projects

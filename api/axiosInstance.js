@@ -55,6 +55,8 @@ api.interceptors.response.use(
 
       const { access, refresh, user } = response.data;
 
+      console.log('response', response.access, response.refresh, response.user);
+
       await SecureStore.setItemAsync('accessToken', access);
       await SecureStore.setItemAsync('refreshToken', refresh);
       await SecureStore.setItemAsync('username', username);

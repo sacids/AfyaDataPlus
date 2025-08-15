@@ -3,13 +3,18 @@ import * as ImagePicker from 'expo-image-picker';
 import { Alert, Image, Text, TouchableOpacity, View } from 'react-native';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
+import { getLabel } from '../../../lib/form/utils';
 import { useFormStore } from '../../../store/FormStore';
 
 
 const ImagePickerField = ({ element, value }) => {
-  const { updateFormData, errors, formUUID } = useFormStore();
+  const { updateFormData, errors, formUUID, language, formData, schema } = useFormStore();
   const theme = useTheme();
   const styles = getStyles(theme);
+
+
+  const label = getLabel(element, 'label', language, schema.language)
+  const hint = getLabel(element, 'hint', language, schema.language)
 
   const folderPath = `${FileSystem.documentDirectory}${formUUID}/`;
 
@@ -55,7 +60,8 @@ const ImagePickerField = ({ element, value }) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{element.label}</Text>
+      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.hint}> {hint}</Text>
 
       <View
         style={[

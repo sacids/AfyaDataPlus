@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { getStyles } from '../../constants/styles';
 import { useTheme } from '../../context/ThemeContext';
+import { getLabel } from '../../lib/form/utils';
 import { calculateField, evaluateRelevant } from '../../lib/form/validation';
 import { useFormStore } from '../../store/FormStore';
 import DatePickerField from './elements/DatePicker';
@@ -44,6 +45,8 @@ const FormPage = ({ pageIndex }) => {
 
   const colors = useTheme();
   const styles = getStyles(colors);
+  const label = getLabel(page, 'label', language, schema.language)
+  const hint = getLabel(page, 'hint', language, schema.language)
 
   // Step 1: Calculate fields
   useEffect(() => {
@@ -131,9 +134,10 @@ const FormPage = ({ pageIndex }) => {
       contentContainerStyle={styles.scrollContent}
     >
       {hasVisibleFields && (
-        <Text style={styles.pageTitle}>
-          {page['label' + language] || 'No Title'}
-        </Text>
+        <>
+          {label && <Text style={styles.pageTitle}>{label}</Text>}
+          {hint && <Text style={styles.hint}>{hint}</Text>}
+        </>
       )}
       <View>
         {page.fields.flatMap((fieldGroup, groupIndex) =>
