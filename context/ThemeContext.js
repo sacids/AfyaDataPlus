@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo } from 'react';
+import { createContext, useContext, useMemo } from 'react';
 import { useThemeStore } from '../store/ThemeStore';
 
 const ThemeContext = createContext();
@@ -16,6 +16,7 @@ export const ThemeProvider = ({ children }) => {
         text: isDark ? '#ffffff' : '#000000',
         secText: isDark ? '#ddd' : '#222',
         label: isDark ? '#cccccc' : '#333333',
+        hint: isDark ? '#dddddd' : '#444444',
         inputBackground: isDark ? '#1e1e1e' : '#ededed',
         inputBorder: isDark ? '#555555' : '#cccccc',
         buttonBackground: isDark ? '#a72626' : '#a72626',

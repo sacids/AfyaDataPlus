@@ -86,8 +86,9 @@ const ListEmptyForms = () => {
                 <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
                     <TouchableOpacity onPress={() => router.back()}>
                         <MaterialCommunityIcons name={'arrow-left'} size={24} color={theme.colors.text} />
+
+                        <Text style={styles.pageTitle}>Project Forms</Text>
                     </TouchableOpacity>
-                    <Text style={styles.pageTitle}>Project Forms</Text>
                 </View>
                 <View style={{ flexDirection: 'row', gap: 10 }}>
                     <TouchableOpacity onPress={() => alert('Filter not implemented')}>

@@ -20,8 +20,14 @@ export const getStyles = (theme) =>
     },
     label: {
       fontSize: 16,
-      marginBottom: 8,
+      marginBottom: 4,
       color: theme.colors.label,
+    },
+    hint: {
+      fontSize: 13,
+      fontStyle: 'italic',
+      marginBottom: 8,
+      color: theme.colors.hint,
     },
     inputBase: {
       borderWidth: 1,

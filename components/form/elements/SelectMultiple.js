@@ -1,14 +1,17 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
-import { useFormStore } from '../../../store/FormStore';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
+import { useFormStore } from '../../../store/FormStore';
+import { getLabel } from '../../../lib/form/utils';
 
 const SelectMultiple = ({ element, value }) => {
-  const { updateFormData, errors, language } = useFormStore();
+  const { updateFormData, errors, language, schema } = useFormStore();
   const theme = useTheme();
   const styles = getStyles(theme);
+
+  const label = getLabel(element, 'label', language, schema.language)
+  const hint = getLabel(element, 'hint', language, schema.language)
 
   // Ensure value is an array; default to empty array if undefined
   const selectedValues = Array.isArray(value) ? value : [];
@@ -22,7 +25,8 @@ const SelectMultiple = ({ element, value }) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{element['label' + language]}</Text>
+      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.hint}> {hint}</Text>
       <View
         style={[
           styles.inputBase,
@@ -49,7 +53,7 @@ const SelectMultiple = ({ element, value }) => {
                   : styles.inputBase.borderColor
               }
             />
-            <Text style={styles.checkboxLabel}>{option['label' + language]}</Text>
+            <Text style={styles.checkboxLabel}>{option['label' + language] || option['label::Default']}</Text>
           </TouchableOpacity>
         ))}
       </View>

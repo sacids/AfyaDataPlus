@@ -1,14 +1,15 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
-import { useFormStore } from '../../../store/FormStore';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
+import { getLabel } from '../../../lib/form/utils';
+import { useFormStore } from '../../../store/FormStore';
 
 const SelectOne = ({ element, value }) => {
-  const { updateFormData, errors, language } = useFormStore();
+  const { updateFormData, errors, language, schema } = useFormStore();
   const theme = useTheme();
   const styles = getStyles(theme);
+
 
   // Ensure value is a string or null
   const selectedValue = typeof value === 'string' ? value : null;
@@ -19,9 +20,14 @@ const SelectOne = ({ element, value }) => {
     updateFormData(element.name, newValue);
   };
 
+  //console.log('element ', language, JSON.stringify(element, null, 4))
+  const label = getLabel(element, 'label', language, schema.language)
+  const hint = getLabel(element, 'hint', language, schema.language)
+
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{element['label' + language]}</Text>
+      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.hint}> {hint}</Text>
       <View
         style={[
           styles.inputBase,
@@ -48,7 +54,7 @@ const SelectOne = ({ element, value }) => {
                   : styles.inputBase.borderColor
               }
             />
-            <Text style={styles.checkboxLabel}>{option['label' + language]}</Text>
+            <Text style={styles.checkboxLabel}>{getLabel(option, 'label', language, schema.language)}</Text>
           </TouchableOpacity>
         ))}
       </View>

@@ -1,13 +1,14 @@
 import * as Location from 'expo-location';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
+import { getLabel } from '../../../lib/form/utils';
 import { useFormStore } from '../../../store/FormStore';
 
 const GeoPoint = ({ element, value }) => {
-  const { updateFormData, errors, language } = useFormStore();
+  const { updateFormData, errors, language, schema } = useFormStore();
   const [locationPermission, setLocationPermission] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const theme = useTheme();
@@ -15,6 +16,10 @@ const GeoPoint = ({ element, value }) => {
 
   // Ensure value is an object { latitude, longitude } or null
   const geoValue = value && typeof value === 'object' && value.latitude && value.longitude ? value : null;
+
+
+  const label = getLabel(element, 'label', language, schema.language)
+  const hint = getLabel(element, 'hint', language, schema.language)
 
   // Request location permissions on mount
   useEffect(() => {
@@ -63,13 +68,14 @@ const GeoPoint = ({ element, value }) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{element['label' + language]}</Text>
+      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.hint}> {hint}</Text>
       <View
         style={[
           styles.mapContainer,
           errors[element.name] ? styles.inputError : null,
         ]}
-      > 
+      >
         {geoValue ? (
           <>
             <MapView

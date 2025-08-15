@@ -49,7 +49,7 @@ const JoinProjectScreen = () => {
   const fetchProjects = async () => {
     try {
       const data = await listProjects();
-      //console.log('data', JSON.stringify(data, null, 2));
+      console.log('data', JSON.stringify(data, null, 2));
       setProjects(data);
     } catch (error) {
       console.error('Error fetching projects:', error);

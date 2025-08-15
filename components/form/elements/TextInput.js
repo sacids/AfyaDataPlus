@@ -1,16 +1,24 @@
-import React from 'react';
 import { Text, TextInput, View } from 'react-native';
-import { useFormStore } from '../../../store/FormStore';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
+import { getLabel } from '../../../lib/form/utils';
+import { useFormStore } from '../../../store/FormStore';
+
 const TextInputField = ({ element, value }) => {
-  const { updateFormData, errors, language } = useFormStore();
+  const { updateFormData, errors, language, schema } = useFormStore();
   const theme = useTheme();
   const styles = getStyles(theme);
 
+
+  const label = getLabel(element, 'label', language, schema.language)
+  const hint = getLabel(element, 'hint', language, schema.language)
+
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{element['label' + language]}</Text>
+
+      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.hint}> {hint}</Text>
+
       <TextInput
         style={[
           styles.inputBase,
