@@ -1,11 +1,11 @@
-import { Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import * as LocalAuthentication from 'expo-local-authentication';
+import { Redirect, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
+import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { useAuthStore } from '../../store/authStore';
 
 const AuthScreen = ({ onAuthenticated }) => {
   const { colors } = useTheme();
@@ -60,7 +60,8 @@ const AuthScreen = ({ onAuthenticated }) => {
 };
 
 export default function ProtectedLayout() {
-  const { user } = useAuthStore();
+
+  const { authState } = useAuth();
   const { colors } = useTheme();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
@@ -81,8 +82,11 @@ export default function ProtectedLayout() {
     checkDeviceSecurity();
   }, []);
 
-  if (!user) {
-    return null; // Let root layout handle redirect to (auth)/start
+
+  console.log('app.app.layout')
+
+  if (!authState) {
+    return <Redirect href="/index" />;// Let root layout handle redirect to (auth)/start
   }
 
   if (isChecking) {

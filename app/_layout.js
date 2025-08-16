@@ -1,15 +1,11 @@
-import { Stack } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
+import { Slot } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import api from '../api/axiosInstance';
+import { AuthProvider } from '../context/AuthContext';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
-import { useAuthStore } from '../store/authStore';
 import { createTables } from '../utils/database';
-import { getDeviceId } from '../utils/deviceUtils';
-import { generatePassword } from '../utils/passwordUtils';
 
 const ThemedStatusBar = () => {
   const { colors, isDark } = useTheme();
@@ -64,65 +60,25 @@ const SplashScreen = () => {
 };
 
 export default function RootLayout() {
-  const { user, setUser } = useAuthStore();
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function initialize() {
       try {
         await createTables();
-        const storedUser = await SecureStore.getItemAsync('user');
-        const username = await SecureStore.getItemAsync('username');
-
-        if (storedUser && username) {
-          try {
-            const parsedUser = JSON.parse(storedUser);
-            setUser(parsedUser);
-          } catch (parseError) {
-            console.error('Error parsing stored user:', parseError);
-            setUser(null);
-          }
-        } else if (username) {
-          await attemptAutoLogin();
-        } else {
-          setUser(null);
-        }
+        
       } catch (error) {
         console.error('Initialization error:', error);
-        setUser(null);
       } finally {
         setIsLoading(false);
-      }
-    }
-
-    async function attemptAutoLogin() {
-      try {
-        const username = getDeviceId();
-        const password = await generatePassword(username);
-
-        const response = await api.post('/api/v1/token/', {
-          username,
-          password,
-        });
-
-        const { access, refresh, user: userData } = response.data;
-
-        await SecureStore.setItemAsync('accessToken', access);
-        await SecureStore.setItemAsync('refreshToken', refresh);
-        await SecureStore.setItemAsync('username', username);
-        await SecureStore.setItemAsync('password', password);
-        await SecureStore.setItemAsync('user', JSON.stringify(userData));
-
-        setUser(userData);
-      } catch (error) {
-        console.error('Auto-login failed:', error);
-        setUser(null);
       }
     }
 
     initialize();
   }, []); // Empty dependency array to run only once on mount
 
+  console.log('app.layout')
+  
   if (isLoading) {
     return (
       <ThemeProvider>
@@ -135,18 +91,14 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Protected guard={!user}>
-            <Stack.Screen name="(auth)/start" />
-          </Stack.Protected>
-          <Stack.Protected guard={!!user}>
-            <Stack.Screen name="(app)" initialRouteName="Tabs/FormDataList" />
-          </Stack.Protected>
-        </Stack>
-        <ThemedStatusBar />
-      </GestureHandlerRootView>
-    </ThemeProvider>
-  );
+    <AuthProvider>
+      <ThemeProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <ThemedStatusBar />
+          <Slot />
+        </GestureHandlerRootView>
+      </ThemeProvider>
+    </AuthProvider>
+);
+
 }
