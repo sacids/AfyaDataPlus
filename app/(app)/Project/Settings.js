@@ -1,14 +1,15 @@
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../context/ThemeContext';
+import { useAuthStore } from '../../../store/authStore';
 import useProjectStore from '../../../store/projectStore';
 import { useThemeStore } from '../../../store/ThemeStore';
 import { createTables, dropTables, remove, select } from '../../../utils/database';
-import Constants from 'expo-constants';
 
 const Settings = () => {
     const { colors, isDark } = useTheme();
@@ -23,6 +24,7 @@ const Settings = () => {
     const [isResetting, setIsResetting] = useState(false);
     const appVersion = Constants.expoConfig.version;
     const insets = useSafeAreaInsets();
+    const { user } = useAuthStore();
 
     // Load saved settings on mount
     useEffect(() => {
@@ -138,7 +140,7 @@ const Settings = () => {
 
     const projectItem = (item) => {
         return (
-            <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'space-between' }} key={item.id}>
+            <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'space-between', marginVertical: 4 }} key={item.id}>
                 <Text style={styles.settingText}>{item.title}</Text>
                 <TouchableOpacity onPress={() => deleteProject(item)}>
                     <Ionicons name="trash" size={24} color={colors.primary} />
@@ -248,8 +250,26 @@ const Settings = () => {
             </View>
 
             <ScrollView style={{ flex: 1, paddingHorizontal: 15 }}>
+
+                <View style={styles.section}>
+
+                    <Text style={styles.sectionTitle}>AfyaData</Text>
+
+                    <View style={styles.settingRow}>
+                        <Text style={styles.settingText}>Version</Text>
+                        <Text style={[styles.settingText, { fontWeight: 'bold' }]}>{appVersion}</Text>
+                    </View>
+
+                    <View style={styles.settingRow}>
+                        <Text style={styles.settingText}>Full Name</Text>
+                        <Text style={[styles.settingText, { fontWeight: 'bold' }]}>{user.fullname}</Text>
+                    </View>
+
+                </View>
                 {/* Appearance Section */}
                 <View style={styles.section}>
+
+
                     <Text style={styles.sectionTitle}>Appearance</Text>
 
                     <View style={styles.settingRow}>

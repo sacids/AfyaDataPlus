@@ -31,6 +31,7 @@ export default function TabsLayout() {
     }, []);
 
 
+    console.log('app.app.tabs.layout')
     return (
         <Tabs
             screenOptions={{

@@ -304,13 +304,13 @@ export default function FormDataList() {
   useFocusEffect(
     useCallback(() => {
       // Code to run every time the screen is focused
-      console.log('FormDataList screen is focused');
+      //console.log('FormDataList screen is focused');
 
       initialize();
 
       return () => {
         // Optional cleanup when the screen loses focus
-        console.log('FormDataList screen is unfocused');
+        //console.log('FormDataList screen is unfocused');
       };
     }, []) // Empty dependency array for useCallback
   );
@@ -457,7 +457,7 @@ export default function FormDataList() {
                   borderRadius: 6,
                 }}
               />
-              {currentProject && <TouchableOpacity onPress={syncSurveys}><Text style={[styles.label, { paddingVertical: 8, fontSize: 14 }]}>Sync Surveys</Text></TouchableOpacity>}
+              {currentProject?.title && <TouchableOpacity onPress={syncSurveys}><Text style={[styles.label, { paddingVertical: 8, fontSize: 14 }]}>Sync Surveys</Text></TouchableOpacity>}
               <TouchableOpacity onPress={() => goToStack('/Project/List')}><Text style={[styles.label, { paddingVertical: 8, fontSize: 14 }]}>My Projects</Text></TouchableOpacity>
               <TouchableOpacity onPress={() => goToStack('/Project/Join')}><Text style={[styles.label, { paddingVertical: 8, fontSize: 14 }]}>Join a Project</Text></TouchableOpacity>
               <TouchableOpacity><Text style={[styles.label, { paddingVertical: 8, fontSize: 14 }]}>Help and Feedback</Text></TouchableOpacity>

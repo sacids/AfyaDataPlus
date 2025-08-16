@@ -1,14 +1,20 @@
-import { router } from 'expo-router';
+
+import { Redirect, router } from 'expo-router';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Onboarding from 'react-native-onboarding-swiper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../../context/ThemeContext';
+import { useTheme } from '../context/ThemeContext';
+
+import { useAuth } from '../context/AuthContext';
 
 
 const OnboardingScreen = () => {
+
+
+  const { authState, onLogout } = useAuth();
   const { colors } = useTheme();
 
-  const logo = require('../../assets/images/AfyaDataLogo.png');
+  const logo = require('../assets/images/AfyaDataLogo.png');
   const insets = useSafeAreaInsets();
 
   const themedStyles = StyleSheet.create({
@@ -66,7 +72,13 @@ const OnboardingScreen = () => {
     />
   );
 
-  
+  //onLogout()
+
+  console.log('app.index')
+
+  if (authState) {
+    return <Redirect href="/(app)/Tabs/FormDataList" />;
+  }
 
   return (
     <Onboarding

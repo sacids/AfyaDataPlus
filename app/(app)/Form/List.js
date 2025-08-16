@@ -83,8 +83,11 @@ const ListEmptyForms = () => {
 
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15, paddingTop: 40, paddingBottom: 10 }}>
 
-                <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-                    <TouchableOpacity onPress={() => router.back()}>
+                <View>
+                    <TouchableOpacity
+                        style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}
+                        onPress={() => router.back()}
+                    >
                         <MaterialCommunityIcons name={'arrow-left'} size={24} color={theme.colors.text} />
 
                         <Text style={styles.pageTitle}>Project Forms</Text>
