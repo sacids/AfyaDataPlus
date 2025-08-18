@@ -81,63 +81,65 @@ const OnboardingScreen = () => {
   }
 
   return (
-    <Onboarding
-      DotComponent={DotComponent}
-      pages={[
-        {
-          backgroundColor: colors.background,
-          image: <Image source={logo} style={themedStyles.logo} />,
-          title: 'Welcome to AfyaData',
-          subtitle: 'Empowering communities through participatory health surveillance.',
-          titleStyles: themedStyles.title,
-          subTitleStyles: themedStyles.subtitle,
-        },
-        {
-          backgroundColor: colors.background,
-          image: (
-            <Image
-              source={{ uri: 'https://via.placeholder.com/150' }} // Replace with relevant image
-              style={themedStyles.image}
-            />
-          ),
-          title: 'Real-Time Data Collection',
-          subtitle: 'Report health events promptly to enhance early warning systems.',
-          titleStyles: themedStyles.title,
-          subTitleStyles: themedStyles.subtitle,
-        },
-        {
-          backgroundColor: colors.background,
-          image: (
-            <Image
-              source={{ uri: 'https://via.placeholder.com/150' }} // Replace with relevant image
-              style={themedStyles.image}
-            />
-          ),
-          title: 'Stay Informed',
-          subtitle:
-            'Receive timely feedback and health information to support your community.',
-          titleStyles: themedStyles.title,
-          subTitleStyles: themedStyles.subtitle,
-          renderNext: () => (
-            <TouchableOpacity
-              style={themedStyles.button}
-              onPress={handleDone}
-            //activeOpacity={0.8}
-            >
-              <Text style={themedStyles.buttonText}>Get Started</Text>
-            </TouchableOpacity>
-          ),
-          showSkip: true,
-        },
-      ]}
+    <View style={{ flex: 1, paddingBottom: insets.bottom, backgroundColor: colors.background }}>
+      <Onboarding
+        DotComponent={DotComponent}
+        pages={[
+          {
+            backgroundColor: colors.background,
+            image: <Image source={logo} style={themedStyles.logo} />,
+            title: 'Welcome to AfyaData',
+            subtitle: 'Empowering communities through participatory health surveillance.',
+            titleStyles: themedStyles.title,
+            subTitleStyles: themedStyles.subtitle,
+          },
+          {
+            backgroundColor: colors.background,
+            image: (
+              <Image
+                source={{ uri: 'https://via.placeholder.com/150' }} // Replace with relevant image
+                style={themedStyles.image}
+              />
+            ),
+            title: 'Real-Time Data Collection',
+            subtitle: 'Report health events promptly to enhance early warning systems.',
+            titleStyles: themedStyles.title,
+            subTitleStyles: themedStyles.subtitle,
+          },
+          {
+            backgroundColor: colors.background,
+            image: (
+              <Image
+                source={{ uri: 'https://via.placeholder.com/150' }} // Replace with relevant image
+                style={themedStyles.image}
+              />
+            ),
+            title: 'Stay Informed',
+            subtitle:
+              'Receive timely feedback and health information to support your community.',
+            titleStyles: themedStyles.title,
+            subTitleStyles: themedStyles.subtitle,
+            renderNext: () => (
+              <TouchableOpacity
+                style={themedStyles.button}
+                onPress={handleDone}
+              //activeOpacity={0.8}
+              >
+                <Text style={themedStyles.buttonText}>Get Started</Text>
+              </TouchableOpacity>
+            ),
+            showSkip: true,
+          },
+        ]}
 
-      onSkip={handleDone}
-      onDone={handleDone}
-      nextLabel="Next"
-      skipLabel="Skip"
-      bottomBarHighlight={false}
-      containerStyles={{ paddingBottom: insets.bottom }}
-    />
+        onSkip={handleDone}
+        onDone={handleDone}
+        nextLabel="Next"
+        skipLabel="Skip"
+        bottomBarHighlight={false}
+        containerStyles={{ paddingBottom: insets.bottom }}
+      />
+    </View>
   );
 };
 
