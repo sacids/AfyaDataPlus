@@ -74,7 +74,7 @@ const OnboardingScreen = () => {
 
   //onLogout()
 
-  console.log('app.index')
+  //console.log('app.index')
 
   if (authState) {
     return <Redirect href="/(app)/Tabs/FormDataList" />;
