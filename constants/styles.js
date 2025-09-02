@@ -18,24 +18,33 @@ export const getStyles = (theme) =>
     container: {
       marginBottom: 16,
     },
+    labelContainer: {
+      flexDirection: 'row',
+    },
     label: {
       fontSize: 16,
-      marginBottom: 4,
       color: theme.colors.label,
+      fontWeight: 'bold',
     },
     hint: {
-      fontSize: 13,
-      fontStyle: 'italic',
-      marginBottom: 8,
+      fontSize: 12,
       color: theme.colors.hint,
+      fontStyle: 'italic',
+    },
+    required: {
+      color: theme.colors.error,
+      marginRight: 5,
+      paddingTop: 5,
     },
     inputBase: {
+      marginTop: 20,
       borderWidth: 1,
       borderColor: theme.colors.inputBorder,
       backgroundColor: theme.colors.inputBackground,
       borderRadius: 4,
       padding: 12,
     },
+
     selectMultiple: {
       paddingVertical: 10,
     },
@@ -65,16 +74,33 @@ export const getStyles = (theme) =>
     },
     button: {
       backgroundColor: theme.colors.buttonBackground,
-      paddingVertical: 5,
+      borderWidth: 1,
+      borderColor: theme.colors.inputBorder,
+      paddingVertical: 10,
       paddingHorizontal: 16,
-      borderRadius: 4,
+      borderRadius: 18,
       alignItems: 'center',
     },
+
+    navButton: {
+      borderWidth: 1,
+      borderColor: theme.colors.inputBorder,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      borderRadius: 18,
+      alignItems: 'center',
+    },
+
+    navButtonText: {
+      color: theme.colors.navButtonText,
+      fontSize: 12,
+    },
+
     buttonText: {
       color: theme.colors.buttonText,
       fontSize: 12,
-      fontWeight: 'bold',
     },
+
     buttonContainer: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -90,9 +116,9 @@ export const getStyles = (theme) =>
       borderColor: theme.colors.inputBorder,
       borderWidth: 1,
     },
-
-
-
+    inputContainer: {
+      marginTop: 5,
+    },
 
 
 

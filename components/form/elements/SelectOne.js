@@ -5,10 +5,11 @@ import { Text, TouchableOpacity, View } from 'react-native';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
 import { getLabel } from '../../../lib/form/utils';
+import { evaluateExpression } from '../../../lib/form/validation';
 import { useFormStore } from '../../../store/FormStore';
 
 const SelectOne = ({ element, value }) => {
-  const { updateFormData, errors, language, schema } = useFormStore();
+  const { updateFormData, formData, errors, language, schema } = useFormStore();
   const theme = useTheme();
   const styles = getStyles(theme);
 
@@ -24,26 +25,35 @@ const SelectOne = ({ element, value }) => {
   const label = getLabel(element, 'label', language, schema.language);
   const hint = getLabel(element, 'hint', language, schema.language);
 
-  // Normalize appearance string (handle null/undefined and split by commas)
   const appearances = (element.appearance || '').toString().split(',').map(a => a.trim().toLowerCase());
-
-  // Check for slider appearance (either 'slider' or 'slide')
   const isSlider = appearances.some(a => a === 'slider' || a === 'slide');
-
-  // Check for picker appearance (either 'picker' or 'dropdown')
   const isPicker = appearances.some(a => a === 'picker' || a === 'dropdown' || a === 'minimal');
+
+
+  const available_options = element.options.filter((option) => {
+    if (!element.constraint) return true
+    const tmp_formData = { ...formData };
+    tmp_formData[element.name] = option.name;
+
+    return evaluateExpression(element.constraint, tmp_formData, element.name) !== false;
+  });
 
   // Render slider appearance
   if (isSlider) {
-    const options = element.options;
+    const options = available_options;
     const minValue = 0;
     const maxValue = options.length - 1;
     const currentIndex = selectedValue ? options.findIndex(opt => opt.name === selectedValue) : 0;
 
     return (
       <View style={styles.container}>
-        <Text style={styles.label}>{label}</Text>
+
+        <View style={styles.labelContainer}>
+          {(element.required || element.constraint) && <Text style={styles.required}>*</Text>}
+          <Text style={styles.label}>{label}</Text>
+        </View>
         <Text style={styles.hint}>{hint}</Text>
+
         <Slider
           style={styles.slider}
           minimumValue={minValue}
@@ -51,15 +61,19 @@ const SelectOne = ({ element, value }) => {
           step={1}
           value={currentIndex}
           onValueChange={(value) => {
-            const selectedOption = options[Math.round(value)];
+            const selectedOption = options[Math.round(value)] || {};
+            if (!selectedOption.name) {
+              console.warn(`No option selected for ${element.name} at index ${value}`);
+              return;
+            }
             handleSelect(selectedOption.name);
           }}
-          minimumTrackTintColor={styles.button.backgroundColor}
+          minimumTrackTintColor={theme.colors.primary}
           maximumTrackTintColor={styles.inputBase.borderColor}
-          thumbTintColor={styles.button.backgroundColor}
+          thumbTintColor={theme.colors.primary}
         />
         <Text style={styles.label}>
-          {selectedValue ? getLabel(element.options.find(opt => opt.name === selectedValue), 'label', language, schema.language) : ''}
+          {selectedValue ? getLabel(available_options.find(opt => opt.name === selectedValue), 'label', language, schema.language) : ''}
         </Text>
         {errors[element.name] && (
           <Text style={styles.errorText}>{errors[element.name]}</Text>
@@ -86,7 +100,7 @@ const SelectOne = ({ element, value }) => {
             mode="dropdown"
           >
             <Picker.Item label="Select an option..." value={null} />
-            {element.options.map((option) => (
+            {available_options.map((option) => (
               <Picker.Item
                 key={option.name}
                 label={getLabel(option, 'label', language, schema.language)}
@@ -105,8 +119,13 @@ const SelectOne = ({ element, value }) => {
   // Default radio button appearance
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
+
+      <View style={styles.labelContainer}>
+        {element.constraint && <Text style={styles.required}>*</Text>}
+        <Text style={styles.label}>{label}</Text>
+      </View>
       <Text style={styles.hint}>{hint}</Text>
+
       <View
         style={[
           styles.inputBase,
@@ -114,7 +133,7 @@ const SelectOne = ({ element, value }) => {
           errors[element.name] ? styles.inputError : null,
         ]}
       >
-        {element.options.map((option) => (
+        {available_options.map((option) => (
           <TouchableOpacity
             key={option.name}
             style={styles.checkboxContainer}
@@ -129,7 +148,7 @@ const SelectOne = ({ element, value }) => {
               size={24}
               color={
                 selectedValue === option.name
-                  ? styles.button.backgroundColor
+                  ? theme.colors.primary
                   : styles.inputBase.borderColor
               }
             />

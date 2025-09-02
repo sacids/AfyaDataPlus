@@ -13,8 +13,11 @@ const DecimalInput = ({ element, value }) => {
   return (
     <View style={styles.container}>
 
-      <Text style={styles.label}>{label}</Text>
-      <Text style={styles.hint}> {hint}</Text>
+      <View style={styles.labelContainer}>
+        {(element.required || element.constraint) && <Text style={styles.required}>*</Text>}
+        <Text style={styles.label}>{label}</Text>
+      </View>
+      <Text style={styles.hint}>{hint}</Text>
       <TextInput
         inputMode='decimal'
         style={[

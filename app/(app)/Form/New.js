@@ -162,7 +162,7 @@ const New = () => {
               <Text style={[styles.label, { paddingVertical: 8, fontSize: 14 }]}>Change Language</Text>
               {schema.language.map((lang, idx) => (
                 <TouchableOpacity key={idx} onPress={() => { setLanguage('::' + lang); setMenuVisible(false) }}>
-                  <Text style={[styles.label, { paddingVertical: 4, paddingLeft: 5, fontSize: 12 }]}>- {lang}</Text>
+                  <Text style={[styles.label, { paddingVertical: 4, paddingLeft: 5, fontSize: 12  }, { color: language === '::' + lang ? theme.colors.primary : theme.colors.text }]}>- {lang}</Text>
                 </TouchableOpacity>
               ))}
             </View>
