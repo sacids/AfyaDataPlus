@@ -3,7 +3,7 @@ import { ScrollView, Text, View } from 'react-native';
 import { getStyles } from '../../constants/styles';
 import { useTheme } from '../../context/ThemeContext';
 import { getLabel } from '../../lib/form/utils';
-import { calculateField, evaluateRelevant } from '../../lib/form/validation';
+import { evaluateField } from '../../lib/form/validation';
 import { useFormStore } from '../../store/FormStore';
 import DatePickerField from './elements/DatePicker';
 import DecimalInput from './elements/DecimalInput';
@@ -53,9 +53,12 @@ const FormPage = ({ pageIndex }) => {
     if (!page) return;
     page.fields.forEach((fieldGroup) => {
       Object.values(fieldGroup).forEach((field) => {
-        if (field.type === 'calculate' && field.calculate) {
+        if (field.type === 'calculate' && field.calculation) {
           try {
-            const calculatedValue = calculateField(field, formData);
+            const calculatedValue = evaluateField('calculation', field, formData);
+
+            //console.log('FormPage calculated value', field.name, field.calculation, calculatedValue , JSON.stringify(formData, null, 4))
+            //updateFormData(field.name, calculatedValue);
             if (calculatedValue !== formData[field.name]) {
               updateFormData(field.name, calculatedValue);
             }
@@ -74,7 +77,7 @@ const FormPage = ({ pageIndex }) => {
     return page.fields.some((fieldGroup) =>
       Object.values(fieldGroup).some((field) => {
         if (field.type === 'calculate') return false;
-        return field.relevant ? evaluateRelevant(field, formData) : true;
+        return field.relevant ? evaluateField('relevant', field, formData) : true;
       })
     );
   }, [page, formData]);
@@ -95,7 +98,7 @@ const FormPage = ({ pageIndex }) => {
         const visible = nextPage.fields.some((fieldGroup) =>
           Object.values(fieldGroup).some((field) => {
             if (field.type === 'calculate') return false;
-            return field.relevant ? evaluateRelevant(field, formData) : true;
+            return field.relevant ? evaluateField('relevant', field, formData) : true;
           })
         );
         if (visible) {
@@ -142,7 +145,9 @@ const FormPage = ({ pageIndex }) => {
       <View>
         {page.fields.flatMap((fieldGroup, groupIndex) =>
           Object.entries(fieldGroup).map(([colName, field]) => {
-            if (field.type === 'calculate') return null;
+            if (field.type === 'calculate') {
+              return null
+            };
 
             //console.log(JSON.stringify(field, null,3))
 
@@ -159,9 +164,10 @@ const FormPage = ({ pageIndex }) => {
             }
 
             const isRelevant = field.relevant
-              ? evaluateRelevant(field, formData)
+              ? evaluateField('relevant', field, formData)
               : true;
 
+            //if (field.relevant) console.log('field detail', field.name, field.type, field.relevant, isRelevant, JSON.stringify(formData, null, 4))
             if (!isRelevant) return null;
 
             return (

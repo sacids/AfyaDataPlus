@@ -2,8 +2,8 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
-import { useFormStore } from '../../../store/FormStore';
 import { getLabel } from '../../../lib/form/utils';
+import { useFormStore } from '../../../store/FormStore';
 
 const SelectMultiple = ({ element, value }) => {
   const { updateFormData, errors, language, schema } = useFormStore();
@@ -25,8 +25,13 @@ const SelectMultiple = ({ element, value }) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
-      <Text style={styles.hint}> {hint}</Text>
+      
+      <View style={styles.labelContainer}>
+        {(element.required || element.constraint) && <Text style={styles.required}>*</Text>}
+        <Text style={styles.label}>{label}</Text>
+      </View>
+      <Text style={styles.hint}>{hint}</Text>
+
       <View
         style={[
           styles.inputBase,
@@ -49,7 +54,7 @@ const SelectMultiple = ({ element, value }) => {
               size={24}
               color={
                 selectedValues.includes(option.name)
-                  ? styles.button.backgroundColor // Match primaryColor
+                  ? theme.colors.primary
                   : styles.inputBase.borderColor
               }
             />
