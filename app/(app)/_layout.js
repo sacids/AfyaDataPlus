@@ -83,7 +83,7 @@ export default function ProtectedLayout() {
   }, []);
 
 
-  console.log('app.app.layout')
+  //console.log('app.app.layout')
 
   if (!authState) {
     return <Redirect href="/index" />;// Let root layout handle redirect to (auth)/start

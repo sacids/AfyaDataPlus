@@ -77,7 +77,7 @@ export default function RootLayout() {
     initialize();
   }, []); // Empty dependency array to run only once on mount
 
-  console.log('app.layout')
+  //console.log('app.layout')
   
   if (isLoading) {
     return (
