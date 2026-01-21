@@ -13,6 +13,7 @@ import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
 import { evaluateCustomFunctions, replaceVariables } from '../../../lib/form/validation';
 import { useAuthStore } from '../../../store/authStore';
+import useProjectStore from '../../../store/projectStore';
 
 
 
@@ -20,7 +21,8 @@ const New = () => {
   const { fdefn_id, fdata_id, parent_uuid } = useLocalSearchParams();
   const [loading, setLoading] = useState(true);
   const [menuVisible, setMenuVisible] = useState(false);
-  const { language, setLanguage, schema, setSchema, formData, setFormData, formUUID, setFormUUID,parentUUID, setParentUUID } = useFormStore();
+  const { language, setLanguage, schema, setSchema, formData, setFormData, formUUID, setFormUUID, parentUUID, setParentUUID } = useFormStore();
+  const { currentProject, setCurrentProject, currentData, setCurrentData } = useProjectStore();
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
 
@@ -70,10 +72,6 @@ const New = () => {
   useEffect(() => {
     async function loadForm() {
       try {
-        if (parent_uuid){
-
-          setParentUUID(parent_uuid)
-        }
         if (fdata_id) {
           const FormDataItem = await select('form_data', 'id = ?', fdata_id);
           const FormDefn = await select('form_defn', 'form_id = ?', FormDataItem[0].form);
@@ -98,9 +96,14 @@ const New = () => {
           const FormDefn = await select('form_defn', 'id = ?', fdefn_id);
           const parsedSchema = parseSchema(FormDefn[0]);
 
-          console.log('parsed schema', JSON.stringify(parsedSchema, null, 6))
+          //console.log('parsed schema', JSON.stringify(parsedSchema, null, 6))
 
           setSchema(parsedSchema);
+
+          if (currentData) {
+            console.log('setting parent uuid to ', currentData.uuid)
+            setParentUUID(currentData.uuid)
+          }
           if (parsedSchema.meta.default_language) {
             setLanguage('::' + parsedSchema.meta.default_language);
           } else {

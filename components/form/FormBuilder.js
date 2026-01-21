@@ -14,7 +14,7 @@ const FormBuilder = ({ schema, formData, formUUID, parentUUID = null, config = {
   const styles = getStyles(colors);
 
   useEffect(() => {
-    setSchema(schema, formData, formUUID);
+    setSchema(schema, formData, formUUID, parentUUID);
   }, [schema]);
 
   const swipeGesture = Gesture.Pan()

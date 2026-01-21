@@ -23,6 +23,7 @@ const SavePage = () => {
         schema,
         formData,
         formUUID,
+        parentUUID,
     } = useFormStore();
 
     const saveForm = async (status) => {
@@ -32,6 +33,7 @@ const SavePage = () => {
                 form: schema.form,
                 project: schema.project,
                 uuid: formUUID,
+                parent_uuid: parentUUID,
                 original_uuid: formUUID,
                 title: title,
                 created_by: user?.id,

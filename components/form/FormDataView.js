@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { File, Paths } from 'expo-file-system';
 import { Image } from 'expo-image';
-import { ScrollView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import MapView, { Marker, Polygon, PROVIDER_GOOGLE } from 'react-native-maps';
 import { getStyles } from '../../constants/styles';
 import { useTheme } from '../../context/ThemeContext';
@@ -299,9 +299,9 @@ const FormDataView = ({ schema, formData }) => {
     }
 
     return (
-        <ScrollView style={{ paddingHorizontal: 15, paddingTop: 15 }}>
+        <View style={{ paddingHorizontal: 15, paddingTop: 0 }}>
             {page_holder}
-        </ScrollView >
+        </View >
     )
 }
 
