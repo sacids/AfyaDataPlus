@@ -10,8 +10,7 @@ export default function TabLayout() {
             screenOptions={{
                 headerShown: false,
                 tabBarStyle: {
-                    backgroundColor: colors.background,
-                    borderTopColor: colors.border,
+                    backgroundColor: colors.background
                 },
                 tabBarActiveTintColor: colors.primary,
                 tabBarInactiveTintColor: colors.secText,
@@ -44,7 +43,6 @@ export default function TabLayout() {
                     ),
                 }}
             />
-            {/* Add more tabs as needed */}
         </Tabs>
     );
 }

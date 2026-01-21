@@ -172,7 +172,7 @@ const ProjectListScreen = () => {
     const handleProjectPress = (project) => {
         //console.log('project', JSON.stringify(project, null, 2));
         setCurrentProject(project);
-        router.back();
+        router.dismissTo('/Main/');
     };
 
     if (loading) {

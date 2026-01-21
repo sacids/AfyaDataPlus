@@ -243,7 +243,7 @@ export const insert = async (tableName, data) => {
             if (key === 'id') {
                 if (columns.includes('form_id')) {
                     dbKey = 'form_id';
-                } if (tableName == 'projects') {
+                } if (tableName === 'projects') {
                     dbKey = 'project';
                 } else {
                     return;
@@ -267,7 +267,7 @@ export const insert = async (tableName, data) => {
 
         const sql = `INSERT OR REPLACE INTO ${tableName} (${filteredKeys.join(', ')}) VALUES (${placeholders});`;
         const result = await db.runAsync(sql, values);
-        //console.log('Inserting sql:', sql, values, result);
+        console.log('Inserting sql:', sql, values, result);
         return result;
     } catch (error) {
         console.error('Error inserting data:', error);
@@ -343,36 +343,22 @@ export const getFormData1 = async (project_id, code = null) => {
 }
 
 
-export const getFormData = async (project_id, codes = null) => {
+export const getFormData = async (project_id) => {
     try {
         let query = '';
         let params = [0, project_id];
         let result = [];
 
-        if (codes && Array.isArray(codes) && codes.length > 0) {
-            // Create placeholders for the IN clause
-            const placeholders = codes.map(() => '?').join(',');
-
-            query = `SELECT fd.*, fdef.title AS form_title 
+        query = `SELECT fd.*, fdef.title AS form_title 
                      FROM form_data fd 
                      JOIN form_defn fdef ON fd.form = CAST(fdef.form_id AS TEXT) 
-                     WHERE fd.deleted = ? 
-                     AND fd.project = ? 
-                     AND fdef.code IN (${placeholders});`;
+                     WHERE fd.deleted = ?
+                     AND fd.project = ?;
+                     AND fdef.is_root = true`;
+        result = await db.getAllAsync(query, params);
 
-            // Combine all parameters
-            params = params.concat(codes);
-            result = await db.getAllAsync(query, params);
-        } else {
-            query = `SELECT fd.*, fdef.title AS form_title 
-                     FROM form_data fd 
-                     JOIN form_defn fdef ON fd.form = CAST(fdef.form_id AS TEXT) 
-                     WHERE fd.deleted = ? 
-                     AND fd.project = ?;`;
-            result = await db.getAllAsync(query, params);
-        }
 
-        //console.log('database get form data', JSON.stringify(result, null, 2));
+        console.log('database get form data', query, params, JSON.stringify(result, null, 2));
         return result;
     } catch (error) {
         console.error('Error getting form data:', error);
@@ -402,19 +388,19 @@ export const getFormDefns = async (project_id, codes = null) => {
 
             // Combine all parameters
             params = params.concat(codes);
-            console.log('list form codes',params, test)
-            
+            console.log('list form codes', params, test)
+
             result = await db.getAllAsync(query, params);
         } else {
 
             let test = await select('form_defn', '', '', 'project, is_root, code, active')
-            console.log('form defn ', JSON.stringify(test,null,2))
+            console.log('form defn ', JSON.stringify(test, null, 2))
             query = `SELECT * 
                      FROM form_defn fdef 
                      WHERE active = ? 
                      AND project = ? AND is_root = 1;`;
 
-            
+
             console.log('q1', query, params)
             result = await db.getAllAsync(query, params);
         }

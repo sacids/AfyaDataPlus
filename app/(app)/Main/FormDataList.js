@@ -54,22 +54,13 @@ export default function FormDataList() {
 
   const fetchData = async () => {
     try {
-
-      let childCodes = []
+      let results = []
       if (currentData) {
-        const currentDataForm = await select('form_defn', 'form_id = ?', [currentData.form]);
-        //console.log('current data form children', currentData.form, currentDataForm[0].children,);
+        results = await select('form_data', 'parent_uuid = ?', currentData.original_uuid)
+      } else {
 
-        // Get the children string or default to '201'
-        const childrenString = currentDataForm[0]?.children || '201';
-
-        // Split the comma-separated string into an array of codes
-        childCodes = childrenString.split(',').map(code => code.trim());
+        results = await getFormData(currentProject?.project);
       }
-
-      // Call getFormData with the array of codes
-      const results = await getFormData(currentProject?.project, childCodes);
-
 
       setData(results);
       setFilteredData(results);
@@ -182,7 +173,7 @@ export default function FormDataList() {
       doSubmit([item]);
     } else if (item.status.toLowerCase() === 'sent') {
 
-      console.log('sending to Main', item.id, item.form)
+      //console.log('sending to Main', item.id, item.form)
       setCurrentData(item)
       router.push(`/Main/`);
     } else {
