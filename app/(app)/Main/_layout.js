@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { useTheme } from '../../../context/ThemeContext';
 
@@ -18,6 +18,15 @@ export default function TabLayout() {
             }}
         >
             <Tabs.Screen
+                name="Index"
+                options={{
+                    title: 'Info',
+                    tabBarIcon: ({ color, size }) => (
+                        <MaterialCommunityIcons name="view-dashboard-outline" size={size} color={color} />
+                    ),
+                }}
+            />
+            <Tabs.Screen
                 name="FormDataList"
                 options={{
                     title: 'Data',
@@ -29,7 +38,7 @@ export default function TabLayout() {
             <Tabs.Screen
                 name="DiseaseKonwlegeScreen"
                 options={{
-                    title: 'Info',
+                    title: 'Message',
                     tabBarIcon: ({ color, size }) => (
                         <Ionicons name="library-outline" size={size} color={color} />
                     ),

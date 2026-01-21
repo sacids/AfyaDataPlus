@@ -6,6 +6,7 @@ import { validatePage } from '../lib/form/validation';
 export const useFormStore = create((set, get) => ({
   schema: null,
   formUUID: null,
+  parentUUID: null,
   currentPage: 0,
   formData: {},
   errors: {},
@@ -13,7 +14,7 @@ export const useFormStore = create((set, get) => ({
   formDirection: 'next',
 
   //setSchema: (schema) => set({ schema, formData: {}, errors: {}, currentPage: 0, formUUID: randomUUID() }),
-  setSchema: (schema, formData = null, formUUID = null) => set(() => {
+  setSchema: (schema, formData = null, formUUID = null, parentUUID = null) => set(() => {
     //console.log('setSchema called:', { schema, formUUID });
     return {
       schema,
@@ -21,6 +22,7 @@ export const useFormStore = create((set, get) => ({
       errors: {},
       currentPage: 0,
       formUUID: formUUID !== null ? formUUID : randomUUID(),
+      parentUUID: parentUUID,
     };
   }),
 
@@ -31,6 +33,8 @@ export const useFormStore = create((set, get) => ({
   setFormData: (data) => set({ formData: data }),
 
   setFormUUID: (uuid) => set({ formUUID: uuid }),
+
+  setParentUUID: (uuid) => set({ parentUUID: uuid }),
 
   setFormDirection: (direction) => set({ formDirection: direction }),
 

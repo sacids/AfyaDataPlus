@@ -5,9 +5,9 @@ import { KeyboardAvoidingView, Text, TextInput, TouchableOpacity, View } from 'r
 import { getStyles } from '../../constants/styles';
 import { useTheme } from '../../context/ThemeContext';
 import { evaluateCustomFunctions, replaceVariables } from '../../lib/form/validation';
+import { useAuthStore } from '../../store/authStore';
 import { useFormStore } from '../../store/FormStore';
 import { insert } from '../../utils/database';
-import { useAuthStore } from '../../store/authStore';
 
 
 const SavePage = () => {
@@ -34,8 +34,8 @@ const SavePage = () => {
                 uuid: formUUID,
                 original_uuid: formUUID,
                 title: title,
-                created_by: user.id,
-                created_by_name: user.fullName ?? user.id,
+                created_by: user?.id,
+                created_by_name: user?.fullName ?? user?.id,
                 created_on: new Date().toISOString(),
                 status: status,
                 status_date: new Date().toISOString(),
@@ -43,7 +43,7 @@ const SavePage = () => {
                 synced: 0,
                 form_data: JSON.stringify(formData),
             })
-            router.dismissTo('/Tabs')
+            router.dismissTo('/Main')
         } catch (e) {
             console.log(e)
         }
@@ -73,7 +73,7 @@ const SavePage = () => {
                     />
                     <View style={{ flexDirection: "row", backgroundColor: "#bde1f2", borderRadius: 10, padding: 15, fontSize: 16 }}>
                         <MaterialCommunityIcons name="information-outline" size={24} color="black" />
-                        <Text style={{ paddingHorizontal: 10 }}>Once the message is sent, you won't have the option to make edits. To make changes, "Save as Draft" until you're prepared to send it.</Text>
+                        <Text style={{ paddingHorizontal: 10 }}>Once the message is sent, you will not have the option to make edits. To make changes, `Save as Draft` until you are prepared to send it.</Text>
                     </View>
                 </View>
                 <View style={{ flexDirection: "row", marginTop: 30, justifyContent: "space-around" }}>

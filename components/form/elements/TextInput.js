@@ -17,11 +17,15 @@ const TextInputField = ({ element, value }) => {
   return (
     <View style={styles.container}>
 
-      <View style={styles.labelContainer}>
-        {(element.required || element.constraint) && <Text style={styles.required}>*</Text>}
-        <Text style={styles.label}>{label}</Text>
-      </View>
-      <Text style={styles.hint}>{hint}</Text>
+      {
+        label ? (<View style={styles.labelContainer}>
+          {(element.required) && <Text style={styles.required}>*</Text>}
+          <Text style={styles.label}>{label}</Text>
+        </View>) : null
+      }
+      {
+        hint && (<Text style={styles.hint}>{hint}</Text>)
+      }
 
       <TextInput
         style={[

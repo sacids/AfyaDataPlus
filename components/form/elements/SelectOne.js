@@ -8,6 +8,7 @@ import { getLabel } from '../../../lib/form/utils';
 import { evaluateExpression } from '../../../lib/form/validation';
 import { useFormStore } from '../../../store/FormStore';
 
+
 const SelectOne = ({ element, value }) => {
   const { updateFormData, formData, errors, language, schema } = useFormStore();
   const theme = useTheme();
@@ -49,7 +50,7 @@ const SelectOne = ({ element, value }) => {
       <View style={styles.container}>
 
         <View style={styles.labelContainer}>
-          {(element.required || element.constraint) && <Text style={styles.required}>*</Text>}
+          {(element.required) && <Text style={styles.required}>*</Text>}
           <Text style={styles.label}>{label}</Text>
         </View>
         <Text style={styles.hint}>{hint}</Text>
@@ -86,8 +87,16 @@ const SelectOne = ({ element, value }) => {
   if (isPicker) {
     return (
       <View style={styles.container}>
-        <Text style={styles.label}>{label}</Text>
-        <Text style={styles.hint}>{hint}</Text>
+        {
+          label && (<View style={styles.labelContainer}>
+            {(element.required) && <Text style={styles.required}>*</Text>}
+            <Text style={styles.label}>{label}</Text>
+          </View>)
+        }
+        {
+          hint && (<Text style={styles.hint}>{hint}</Text>)
+        }
+
         <View style={[
           styles.inputBase,
           styles.pickerContainer,
@@ -99,12 +108,28 @@ const SelectOne = ({ element, value }) => {
             style={styles.picker}
             mode="dropdown"
           >
-            <Picker.Item label="Select an option..." value={null} />
+            <Picker.Item
+              label="Select an option..."
+              value={null}
+              style={{
+                fontSize: 14,
+                color: theme.colors.textSecondary, // Subtle color for placeholder
+                paddingVertical: 0,
+                margin: 0,
+              }}
+            />
             {available_options.map((option) => (
               <Picker.Item
                 key={option.name}
                 label={getLabel(option, 'label', language, schema.language)}
                 value={option.name}
+
+                style={{
+                  fontSize: 14,
+                  margin: 0,
+                  color: theme.colors.textSecondary, // Subtle color for placeholder
+                  paddingVertical: 0,
+                }}
               />
             ))}
           </Picker>

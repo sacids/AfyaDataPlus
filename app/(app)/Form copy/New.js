@@ -17,10 +17,10 @@ import { useAuthStore } from '../../../store/authStore';
 
 
 const New = () => {
-  const { fdefn_id, fdata_id, parent_uuid } = useLocalSearchParams();
+  const { fdefn_id, fdata_id } = useLocalSearchParams();
   const [loading, setLoading] = useState(true);
   const [menuVisible, setMenuVisible] = useState(false);
-  const { language, setLanguage, schema, setSchema, formData, setFormData, formUUID, setFormUUID,parentUUID, setParentUUID } = useFormStore();
+  const { language, setLanguage, schema, setSchema, formData, setFormData, formUUID, setFormUUID } = useFormStore();
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
 
@@ -70,10 +70,6 @@ const New = () => {
   useEffect(() => {
     async function loadForm() {
       try {
-        if (parent_uuid){
-
-          setParentUUID(parent_uuid)
-        }
         if (fdata_id) {
           const FormDataItem = await select('form_data', 'id = ?', fdata_id);
           const FormDefn = await select('form_defn', 'form_id = ?', FormDataItem[0].form);
@@ -179,7 +175,6 @@ const New = () => {
         schema={schema}
         formData={formData}
         formUUID={formUUID}
-        parentUUID={parentUUID}
         config={{ useSwipe: true, useButtons: true }}
       />
     </View>

@@ -38,10 +38,10 @@ const ProjectListScreen = () => {
         headerTitle: {
             fontSize: 18,
             fontWeight: 'bold',
-            color: 'white',
+            color: theme.colors.text,
         },
         currentProject: {
-            color: 'white',
+            color: theme.colors.text,
             marginBottom: 15,
             fontSize: 16,
         },
@@ -62,7 +62,7 @@ const ProjectListScreen = () => {
         projectTitle: {
             fontSize: 16,
             fontWeight: 'bold',
-            color: 'white',
+            color: theme.colors.text,
             flex: 1,
         },
         projectMeta: {
@@ -89,19 +89,20 @@ const ProjectListScreen = () => {
             gap: 2,
         },
         statLabel: {
-            color: '#ccc',
+            color: theme.colors.secText,
             fontSize: 9,
         },
         statValue: {
-            color: 'white',
+            color: theme.colors.text,
             fontSize: 9,
+            marginHorizontal: 2,
             fontWeight: 'bold',
         },
         listContent: {
             paddingBottom: 20,
         },
         emptyText: {
-            color: 'white',
+            color: theme.colors.text,
             textAlign: 'center',
             marginTop: 40,
         },
@@ -112,7 +113,7 @@ const ProjectListScreen = () => {
             backgroundColor: theme.colors.background,
         },
         loadingText: {
-            color: 'white',
+            color: theme.colors.text,
         },
     });
     useEffect(() => {
@@ -124,23 +125,26 @@ const ProjectListScreen = () => {
                 // Enhance each project with statistics
                 const projectsWithStats = await Promise.all(
                     projects.map(async (project) => {
+
                         const [formDefnCount] = await select(
                             'form_defn',
                             'project = ? AND active = 1',
-                            [project.id],
+                            [project.project],
                             'COUNT(*) as count'
                         );
 
                         const formDataStats = await select(
                             'form_data',
                             'project = ? AND deleted = 0',
-                            [project.id],
+                            [project.project],
                             `COUNT(*) as total,
                              SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END) as drafts,
                              SUM(CASE WHEN status = 'finalized' THEN 1 ELSE 0 END) as finalized,
                              SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sent,
                              SUM(archived) as archived`
                         );
+
+                        //console.log('Project', project.id, JSON.stringify(formDefnCount, null, 2), JSON.stringify(formDataStats, null, 2))
 
                         return {
                             ...project,
@@ -182,12 +186,10 @@ const ProjectListScreen = () => {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <View style={styles.headerLeft}>
-                    <TouchableOpacity onPress={() => router.back()}>
-                        <MaterialIcons name="keyboard-arrow-left" size={24} color="white" />
-                    </TouchableOpacity>
+                <TouchableOpacity style={styles.headerLeft} onPress={() => router.back()}>
+                    <MaterialIcons name="keyboard-arrow-left" size={24} color="white" />
                     <Text style={styles.headerTitle}>My Projects</Text>
-                </View>
+                </TouchableOpacity>
                 <TouchableOpacity onPress={() => alert('Search functionality coming soon')}>
                     <MaterialIcons name="search" size={24} color="white" />
                 </TouchableOpacity>
@@ -224,10 +226,7 @@ const ProjectListScreen = () => {
 
                             <View style={styles.statItem}>
                                 <Text style={styles.statValue}>{item.formDataTotal}</Text>
-                                <Text style={styles.statLabel}>Total</Text>
-                            </View>
-
-                            <View style={styles.statItem}>
+                                <Text style={styles.statLabel}>Total - </Text>
                                 <Text style={styles.statValue}>{item.formDataDrafts}</Text>
                                 <Text style={styles.statLabel}>Draft</Text>
                                 <Text style={styles.statValue}>{item.formDataFinalized}</Text>

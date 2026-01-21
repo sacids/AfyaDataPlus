@@ -1,12 +1,11 @@
-
 import { Ionicons } from '@expo/vector-icons';
-import * as FileSystem from 'expo-file-system';
+import { File, Paths } from 'expo-file-system';
 import { Image } from 'expo-image';
 import { ScrollView, Text, View } from 'react-native';
 import MapView, { Marker, Polygon, PROVIDER_GOOGLE } from 'react-native-maps';
 import { getStyles } from '../../constants/styles';
 import { useTheme } from '../../context/ThemeContext';
-import { calculatePolygonArea, evaluateRelevant } from '../../lib/form/validation';
+import { calculatePolygonArea, evaluateField } from '../../lib/form/validation';
 import { useFormStore } from '../../store/FormStore';
 
 const FormDataView = ({ schema, formData }) => {
@@ -16,9 +15,27 @@ const FormDataView = ({ schema, formData }) => {
     const { language } = useFormStore();
 
     const parsedFormData = JSON.parse(formData.form_data || '{}');
-    const folderPath = `${FileSystem.documentDirectory}${formData.original_uuid}/`;
 
-    //console.log('language', language);
+    // Helper function to get image URI using the File API
+    const getImageUri = (imageFileName) => {
+        if (!imageFileName || !formData.original_uuid) return null;
+
+        try {
+            // Use document directory from Paths
+            const documentDir = Paths.document;
+            if (!documentDir) return null;
+
+            // Create file path using the File constructor
+            const filePath = `${formData.original_uuid}/${imageFileName}`;
+            const file = new File(documentDir, filePath);
+
+            // Return the URI for the file
+            return file.uri;
+        } catch (error) {
+            console.log('Error creating file path:', error);
+            return null;
+        }
+    };
 
     let page_holder = []
     let group_holder = []
@@ -26,25 +43,21 @@ const FormDataView = ({ schema, formData }) => {
 
     for (const [pageIndex, page] of Object.entries(schema.pages)) {
 
-        if (!evaluateRelevant(page, parsedFormData)) continue
-
-        //holder.push(<View key={pageIndex}><Text>Page {page.label}</Text></View>)
+        if (!evaluateField('relevant', page, parsedFormData)) continue
 
         group_holder = []
-        //console.log('page', page, pageIndex);
 
         for (const [groupIndex, fieldGroup] of Object.entries(page.fields)) {
 
-            if (!evaluateRelevant(fieldGroup, parsedFormData)) continue
+            if (!evaluateField('relevant', fieldGroup, parsedFormData)) continue
 
-            //holder.push(<View key={`${pageIndex}-${groupIndex}`}><Text>Group {fieldGroup.label}</Text></View>)
             field_holder = []
             for (const [colName, field] of Object.entries(fieldGroup)) {
 
                 if (field.type === 'calculate') continue;
 
                 const isRelevant = field.relevant
-                    ? evaluateRelevant(field, parsedFormData)
+                    ? evaluateField('relevant', field, parsedFormData)
                     : true;
 
                 if (!isRelevant) continue;
@@ -52,6 +65,9 @@ const FormDataView = ({ schema, formData }) => {
                 if (field.type === 'geopoint') {
                     let value = parsedFormData[field.name]
                     let geoValue = value && typeof value === 'object' && value.latitude && value.longitude ? value : null;
+
+                    if (!geoValue) continue;
+
                     let tmp = (
                         <View style={styles.mapContainer}>
                             <MapView
@@ -66,11 +82,11 @@ const FormDataView = ({ schema, formData }) => {
                                 scrollEnabled={true}
                                 zoomEnabled={true}
                             >
-                                <Marker
-                                    coordinate={geoValue}
-                                />
+                                <Marker coordinate={geoValue} />
                             </MapView>
-                            <Text style={styles.locationText}>{geoValue.latitude}, {geoValue.longitude}, {geoValue.accuracy}</Text>
+                            <Text style={styles.locationText}>
+                                {geoValue.latitude}, {geoValue.longitude}, {geoValue.accuracy}
+                            </Text>
                         </View>
                     )
 
@@ -88,7 +104,13 @@ const FormDataView = ({ schema, formData }) => {
                         latitude: 0,
                         longitude: 0
                     };
-                    polygonCoords = JSON.parse(parsedFormData[field.name])
+
+                    try {
+                        polygonCoords = JSON.parse(parsedFormData[field.name] || '[]');
+                    } catch (e) {
+                        console.log('Error parsing geoshape data:', e);
+                        continue;
+                    }
 
                     if (polygonCoords.length > 0) {
                         const latitudes = polygonCoords.map(coord => coord.latitude);
@@ -99,11 +121,10 @@ const FormDataView = ({ schema, formData }) => {
                         bounds.latitudeDelta = (Math.max(...latitudes) - Math.min(...latitudes)) * 1.5;
                         bounds.longitudeDelta = (Math.max(...longitudes) - Math.min(...longitudes)) * 1.5;
                     }
-                    //console.log('geoshape bounds', bounds)
 
                     const area = calculatePolygonArea(polygonCoords)
                     let tmp = (
-                        <View style={[styles.mapContainer,]}>
+                        <View style={[styles.mapContainer]}>
                             <MapView
                                 provider={PROVIDER_GOOGLE}
                                 style={{ flex: 1 }}
@@ -142,7 +163,7 @@ const FormDataView = ({ schema, formData }) => {
                     let value = parsedFormData[field.name]
                     let currentField = field
 
-                    const selectedItems = value === '' || value === 'NA' ? [] : Array.isArray(value) ? value : JSON.parse(value);
+                    const selectedItems = value === '' || value === 'NA' ? [] : Array.isArray(value) ? value : JSON.parse(value || '[]');
                     let tmp = []
                     if (currentField['options']) {
                         for (const option in currentField['options']) {
@@ -150,7 +171,7 @@ const FormDataView = ({ schema, formData }) => {
                                 tmp.push(
                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }} key={option}>
                                         <Ionicons name="chevron-forward-outline" size={14} color={theme.colors.text} />
-                                        <Text style={[styles.textInput, { fontWeight: "bold", fontSize: 14 }]}>
+                                        <Text style={[styles.textInput, { fontSize: 14 }]}>
                                             {currentField['options'][option]['label' + language] || ''}
                                         </Text>
                                     </View>
@@ -167,49 +188,95 @@ const FormDataView = ({ schema, formData }) => {
                 } else if (field.type === 'select_one') {
                     let value = parsedFormData[field.name]
                     let currentField = field
-                    for (const option in currentField['options']) {
-                        if (currentField['options'][option].name == value) {
-                            value = currentField['options'][option]['label::Default'] || ''
+                    let displayValue = value;
+
+                    if (currentField['options']) {
+                        for (const option in currentField['options']) {
+                            if (currentField['options'][option].name === value) {
+                                displayValue = currentField['options'][option]['label::Default'] || value;
+                                break;
+                            }
                         }
                     }
 
                     field_holder.push(
                         <View key={`${pageIndex}-${groupIndex}-${colName}`} style={{ marginBottom: 15 }}>
                             <Text style={[styles.label, { fontSize: 14 }]}>{field.label}</Text>
-                            <Text style={[styles.textInput, { fontWeight: "bold", fontSize: 14 }]}>{value}</Text>
+                            <Text style={[styles.textInput, { fontSize: 14 }]}>{displayValue}</Text>
                         </View>
                     )
                 } else if (field.type === 'image') {
-                    let tmp = (
-                        <View style={[
-                            styles.mapContainer,
-                            {
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                backgroundColor: theme.colors.inputBackground,
-                            },]}>
-                            <Image
-                                source={{ uri: folderPath + parsedFormData[field.name] }}
-                                style={[{ width: 165, height: 165, borderRadius: 4 }, styles.noLocation]}
-                                contentFit='contain'
-                                onError={(e) => console.log('Image failed to load', e.nativeEvent.error)}
-                                key={`${pageIndex}-${groupIndex}-${colName}`}
-                            />
-                        </View>
-                    )
+                    const imageFileName = parsedFormData[field.name];
+                    const imageUri = getImageUri(imageFileName);
 
-                    field_holder.push(
-                        <View key={`${pageIndex}-${groupIndex}-${colName}`} style={{ marginBottom: 15 }}>
-                            <Text style={[styles.label, { fontSize: 14 }]}>{field.label}</Text>
-                            {tmp}
-                        </View>
-                    )
+                    if (imageUri) {
+                        let tmp = (
+                            <View style={[
+                                styles.mapContainer,
+                                {
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    backgroundColor: theme.colors.inputBackground,
+                                },]}>
+                                <Image
+                                    source={{ uri: imageUri }}
+                                    style={[{ width: 165, height: 165, borderRadius: 4 }, styles.noLocation]}
+                                    contentFit='contain'
+                                    onError={(e) => {
+                                        console.log('Image failed to load from URI:', imageUri);
+                                    }}
+                                    onLoad={() => {
+                                        // console.log('Image loaded successfully:', imageUri);
+                                    }}
+                                />
+                            </View>
+                        )
+
+                        field_holder.push(
+                            <View key={`${pageIndex}-${groupIndex}-${colName}`} style={{ marginBottom: 15 }}>
+                                <Text style={[styles.label, { fontSize: 14 }]}>{field.label}</Text>
+                                {tmp}
+                            </View>
+                        )
+                    } else {
+                        // Show placeholder
+                        field_holder.push(
+                            <View key={`${pageIndex}-${groupIndex}-${colName}`} style={{ marginBottom: 15 }}>
+                                <Text style={[styles.label, { fontSize: 14 }]}>{field.label}</Text>
+                                <View style={[
+                                    styles.mapContainer,
+                                    {
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        backgroundColor: theme.colors.inputBackground,
+                                        padding: 20,
+                                    }]}>
+                                    <Ionicons name="image-outline" size={40} color={theme.colors.text} />
+                                    <Text style={[styles.textInput, { fontStyle: 'italic', textAlign: 'center', marginTop: 10 }]}>
+                                        {!imageFileName ? 'No image captured' : 'Image not available'}
+                                    </Text>
+                                    {imageFileName && (
+                                        <Text style={[styles.textInput, { fontSize: 12, textAlign: 'center', marginTop: 5 }]}>
+                                            File: {imageFileName}
+                                        </Text>
+                                    )}
+                                    {!Paths.document && (
+                                        <Text style={[styles.textInput, { fontSize: 10, textAlign: 'center', marginTop: 5, color: 'orange' }]}>
+                                            Document directory not available
+                                        </Text>
+                                    )}
+                                </View>
+                            </View>
+                        )
+                    }
 
                 } else {
                     field_holder.push(
                         <View key={`${pageIndex}-${groupIndex}-${colName}`} style={{ marginBottom: 15 }}>
                             <Text style={[styles.label, { fontSize: 14 }]}>{field.label}</Text>
-                            <Text style={[styles.textInput, { fontWeight: "bold", fontSize: 14 }]}>{parsedFormData[field.name]}</Text>
+                            <Text style={[styles.textInput, { fontSize: 14 }]}>
+                                {parsedFormData[field.name] || 'Not provided'}
+                            </Text>
                         </View>
                     )
                 }
@@ -235,7 +302,6 @@ const FormDataView = ({ schema, formData }) => {
         <ScrollView style={{ paddingHorizontal: 15, paddingTop: 15 }}>
             {page_holder}
         </ScrollView >
-
     )
 }
 

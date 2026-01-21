@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { config } from '../constants/config';
 import { useAuthStore } from '../store/authStore';
@@ -11,12 +10,13 @@ const api = axios.create({
 });
 
 api.interceptors.request.use(
-  async (config) => {
-    const token = await SecureStore.getItemAsync('accessToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+  async (req) => {
+    const tokenData = await SecureStore.getItemAsync(config.TOKEN_KEY);
+    if (tokenData) {
+      const { access } = JSON.parse(tokenData);
+      req.headers.Authorization = `Bearer ${access}`;
     }
-    return config;
+    return req;
   },
   (error) => Promise.reject(error)
 );
@@ -25,6 +25,8 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+
+    // If it's not a 401, or we've already tried to auto-login for THIS request, fail.
     if (error.response?.status !== 401 || originalRequest._retry) {
       return Promise.reject(error);
     }
@@ -32,44 +34,34 @@ api.interceptors.response.use(
     originalRequest._retry = true;
 
     try {
-      // First, try to refresh the token
-      const refreshToken = await SecureStore.getItemAsync('refreshToken');
-      if (refreshToken) {
-        const response = await axios.post(`${config.BASE_URL}/api/v1/token/refresh/`, { refresh: refreshToken });
-        const { access, refresh } = response.data;
-
-        await SecureStore.setItemAsync('accessToken', access);
-        await SecureStore.setItemAsync('refreshToken', refresh);
-        originalRequest.headers.Authorization = `Bearer ${access}`;
-        return api(originalRequest);
-      }
-
-      // If no refresh token, attempt login with deterministic credentials
+      console.log('Token expired. Attempting device auto-login...');
+      
       const username = getDeviceId();
       const password = await generatePassword(username);
-
-      const response = await axios.post(`${config.BASE_URL}/api/v1/token/`, {
+      
+      // Request new tokens using device credentials
+      const loginResponse = await axios.post(`${config.BASE_URL}/api/v1/token/`, {
         username,
         password,
       });
+      
+      const { access, refresh, user } = loginResponse.data;
 
-      const { access, refresh, user } = response.data;
+      // Update SecureStore (Shared with AuthContext)
+      const authData = { access, refresh, user };
+      await SecureStore.setItemAsync(config.TOKEN_KEY, JSON.stringify(authData));
 
-      console.log('response', response.access, response.refresh, response.user);
+      // Update Zustand
+      if (user) useAuthStore.getState().setUser(user);
 
-      await SecureStore.setItemAsync('accessToken', access);
-      await SecureStore.setItemAsync('refreshToken', refresh);
-      await SecureStore.setItemAsync('username', username);
-      await SecureStore.setItemAsync('password', password);
-      await SecureStore.setItemAsync('user', JSON.stringify(user));
-
-      useAuthStore.getState().setUser(user);
+      // Retry original request
       originalRequest.headers.Authorization = `Bearer ${access}`;
       return api(originalRequest);
+
     } catch (authError) {
-      console.error('Authentication failed:', authError);
-      await useAuthStore.getState().logout();
-      router.replace('/(auth)/start');
+      console.error('Auto-login fallback failed:', authError);
+      await SecureStore.deleteItemAsync(config.TOKEN_KEY);
+      useAuthStore.getState().logout();
       return Promise.reject(authError);
     }
   }

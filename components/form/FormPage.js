@@ -5,6 +5,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { getLabel } from '../../lib/form/utils';
 import { evaluateField } from '../../lib/form/validation';
 import { useFormStore } from '../../store/FormStore';
+import BarcodeField from './elements/BarcodeField';
 import DatePickerField from './elements/DatePicker';
 import DecimalInput from './elements/DecimalInput';
 import GeoPoint from './elements/GeoPointField';
@@ -28,6 +29,7 @@ const elementComponents = {
   note: NoteField,
   geopoint: GeoPoint,
   image: imagePickerField,
+  barcode: BarcodeField,
 };
 
 const FormPage = ({ pageIndex }) => {

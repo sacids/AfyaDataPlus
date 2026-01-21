@@ -21,38 +21,16 @@ const ThemedStatusBar = () => {
 const SplashScreen = () => {
   const { colors } = useTheme();
   return (
-    <View
-      style={{
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: colors.background,
-      }}
-    >
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
       <ActivityIndicator size="large" color={colors.primary} />
       <Image
         source={require('../assets/images/AfyaDataLogo.png')}
         style={{ width: 120, height: 120, resizeMode: 'contain' }}
       />
-      <Text
-        style={{
-          fontSize: 24,
-          fontWeight: 'bold',
-          color: colors.text,
-          marginTop: 20,
-          textAlign: 'center',
-        }}
-      >
+      <Text style={{ fontSize: 24, fontWeight: 'bold', color: colors.text, marginTop: 20, textAlign: 'center' }}>
         Afyadata
       </Text>
-      <Text
-        style={{
-          fontSize: 16,
-          color: colors.secText,
-          textAlign: 'center',
-          paddingHorizontal: 20,
-        }}
-      >
+      <Text style={{ fontSize: 16, color: colors.secText, textAlign: 'center', paddingHorizontal: 20 }}>
         Taarifa kwa Wakati
       </Text>
     </View>
@@ -66,19 +44,15 @@ export default function RootLayout() {
     async function initialize() {
       try {
         await createTables();
-        
       } catch (error) {
         console.error('Initialization error:', error);
       } finally {
         setIsLoading(false);
       }
     }
-
     initialize();
-  }, []); // Empty dependency array to run only once on mount
+  }, []);
 
-  //console.log('app.layout')
-  
   if (isLoading) {
     return (
       <ThemeProvider>
@@ -99,6 +73,5 @@ export default function RootLayout() {
         </GestureHandlerRootView>
       </ThemeProvider>
     </AuthProvider>
-);
-
+  );
 }

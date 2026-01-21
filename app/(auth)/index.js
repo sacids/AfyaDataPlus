@@ -1,20 +1,14 @@
-
 import { Redirect, router } from 'expo-router';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 import Onboarding from 'react-native-onboarding-swiper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../context/ThemeContext';
-
-import { useAuth } from '../context/AuthContext';
-
+import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 
 const OnboardingScreen = () => {
-
-
-  const { authState, onLogout } = useAuth();
+  const { authState } = useAuth();
   const { colors } = useTheme();
-
-  const logo = require('../assets/images/AfyaDataLogo.png');
+  const logo = require('../../assets/images/AfyaDataLogo.png');
   const insets = useSafeAreaInsets();
 
   const themedStyles = StyleSheet.create({
@@ -57,7 +51,7 @@ const OnboardingScreen = () => {
   });
 
   const handleDone = () => {
-    router.replace('/register'); // Navigate to registration
+    router.replace('/(auth)/register');
   };
 
   const DotComponent = ({ selected }) => (
@@ -72,12 +66,9 @@ const OnboardingScreen = () => {
     />
   );
 
-  //onLogout()
-
-  //console.log('app.index')
-
+  // Redirect to app if already authenticated
   if (authState) {
-    return <Redirect href="/(app)/Tabs/FormDataList" />;
+    return <Redirect href="/(app)/Main" />;
   }
 
   return (
@@ -97,7 +88,7 @@ const OnboardingScreen = () => {
             backgroundColor: colors.background,
             image: (
               <Image
-                source={{ uri: 'https://via.placeholder.com/150' }} // Replace with relevant image
+                source={{ uri: 'https://via.placeholder.com/150' }}
                 style={themedStyles.image}
               />
             ),
@@ -110,28 +101,16 @@ const OnboardingScreen = () => {
             backgroundColor: colors.background,
             image: (
               <Image
-                source={{ uri: 'https://via.placeholder.com/150' }} // Replace with relevant image
+                source={{ uri: 'https://via.placeholder.com/150' }}
                 style={themedStyles.image}
               />
             ),
             title: 'Stay Informed',
-            subtitle:
-              'Receive timely feedback and health information to support your community.',
+            subtitle: 'Receive timely feedback and health information to support your community.',
             titleStyles: themedStyles.title,
             subTitleStyles: themedStyles.subtitle,
-            renderNext: () => (
-              <TouchableOpacity
-                style={themedStyles.button}
-                onPress={handleDone}
-              //activeOpacity={0.8}
-              >
-                <Text style={themedStyles.buttonText}>Get Started</Text>
-              </TouchableOpacity>
-            ),
-            showSkip: true,
           },
         ]}
-
         onSkip={handleDone}
         onDone={handleDone}
         nextLabel="Next"

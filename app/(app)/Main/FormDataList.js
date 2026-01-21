@@ -1,6 +1,4 @@
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
-import { Directory, Paths } from 'expo-file-system';
-import * as ImageManipulator from 'expo-image-manipulator';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -18,7 +16,7 @@ import {
 
 import FormDataHeader from '../../../components/FormDataHeader';
 import FormDataItem from '../../../components/FormDataItem';
-import { getFormData, update } from '../../../utils/database';
+import { getFormData, select, update } from '../../../utils/database';
 
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,7 +28,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { submitForms } from '../../../lib/form/submitForms';
 import { useFilterStore } from '../../../store/filterStore';
 import useProjectStore from '../../../store/projectStore';
-import { getForms, postData } from '../../../utils/services';
+import { getForms } from '../../../utils/services';
 
 
 export default function FormDataList() {
@@ -47,7 +45,7 @@ export default function FormDataList() {
   const [showFormStatus, setShowFormStatus] = useState(false);
   const resetSwipeRef = useRef(null);
   const selectedTag = useFilterStore((state) => state.filter);
-  const { currentProject, setCurrentProject } = useProjectStore();
+  const { currentProject, setCurrentProject, setCurrentData, currentData } = useProjectStore();
   const insets = useSafeAreaInsets();
 
   const theme = useTheme();
@@ -56,9 +54,26 @@ export default function FormDataList() {
 
   const fetchData = async () => {
     try {
-      const results = await getFormData(currentProject?.project);
+
+      let childCodes = []
+      if (currentData) {
+        const currentDataForm = await select('form_defn', 'form_id = ?', [currentData.form]);
+        //console.log('current data form children', currentData.form, currentDataForm[0].children,);
+
+        // Get the children string or default to '201'
+        const childrenString = currentDataForm[0]?.children || '201';
+
+        // Split the comma-separated string into an array of codes
+        childCodes = childrenString.split(',').map(code => code.trim());
+      }
+
+      // Call getFormData with the array of codes
+      const results = await getFormData(currentProject?.project, childCodes);
+
+
       setData(results);
       setFilteredData(results);
+
     } catch (error) {
       console.error('Error fetching data:', error);
       Alert.alert('Error', 'Failed to fetch data.');
@@ -166,7 +181,10 @@ export default function FormDataList() {
     if (item.status.toLowerCase() === 'finalized') {
       doSubmit([item]);
     } else if (item.status.toLowerCase() === 'sent') {
-      router.push(`/Data/?id=${item.id}`);
+
+      console.log('sending to Main', item.id, item.form)
+      setCurrentData(item)
+      router.push(`/Main/`);
     } else {
       // draft thus edit the form
       router.push('/Form/New?fdata_id=' + item.id);
@@ -397,7 +415,7 @@ export default function FormDataList() {
       </View>
 
       <TouchableOpacity
-        style={[lstyles.fab, lstyles.fabContent, { backgroundColor: theme.colors.primary }]}
+        style={[styles.fab, styles.fabContent, { backgroundColor: theme.colors.primary }]}
         onPress={() => router.push(`/Form/List?id=${1}`)}
       >
         <MaterialIcons name="add-box" size={24} color="lightgray" />
@@ -482,26 +500,7 @@ const lstyles = StyleSheet.create({
   },
 
 
-  fab: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    height: 56,
-    borderRadius: 10,
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 5,
-    overflow: 'hidden',
-  },
-  fabContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+
 
   overlay: {
     ...StyleSheet.absoluteFillObject,

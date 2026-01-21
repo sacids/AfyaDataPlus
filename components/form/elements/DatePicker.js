@@ -142,10 +142,16 @@ const DatePickerField = ({ element, value }) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.labelContainer}>
-        {(element.required || element.constraint) && <Text style={styles.required}>*</Text>}
-        <Text style={styles.label}>{label}</Text>
-      </View>
+
+      {
+        label ? (<View style={styles.labelContainer}>
+          {(element.required) && <Text style={styles.required}>*</Text>}
+          <Text style={styles.label}>{label}</Text>
+        </View>) : null
+      }
+      {
+        hint && (<Text style={styles.hint}>{hint}</Text>)
+      }
 
       {hint ? <Text style={styles.hint}>{hint}</Text> : null}
 
@@ -223,6 +229,27 @@ function getPlaceholder(appearance) {
   return 'YYYY-MM-DD';
 }
 
+const parseDate = (dateString) => {
+  // Remove quotes and trim
+  const cleanString = dateString.replace(/['"]/g, '').trim();
+
+  // Try different date formats
+  const formats = [
+    cleanString, // Original
+    cleanString.split('T')[0], // ISO without time
+    cleanString.replace(/\//g, '-'), // Convert slashes to dashes
+  ];
+
+  for (const format of formats) {
+    const date = new Date(format);
+    if (!isNaN(date.getTime())) {
+      return date;
+    }
+  }
+
+  return undefined;
+};
+
 function getMaxDate(constraint) {
   if (!constraint) return undefined;
 
@@ -230,8 +257,14 @@ function getMaxDate(constraint) {
   // This is a simplified version - real implementation would parse the constraint properly
   if (constraint.includes('.before(')) {
     try {
-      const dateString = constraint.match(/\.before\(([^)]+)\)/)[1];
-      return parseDate(dateString.replace(/'/g, ''));
+      //const dateString = constraint.match(/\.before\(([^)]+)\)/)[1];
+      //return parseDate(dateString.replace(/'/g, ''));
+
+      const match = constraint.match(/\.before\(([^)]+)\)/);
+      if (match && match[1]) {
+        return parseDate(match[1]);
+      }
+
     } catch (e) {
       return undefined;
     }
@@ -247,8 +280,14 @@ function getMinDate(constraint) {
   // This is a simplified version - real implementation would parse the constraint properly
   if (constraint.includes('.after(')) {
     try {
-      const dateString = constraint.match(/\.after\(([^)]+)\)/)[1];
-      return parseDate(dateString.replace(/'/g, ''));
+      //const dateString = constraint.match(/\.after\(([^)]+)\)/)[1];
+      //return parseDate(dateString.replace(/'/g, ''));
+
+      const match = constraint.match(/\.after\(([^)]+)\)/);
+      if (match && match[1]) {
+        return parseDate(match[1]);
+      }
+
     } catch (e) {
       return undefined;
     }

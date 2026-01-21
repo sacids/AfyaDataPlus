@@ -6,7 +6,9 @@ const useProjectStore = create(
     persist(
         (set) => ({
             currentProject: null,
+            currentData: null,
             setCurrentProject: (project) => set({ currentProject: project }),
+            setCurrentData: (data) => set({ currentData: data }),
         }),
         {
             name: 'project-storage',
