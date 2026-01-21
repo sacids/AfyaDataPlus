@@ -49,7 +49,7 @@ const JoinProjectScreen = () => {
   const fetchProjects = async () => {
     try {
       const data = await listProjects();
-      console.log('data', JSON.stringify(data, null, 2));
+      //console.log('data', JSON.stringify(data, null, 2));
       setProjects(data);
     } catch (error) {
       console.error('Error fetching projects:', error);
@@ -74,10 +74,11 @@ const JoinProjectScreen = () => {
     try {
       const result = await joinProject(project.code);
       if (!result.error) {
+        console.log('joining project', JSON.stringify(project, null, 2))
         await insert('projects', project);
         Alert.alert('Joined Successfully', `You have joined ${project.title}`);
         setCurrentProject(project.id);
-        router.replace('/Tabs');
+        router.replace('/Main');
       } else {
         Alert.alert('Join Failed', result.message || 'Unable to join project');
       }
@@ -137,12 +138,10 @@ const JoinProjectScreen = () => {
     <View style={styles.pageContainer}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15, paddingTop: insets.top + 10, paddingBottom: 10 }}>
 
-        <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <MaterialCommunityIcons name={'arrow-left'} size={24} color={theme.colors.text} />
-          </TouchableOpacity>
+        <TouchableOpacity onPress={() => router.back()} style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+          <MaterialCommunityIcons name={'arrow-left'} size={24} color={theme.colors.text} />
           <Text style={styles.pageTitle}>Available Projects</Text>
-        </View>
+        </TouchableOpacity>
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <TouchableOpacity onPress={() => alert('Filter not implemented')}>
             <MaterialIcons name={'search'} size={24} color={theme.colors.text} />

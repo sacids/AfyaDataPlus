@@ -11,9 +11,9 @@ export const getStyles = (theme) =>
       padding: 16,
     },
     pageTitle: {
-      fontSize: 18,
+      fontSize: 17,
       fontWeight: 'bold',
-      color: theme.colors.text,
+      color: theme.colors.pageTitle,
     },
     container: {
       marginBottom: 16,
@@ -37,12 +37,41 @@ export const getStyles = (theme) =>
       paddingTop: 5,
     },
     inputBase: {
-      marginTop: 20,
+      marginTop: 5,
       borderWidth: 1,
       borderColor: theme.colors.inputBorder,
       backgroundColor: theme.colors.inputBackground,
       borderRadius: 4,
-      padding: 12,
+      padding: 10,
+    },
+
+    card: {
+
+      padding: 15,
+      paddingLeft: 20,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      backgroundColor: theme.colors.inputBackground,
+      borderRadius: 8,
+      borderColor: theme.colors.inputBorder,
+      borderWidth: 1,
+      marginVertical: 5,
+      marginHorizontal: 15,
+    },
+
+
+
+
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 15,
+      paddingVertical: 10
+    },
+
+    caption: {
+      fontSize: 8,
     },
 
     selectMultiple: {
@@ -50,6 +79,16 @@ export const getStyles = (theme) =>
     },
     selectOne: {
       paddingVertical: 10,
+    },
+    picker: {
+      padding: 0,
+      color: theme.colors.text,
+      margin: 0,
+    },
+    pickerContainer: {
+      padding: 0,
+      margin: 0,
+
     },
     checkboxContainer: {
       flexDirection: 'row',
@@ -71,6 +110,9 @@ export const getStyles = (theme) =>
     },
     textInput: {
       color: theme.colors.text,
+    },
+    secTextInput: {
+      color: theme.colors.secText,
     },
     button: {
       backgroundColor: theme.colors.buttonBackground,
@@ -205,6 +247,27 @@ export const getStyles = (theme) =>
     },
 
 
+    fab: {
+      position: 'absolute',
+      bottom: 20,
+      right: 20,
+      height: 56,
+      borderRadius: 10,
+      justifyContent: 'center',
+      paddingHorizontal: 16,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 3,
+      elevation: 5,
+      overflow: 'hidden',
+    },
+    fabContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
 
 
 
@@ -251,5 +314,27 @@ export const getStyles = (theme) =>
       backgroundColor: 'rgba(255,255,255,0.8)',
       bottom: 0,
       position: 'absolute',
+    },
+
+
+
+
+
+
+    cameraContainer: {
+      flex: 1,
+      marginTop: 15,
+      gap: 10,
+    },
+    camera: {
+      flex: 1,
+      width: '100%',
+      height: 130,
+      borderRadius: 5,
+      overflow: 'hidden',
+      marginBottom: 8,
+      marginTop: 5,
+      borderWidth: 1,
+      borderColor: theme.colors.inputBorder,
     },
   });

@@ -49,10 +49,7 @@ const AuthScreen = ({ onAuthenticated }) => {
         Authenticate with Device PIN, Fingerprint, or Face ID
       </Text>
       {error ? <Text style={{ color: 'red', marginBottom: 16, textAlign: 'center', paddingHorizontal: 20 }}>{error}</Text> : null}
-      <TouchableOpacity
-        style={{ alignItems: 'center' }}
-        onPress={handleDeviceAuth}
-      >
+      <TouchableOpacity style={{ alignItems: 'center' }} onPress={handleDeviceAuth}>
         <Ionicons name="finger-print-sharp" size={60} color={colors.primary} />
       </TouchableOpacity>
     </View>
@@ -60,7 +57,6 @@ const AuthScreen = ({ onAuthenticated }) => {
 };
 
 export default function ProtectedLayout() {
-
   const { authState } = useAuth();
   const { colors } = useTheme();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -82,11 +78,9 @@ export default function ProtectedLayout() {
     checkDeviceSecurity();
   }, []);
 
-
-  //console.log('app.app.layout')
-
+  // Redirect to auth if not authenticated
   if (!authState) {
-    return <Redirect href="/index" />;// Let root layout handle redirect to (auth)/start
+    return <Redirect href="/(auth)" />;
   }
 
   if (isChecking) {
@@ -103,7 +97,7 @@ export default function ProtectedLayout() {
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Tabs" initialRouteName="FormDataList" />
+      <Stack.Screen name="Main" />
     </Stack>
   );
 }

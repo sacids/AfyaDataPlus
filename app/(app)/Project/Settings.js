@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '../../../context/AuthContext';
 import { useTheme } from '../../../context/ThemeContext';
 import { useAuthStore } from '../../../store/authStore';
 import useProjectStore from '../../../store/projectStore';
@@ -15,6 +16,7 @@ const Settings = () => {
     const { colors, isDark } = useTheme();
     const { toggleMode, mode } = useThemeStore();
     const { setCurrentProject } = useProjectStore();
+    const { authState, autoLogin } = useAuth();
 
     const [serverUrl, setServerUrl] = useState('https://api.example.com');
     const [username, setUsername] = useState('');
@@ -262,7 +264,15 @@ const Settings = () => {
 
                     <View style={styles.settingRow}>
                         <Text style={styles.settingText}>Full Name</Text>
-                        <Text style={[styles.settingText, { fontWeight: 'bold' }]}>{user.fullname}</Text>
+                        <Text style={[styles.settingText, { fontWeight: 'bold' }]}>{authState?.user?.fullname}</Text>
+                    </View>
+
+
+                    <View style={styles.settingRow}>
+                        <Text style={styles.settingText}>Sync Auth</Text>
+                        <TouchableOpacity onPress={() => autoLogin()}>
+                            <Ionicons name="sync" size={24} color={isDark ? colors.primary : colors.inputBorder} />
+                        </TouchableOpacity>
                     </View>
 
                 </View>

@@ -21,8 +21,15 @@ const NoteField = ({ element, value }) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
-      <Text style={styles.hint}>{hint}</Text>
+      {
+        label ? (<View style={styles.labelContainer}>
+          {(element.required) && <Text style={styles.required}>*</Text>}
+          <Text style={styles.label}>{label}</Text>
+        </View>) : null
+      }
+      {
+        hint && (<Text style={styles.hint}>{hint}</Text>)
+      }
     </View>
   );
 };

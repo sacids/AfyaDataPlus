@@ -7,7 +7,7 @@ import { useFormStore } from '../../store/FormStore';
 import FormPage from './FormPage';
 import NavigationButtons from './NavigationButtons';
 
-const FormBuilder = ({ schema, formData, formUUID, config = { useSwipe: true, useButtons: true } }) => {
+const FormBuilder = ({ schema, formData, formUUID, parentUUID = null, config = { useSwipe: true, useButtons: true } }) => {
   const { setSchema, currentPage, validateAndNavigate } = useFormStore();
 
   const colors = useTheme();

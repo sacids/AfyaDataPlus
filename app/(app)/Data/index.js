@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FormDataView from '../../../components/form/FormDataView';
 import { getStyles } from '../../../constants/styles';
@@ -38,9 +38,9 @@ export default function FormDataDetailScreen() {
   //console.log(formDefn)
 
   return (
-    <SafeAreaView style={[styles.pageContainer, { paddingBottom: insets.bottom }]}>
+    <View style={[styles.pageContainer, { paddingBottom: insets.bottom }]}>
       <FormDataView schema={formDefn} formData={formData} />
-    </SafeAreaView>
+    </View>
   );
 }
 

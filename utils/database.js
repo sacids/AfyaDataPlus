@@ -1,7 +1,7 @@
 import * as SQLite from 'expo-sqlite';
 // Open database connection
 export const openDatabase = () => {
-    return SQLite.openDatabaseSync('afyadataplus-v1.db');
+    return SQLite.openDatabaseSync('afyadataplus-v2.db');
 };
 
 
@@ -18,6 +18,7 @@ let PROJECT_SQL = `CREATE TABLE IF NOT EXISTS projects (
     project TEXT NOT NULL UNIQUE,
     created_by TEXT,
     tags TEXT,
+    icon TEXT,
     title TEXT NOT NULL,
     code TEXT NOT NULL,
     description TEXT NULL, 
@@ -39,6 +40,7 @@ let FORM_DEFN_SQL = `CREATE TABLE IF NOT EXISTS form_defn (
   short_title TEXT, 
   code INTEGER, 
   form_type TEXT, 
+  is_root INTEGER DEFAULT 1,
   form_actions TEXT, 
   form_category TEXT, 
   form_defn TEXT, 
@@ -47,18 +49,21 @@ let FORM_DEFN_SQL = `CREATE TABLE IF NOT EXISTS form_defn (
   compulsory TEXT,
   children TEXT, 
   sort_order INTEGER DEFAULT 0,
-  active INTEGER DEFAULT 0
+  active INTEGER DEFAULT 1
 );`;
+
+//FORM_DEFN_SQL = `UPDATE form_defn set active = 1;`;
 
 //FORM_DEFN_SQL = `DROP TABLE IF EXISTS form_defn;`;
 
 let FORM_DATA_SQL = `CREATE TABLE IF NOT EXISTS form_data (
   id INTEGER PRIMARY KEY NOT NULL,
-  project INTEGER NOT NULL DEFAULT 1,
+  project TEXT NOT NULL,
   form TEXT NOT NULL, 
   title TEXT,
   uuid TEXT NOT NULL UNIQUE, 
   original_uuid TEXT,
+  parent_uuid TEXT,
   gps TEXT,
   deleted INTEGER DEFAULT 0, 
   archived INTEGER DEFAULT 0, 
@@ -271,9 +276,31 @@ export const insert = async (tableName, data) => {
 };
 
 // Select records
-export const select = async (tableName, whereClause = '', whereArgs = []) => {
+export const select2 = async (tableName, whereClause = '', whereArgs = []) => {
     try {
         const sql = `SELECT * FROM ${tableName} ${whereClause ? `WHERE ${whereClause}` : ''};`;
+        //console.log('sql:', sql, whereArgs);
+        const result = await db.getAllAsync(sql, whereArgs);
+        //console.log('results:', result);
+        return result;
+    } catch (error) {
+        console.error('Error selecting data:', error);
+        return [];
+    }
+};
+
+/**
+ * Select records from a table.
+ * @param {string} tableName - The name of the table.
+ * @param {string} whereClause - The WHERE clause (e.g., 'id = ? AND active = 1').
+ * @param {Array} whereArgs - Arguments for the WHERE clause placeholders (e.g., [1]).
+ * @param {string} [fields='*'] - The fields to select (e.g., 'COUNT(*) as count' or 'id, name').
+ * @returns {Promise<Array>} - The array of results.
+ */
+export const select = async (tableName, whereClause = '', whereArgs = [], fields = '*') => {
+    try {
+        // Construct the SQL using the provided fields
+        const sql = `SELECT ${fields} FROM ${tableName} ${whereClause ? `WHERE ${whereClause}` : ''};`;
         //console.log('sql:', sql, whereArgs);
         const result = await db.getAllAsync(sql, whereArgs);
         //console.log('results:', result);
@@ -294,13 +321,19 @@ export const cachedSelect = async (tbl, choice_filter) => {
     return queryCache[cacheKey];
 };
 
-export const getFormData = async (project_id) => {
+export const getFormData1 = async (project_id, code = null) => {
     try {
         //console.log("Project ID type:", typeof project_id);
-        let query = `SELECT fd.*, fdef.title AS form_title FROM form_data fd JOIN form_defn fdef ON fd.form = CAST(fdef.form_id AS TEXT) WHERE deleted = ? AND fd.project = ?;`
-        //query = `SELECT * FROM form_data;`
-        const result = await db.getAllAsync(query, [0, project_id]);
-        //console.log('get form data', JSON.stringify(result, null, 2));
+        let query = ''
+        let result = []
+        if (code) {
+            query = `SELECT fd.*, fdef.title AS form_title FROM form_data fd JOIN form_defn fdef ON fd.form = CAST(fdef.form_id AS TEXT) WHERE deleted = ? AND fd.project = ? AND fdef.code like ?;`
+            result = await db.getAllAsync(query, [0, project_id, code]);
+        } else {
+            query = `SELECT fd.*, fdef.title AS form_title FROM form_data fd JOIN form_defn fdef ON fd.form = CAST(fdef.form_id AS TEXT) WHERE deleted = ? AND fd.project = ?;`
+            result = await db.getAllAsync(query, [0, project_id]);
+        }//query = `SELECT * FROM form_data;`
+        // console.log('database get form data', JSON.stringify(result, null, 2));
         return result;
     } catch (error) {
         console.error('Error getting form data:', error);
@@ -309,6 +342,90 @@ export const getFormData = async (project_id) => {
     }
 }
 
+
+export const getFormData = async (project_id, codes = null) => {
+    try {
+        let query = '';
+        let params = [0, project_id];
+        let result = [];
+
+        if (codes && Array.isArray(codes) && codes.length > 0) {
+            // Create placeholders for the IN clause
+            const placeholders = codes.map(() => '?').join(',');
+
+            query = `SELECT fd.*, fdef.title AS form_title 
+                     FROM form_data fd 
+                     JOIN form_defn fdef ON fd.form = CAST(fdef.form_id AS TEXT) 
+                     WHERE fd.deleted = ? 
+                     AND fd.project = ? 
+                     AND fdef.code IN (${placeholders});`;
+
+            // Combine all parameters
+            params = params.concat(codes);
+            result = await db.getAllAsync(query, params);
+        } else {
+            query = `SELECT fd.*, fdef.title AS form_title 
+                     FROM form_data fd 
+                     JOIN form_defn fdef ON fd.form = CAST(fdef.form_id AS TEXT) 
+                     WHERE fd.deleted = ? 
+                     AND fd.project = ?;`;
+            result = await db.getAllAsync(query, params);
+        }
+
+        //console.log('database get form data', JSON.stringify(result, null, 2));
+        return result;
+    } catch (error) {
+        console.error('Error getting form data:', error);
+        return [];
+    }
+};
+
+
+
+export const getFormDefns = async (project_id, codes = null) => {
+    try {
+        let query = '';
+        let params = [1, project_id];
+        let result = [];
+
+        if (codes && Array.isArray(codes) && codes.length > 0) {
+            // Create placeholders for the IN clause
+            console.log('codes', codes)
+            const placeholders = codes.map(() => '?').join(',');
+            let test = await select('form_defn', '', '', 'project, code, active')
+
+            query = `SELECT *
+                     FROM form_defn fdef
+                     WHERE active = ? 
+                     AND project = ?
+                     AND fdef.code IN (${placeholders});`;
+
+            // Combine all parameters
+            params = params.concat(codes);
+            console.log('list form codes',params, test)
+            
+            result = await db.getAllAsync(query, params);
+        } else {
+
+            let test = await select('form_defn', '', '', 'project, is_root, code, active')
+            console.log('form defn ', JSON.stringify(test,null,2))
+            query = `SELECT * 
+                     FROM form_defn fdef 
+                     WHERE active = ? 
+                     AND project = ? AND is_root = 1;`;
+
+            
+            console.log('q1', query, params)
+            result = await db.getAllAsync(query, params);
+        }
+
+        //console.log('database get form defn', JSON.stringify(result, null, 2));
+        return result;
+    } catch (error) {
+        console.error('Error getting form data:', error);
+        return [];
+    }
+};
 // Update a records
 export const update = async (tableName, data, whereClause, whereArgs = []) => {
     try {

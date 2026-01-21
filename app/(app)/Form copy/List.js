@@ -5,7 +5,7 @@ import { Alert, FlatList, Text, TouchableOpacity, View } from 'react-native';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
 import useProjectStore from '../../../store/projectStore';
-import { getFormDefns, select } from '../../../utils/database';
+import { select } from '../../../utils/database';
 
 const ListEmptyForms = () => {
 
@@ -19,22 +19,8 @@ const ListEmptyForms = () => {
 
     const fetchData = async () => {
         try {
-
-            let childCodes = []
-            if (currentData) {
-                const currentDataForm = await select('form_defn', 'form_id = ?', [currentData.form]);
-                //console.log('current data form children', currentData.form, currentDataForm[0]);
-
-                // Get the children string or default to '201'
-                const childrenString = currentDataForm[0]?.children || '201';
-
-                // Split the comma-separated string into an array of codes
-                childCodes = childrenString.split(',').map(code => Number(code.trim()));
-            }
-
-            // Call getFormData with the array of codes
-            const results = await getFormDefns(currentProject?.project, childCodes);
-
+            const results = await select('form_defn', 'project = ?', [currentProject?.project]);
+            //const results = await select('form_defn');
             setData(results);
             setFilteredData(results);
         } catch (error) {

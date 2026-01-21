@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import { Directory, File, Paths } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import { Alert, Image, Text, TouchableOpacity, View } from 'react-native';
 import { getStyles } from '../../../constants/styles';
@@ -16,7 +16,18 @@ const ImagePickerField = ({ element, value }) => {
   const label = getLabel(element, 'label', language, schema.language)
   const hint = getLabel(element, 'hint', language, schema.language)
 
-  const folderPath = `${FileSystem.documentDirectory}${formUUID}/`;
+  // Helper function to get image URI using File class
+  const getImageUri = (imageFileName) => {
+    if (!imageFileName || !formUUID) return null;
+
+    try {
+      const imageFile = new File(Paths.document, formUUID, imageFileName);
+      return imageFile.uri;
+    } catch (error) {
+      console.log('Error creating file path:', error);
+      return null;
+    }
+  };
 
   const pickImage = async (fromCamera = false) => {
     const permission = fromCamera
@@ -35,21 +46,28 @@ const ImagePickerField = ({ element, value }) => {
     if (!result.canceled) {
       const originalUri = result.assets[0].uri;
       const filename = originalUri.split('/').pop();
-      const folderPath = `${FileSystem.documentDirectory}${formUUID}/`;
 
       try {
-        // Ensure folder exists
-        const folderInfo = await FileSystem.getInfoAsync(folderPath);
-        if (!folderInfo.exists) {
-          await FileSystem.makeDirectoryAsync(folderPath, { intermediates: true });
+        // Create form directory using Directory class
+        const formDirectory = new Directory(Paths.document, formUUID);
+
+        // Check if directory exists using the property (not function)
+        if (!formDirectory.exists) {
+          formDirectory.create();
         }
 
-        const newFileName = `${element.name}__${filename}`
-        const destPath = `${folderPath}${newFileName}`;
-        await FileSystem.copyAsync({ from: originalUri, to: destPath });
+        const newFileName = `${element.name}__${filename}`;
 
-        updateFormData(element.name, newFileName); // Save full persistent path
-        //console.log(destPath, newFileName)
+        // Create destination file using Directory's createFile method
+        const destFile = new File(formDirectory, newFileName);
+
+        // Create source file from the picked image URI
+        const sourceFile = new File(originalUri);
+
+        // Copy the image to the destination using the copy() method
+        sourceFile.copy(destFile);
+
+        updateFormData(element.name, newFileName);
 
       } catch (err) {
         console.error('Image saving failed', err);
@@ -58,13 +76,19 @@ const ImagePickerField = ({ element, value }) => {
     }
   };
 
+  const imageUri = getImageUri(value);
+
   return (
     <View style={styles.container}>
-      <View style={styles.labelContainer}>
-        {(element.required || element.constraint) && <Text style={styles.required}>*</Text>}
-        <Text style={styles.label}>{label}</Text>
-      </View>
-      <Text style={styles.hint}>{hint}</Text>
+      {
+        label ? (<View style={styles.labelContainer}>
+          {(element.required) && <Text style={styles.required}>*</Text>}
+          <Text style={styles.label}>{label}</Text>
+        </View>) : null
+      }
+      {
+        hint && (<Text style={styles.hint}>{hint}</Text>)
+      }
 
       <View
         style={[
@@ -77,9 +101,9 @@ const ImagePickerField = ({ element, value }) => {
           },
         ]}
       >
-        {value ? (
+        {value && imageUri ? (
           <Image
-            source={{ uri: folderPath + value }}
+            source={{ uri: imageUri }}
             style={[{ width: 165, height: 165, borderRadius: 4 }, styles.noLocation]}
           />
         ) : (

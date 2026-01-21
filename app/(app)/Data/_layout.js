@@ -4,8 +4,9 @@ import {
 } from '@react-navigation/material-top-tabs';
 import { router, useLocalSearchParams, withLayoutContext } from 'expo-router';
 import { createContext, useContext } from 'react';
-import { Text, View } from 'react-native';
+import { Text, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
 
 
@@ -19,15 +20,19 @@ const Layout = () => {
 
     const insets = useSafeAreaInsets();
     const theme = useTheme();
+    const styles = getStyles(theme);
     const { id } = useLocalSearchParams();
 
     return (
 
         <IdContext.Provider value={id}>
-            <View style={{ paddingTop: insets.top, flexDirection: 'row', alignItems: 'center', gap: 20, paddingHorizontal: 15, backgroundColor: theme.colors.background }}>
-                <MaterialIcons onPress={() => router.back()} name={'arrow-back'} size={24} color={theme.isDark ? 'white' : 'black'} />
-                <Text style={{ color: theme.isDark ? 'white' : 'black', fontSize: 16 }}>Data</Text>
-            </View>
+            <TouchableOpacity
+                onPress={() => router.back()}
+                style={{ paddingTop: insets.top, flexDirection: 'row', alignItems: 'center', gap: 20, paddingHorizontal: 15, backgroundColor: theme.colors.background }}
+            >
+                <MaterialIcons name={'arrow-back'} size={24} color={theme.colors.pageTitle} />
+                <Text style={[styles.pageTitle, { flexShrink: 1 }]}>Data</Text>
+            </TouchableOpacity>
             <MaterialTopTabs
                 screenOptions={{
                     tabBarStyle: { backgroundColor: theme.colors.background },
@@ -41,9 +46,11 @@ const Layout = () => {
                 }}
 
             >
-                <MaterialTopTabs.Screen name="index" options={{ title: 'Data' }} />
+                <MaterialTopTabs.Screen name="index" options={{ title: 'Info' }} />
+                <MaterialTopTabs.Screen name="messages1" options={{ title: 'Actions' }} />
                 <MaterialTopTabs.Screen name="messages" options={{ title: 'Messages' }} />
             </MaterialTopTabs>
+            
         </IdContext.Provider>
     )
 }
