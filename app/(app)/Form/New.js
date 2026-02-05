@@ -101,7 +101,7 @@ const New = () => {
           setSchema(parsedSchema);
 
           if (currentData) {
-            console.log('setting parent uuid to ', currentData.uuid)
+            //console.log('setting parent uuid to ', currentData.uuid)
             setParentUUID(currentData.uuid)
           }
           if (parsedSchema.meta.default_language) {

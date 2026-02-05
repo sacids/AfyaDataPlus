@@ -1,98 +1,74 @@
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { File, Paths } from 'expo-file-system';
 import { Image } from 'expo-image';
-import { useEffect, useState } from 'react';
-import { LayoutAnimation, Text, TouchableOpacity, View } from 'react-native';
+import { Text, View } from 'react-native';
 import MapView, { Marker, Polygon, PROVIDER_GOOGLE } from 'react-native-maps';
 import { getStyles } from '../../constants/styles';
 import { useTheme } from '../../context/ThemeContext';
-import { getLabel } from '../../lib/form/utils';
-import { calculatePolygonArea, evaluateField, replaceVariables } from '../../lib/form/validation';
+import { calculatePolygonArea, evaluateField } from '../../lib/form/validation';
 import { useFormStore } from '../../store/FormStore';
 
-// Enable LayoutAnimation for Android
 const FormDataView = ({ schema, formData }) => {
+
     const theme = useTheme();
     const styles = getStyles(theme);
-    const { language, setLanguage } = useFormStore();
-
-
-    const default_language = schema.meta.default_language
-
-    // State to track expanded groups (uses key: pageIndex-groupIndex)
-    const [expandedGroups, setExpandedGroups] = useState({});
-
-
-    useEffect(() => {
-        if (language === '::Default') {
-            setLanguage(default_language);
-        }
-    }, [default_language]);
+    const { language } = useFormStore();
 
     const parsedFormData = JSON.parse(formData.form_data || '{}');
 
-    const toggleGroup = (groupId) => {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        setExpandedGroups(prev => ({
-            ...prev,
-            [groupId]: !prev[groupId]
-        }));
-    };
-
+    // Helper function to get image URI using the File API
     const getImageUri = (imageFileName) => {
         if (!imageFileName || !formData.original_uuid) return null;
+
         try {
+            // Use document directory from Paths
             const documentDir = Paths.document;
+            if (!documentDir) return null;
+
+            // Create file path using the File constructor
             const filePath = `${formData.original_uuid}/${imageFileName}`;
             const file = new File(documentDir, filePath);
+
+            // Return the URI for the file
             return file.uri;
-        } catch (error) { return null; }
+        } catch (error) {
+            console.log('Error creating file path:', error);
+            return null;
+        }
     };
 
-    let page_holder = [];
+    let page_holder = []
+    let group_holder = []
+    let field_holder = []
 
-    // --- LOOP 1: PAGES ---
     for (const [pageIndex, page] of Object.entries(schema.pages)) {
-        if (!evaluateField('relevant', page, parsedFormData)) continue;
 
-        let group_holder = [];
-        //console.log('page group', JSON.stringify(page, null, 6))
+        if (!evaluateField('relevant', page, parsedFormData)) continue
 
-        // --- LOOP 2: GROUPS ---
+        group_holder = []
+
         for (const [groupIndex, fieldGroup] of Object.entries(page.fields)) {
-            if (!evaluateField('relevant', fieldGroup, parsedFormData)) continue;
 
-            let field_holder = [];
-            const groupId = `${pageIndex}-${groupIndex}`;
-            const isExpanded = !!expandedGroups[groupId];
+            if (!evaluateField('relevant', fieldGroup, parsedFormData)) continue
 
-
-            let label = ''
-            let hint = ''
-            // --- LOOP 3: FIELDS ---
+            field_holder = []
             for (const [colName, field] of Object.entries(fieldGroup)) {
+
                 if (field.type === 'calculate') continue;
-                if (field.relevant && !evaluateField('relevant', field, parsedFormData)) continue;
 
-                const value = parsedFormData[field.name];
+                const isRelevant = field.relevant
+                    ? evaluateField('relevant', field, parsedFormData)
+                    : true;
 
-                label = getLabel(field, 'label', language, schema.languages)
-                hint = getLabel(field, 'hint', language, schema.languages)
+                if (!isRelevant) continue;
 
-                label = replaceVariables(label, formData);
-                hint = replaceVariables(hint, formData)
-
-                // FIELD RENDERING LOGIC
-                let inputContent = null;
-
-                if (field.type === 'geopoint' && value?.latitude) {
-
+                if (field.type === 'geopoint') {
                     let value = parsedFormData[field.name]
                     let geoValue = value && typeof value === 'object' && value.latitude && value.longitude ? value : null;
 
                     if (!geoValue) continue;
 
-                    inputContent = (
+                    let tmp = (
                         <View style={styles.mapContainer}>
                             <MapView
                                 style={styles.map}
@@ -114,6 +90,12 @@ const FormDataView = ({ schema, formData }) => {
                         </View>
                     )
 
+                    field_holder.push(
+                        <View key={`${pageIndex}-${groupIndex}-${colName}`} style={[{ marginBottom: 15 }]}>
+                            <Text style={[styles.label, { fontSize: 14 }]}>{field.label}</Text>
+                            {tmp}
+                        </View>
+                    )
                 } else if (field.type === 'geoshape') {
                     let polygonCoords = [];
                     let bounds = {
@@ -141,7 +123,7 @@ const FormDataView = ({ schema, formData }) => {
                     }
 
                     const area = calculatePolygonArea(polygonCoords)
-                    inputContent = (
+                    let tmp = (
                         <View style={[styles.mapContainer]}>
                             <MapView
                                 provider={PROVIDER_GOOGLE}
@@ -169,13 +151,66 @@ const FormDataView = ({ schema, formData }) => {
                         </View>
                     )
 
-                } else if (field.type === 'image') {
+                    field_holder.push(
+                        <View key={`${pageIndex}-${groupIndex}-${colName}`} style={[{ marginBottom: 15 }]}>
+                            <Text style={[styles.label, { fontSize: 14 }]}>{field.label}</Text>
+                            {tmp}
+                        </View>
+                    )
 
+                } else if (field.type === 'select_multiple') {
+
+                    let value = parsedFormData[field.name]
+                    let currentField = field
+
+                    const selectedItems = value === '' || value === 'NA' ? [] : Array.isArray(value) ? value : JSON.parse(value || '[]');
+                    let tmp = []
+                    if (currentField['options']) {
+                        for (const option in currentField['options']) {
+                            if (selectedItems.includes(currentField['options'][option].name)) {
+                                tmp.push(
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }} key={option}>
+                                        <Ionicons name="chevron-forward-outline" size={14} color={theme.colors.text} />
+                                        <Text style={[styles.textInput, { fontSize: 14 }]}>
+                                            {currentField['options'][option]['label' + language] || ''}
+                                        </Text>
+                                    </View>
+                                )
+                            }
+                        }
+                    }
+                    field_holder.push(
+                        <View key={`${pageIndex}-${groupIndex}-${colName}`} style={{ marginBottom: 15 }}>
+                            <Text style={[styles.label, { fontSize: 14 }]}>{field.label}</Text>
+                            <View style={{}}>{tmp}</View>
+                        </View>
+                    )
+                } else if (field.type === 'select_one') {
+                    let value = parsedFormData[field.name]
+                    let currentField = field
+                    let displayValue = value;
+
+                    if (currentField['options']) {
+                        for (const option in currentField['options']) {
+                            if (currentField['options'][option].name === value) {
+                                displayValue = currentField['options'][option]['label::Default'] || value;
+                                break;
+                            }
+                        }
+                    }
+
+                    field_holder.push(
+                        <View key={`${pageIndex}-${groupIndex}-${colName}`} style={{ marginBottom: 15 }}>
+                            <Text style={[styles.label, { fontSize: 14 }]}>{field.label}</Text>
+                            <Text style={[styles.textInput, { fontSize: 14 }]}>{displayValue}</Text>
+                        </View>
+                    )
+                } else if (field.type === 'image') {
                     const imageFileName = parsedFormData[field.name];
                     const imageUri = getImageUri(imageFileName);
 
                     if (imageUri) {
-                        inputContent = (
+                        let tmp = (
                             <View style={[
                                 styles.mapContainer,
                                 {
@@ -197,9 +232,15 @@ const FormDataView = ({ schema, formData }) => {
                             </View>
                         )
 
+                        field_holder.push(
+                            <View key={`${pageIndex}-${groupIndex}-${colName}`} style={{ marginBottom: 15 }}>
+                                <Text style={[styles.label, { fontSize: 14 }]}>{field.label}</Text>
+                                {tmp}
+                            </View>
+                        )
                     } else {
                         // Show placeholder
-                        inputContent = (
+                        field_holder.push(
                             <View key={`${pageIndex}-${groupIndex}-${colName}`} style={{ marginBottom: 15 }}>
                                 <Text style={[styles.label, { fontSize: 14 }]}>{field.label}</Text>
                                 <View style={[
@@ -228,128 +269,40 @@ const FormDataView = ({ schema, formData }) => {
                             </View>
                         )
                     }
-                } else if (field.type === 'select_multiple') {
 
-
-                    let value = parsedFormData[field.name]
-                    let currentField = field
-
-                    const selectedItems = value === '' || value === 'NA' ? [] : Array.isArray(value) ? value : JSON.parse(value || '[]');
-                    let tmp = []
-                    if (currentField['options']) {
-                        for (const option in currentField['options']) {
-                            if (selectedItems.includes(currentField['options'][option].name)) {
-
-                                tmp.push(
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }} key={option}>
-                                        <Ionicons name="chevron-forward-outline" size={14} color={theme.colors.text} />
-                                        <Text style={[styles.textInput, { fontSize: 14 }]}>
-                                            {getLabel(currentField['options'][option], 'label', language, schema.languages)}
-                                        </Text>
-                                    </View>
-                                )
-                            }
-                        }
-                    }
-
-                    inputContent = tmp
-                } else if (field.type === 'select_one') {
-                    let value = parsedFormData[field.name]
-                    let currentField = field
-                    let displayValue = value;
-
-                    if (currentField['options']) {
-                        for (const option in currentField['options']) {
-                            if (currentField['options'][option].name === value) {
-                                displayValue = currentField['options'][option]['label::Default'] || value;
-                                break;
-                            }
-                        }
-                    }
-                    inputContent = <Text style={[styles.textInput, { fontSize: 14 }]}>{displayValue}</Text>;
                 } else {
-                    inputContent = <Text style={[styles.bodyText, { marginTop: 4 }]}>{value || '—'}</Text>;
-                }
-
-                //console.log('text label color', JSON.stringify(field, null, 4))
-
-                field_holder.push(
-                    <View key={`${groupId}-${colName}`} style={{ marginBottom: 20 }}>
-                        <Text style={[styles.tiny, { textTransform: 'uppercase', fontWeight: 'bold' }]}>
-                            {label}
-                        </Text>
-                        {inputContent}
-                    </View>
-                );
-            }
-
-            if (field_holder.length > 0) {
-                group_holder.push(
-                    <View key={groupId} style={{ marginBottom: 5 }}>
-                        {/* Group Header / Toggle Button */}
-                        <TouchableOpacity
-                            onPress={() => toggleGroup(groupId)}
-                            activeOpacity={0.7}
-                            style={[
-                                styles.card,
-                                {
-                                    flexDirection: 'row',
-                                    alignItems: 'center',
-                                    // backgroundColor: isExpanded ? theme.colors.primary + '08' : theme.colors.inputBackground,
-                                    // borderColor: isExpanded ? theme.colors.primary : theme.colors.inputBorder,
-                                    backgroundColor: theme.colors.inputBackground,
-                                    borderColor: theme.colors.inputBorder,
-                                    borderWidth: 1,
-                                    marginBottom: 0,
-                                    borderBottomLeftRadius: isExpanded ? 0 : 8,
-                                    borderBottomRightRadius: isExpanded ? 0 : 8,
-                                }
-                            ]}
-                        >
-                            <MaterialIcons
-                                name={isExpanded ? "keyboard-arrow-up" : "keyboard-arrow-down"}
-                                size={24}
-                                color={theme.colors.hint}
-                            />
-                            <Text style={[styles.label, { flex: 1, marginLeft: 10, fontSize: 15 }]}>
-                                {getLabel(page, 'label', language, schema.languages) || `Page ${parseInt(pageIndex) + 1}`}
+                    field_holder.push(
+                        <View key={`${pageIndex}-${groupIndex}-${colName}`} style={{ marginBottom: 15 }}>
+                            <Text style={[styles.label, { fontSize: 14 }]}>{field.label}</Text>
+                            <Text style={[styles.textInput, { fontSize: 14 }]}>
+                                {parsedFormData[field.name] || 'Not provided'}
                             </Text>
-                        </TouchableOpacity>
-
-                        {/* Collapsible Field Holder */}
-                        {isExpanded && (
-                            <View style={{
-                                padding: 16,
-                                backgroundColor: theme.colors.background,
-                                borderLeftWidth: 1,
-                                borderRightWidth: 1,
-                                borderBottomWidth: 1,
-                                borderColor: theme.colors.inputBorder,
-                                borderBottomLeftRadius: 8,
-                                borderBottomRightRadius: 8,
-                            }}>
-                                {field_holder}
-                            </View>
-                        )}
-                    </View>
-                );
+                        </View>
+                    )
+                }
             }
-        }
 
-        if (group_holder.length > 0) {
+            field_holder.length > 0 &&
+                group_holder.push(
+                    <View key={`${pageIndex}-${groupIndex}`}>
+                        {field_holder}
+                    </View>
+                )
+        }
+        group_holder.length > 0 &&
             page_holder.push(
-                <View key={pageIndex} style={{ marginBottom: 14 }}>
+                <View key={pageIndex} style={[styles.inputBase, { marginBottom: 20 }]}>
+                    <Text style={[styles.textInput, { fontSize: 16, marginBottom: 10 }]}>{page.label}</Text>
                     {group_holder}
                 </View>
-            );
-        }
+            )
     }
 
     return (
-        <View style={{ paddingHorizontal: 16, paddingBottom: 40 }}>
+        <View style={{ paddingHorizontal: 15, paddingTop: 0 }}>
             {page_holder}
-        </View>
-    );
-};
+        </View >
+    )
+}
 
-export default FormDataView;
+export default FormDataView
