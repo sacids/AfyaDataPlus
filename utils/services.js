@@ -1,5 +1,7 @@
+import { Alert } from "react-native";
 import api from "../api/axiosInstance";
-import { insert, select } from "./database";
+import { submitForms } from "../lib/form/submitForms";
+import { insert, insert_into_messages, select } from "./database";
 
 // Helper function to manage status updates
 const updateStatus = (setStatus, newMessage) => {
@@ -99,6 +101,150 @@ export const getForms = async (project_id, setStatus) => {
         clearInterval(activityInterval);
     }
 };
+
+export const getProjfectForms = async (project_id, setStatus) => {
+
+    try {
+        // Initialize status if empty
+        setStatus('Starting sync...');
+
+        // Retrieve local forms
+        setStatus('Retrieving local forms...');
+        const localForms = {};
+        const sql = await select('form_defn', 'project = ?', [project_id]);
+        for (const form of sql) {
+            localForms[form.form_id] = form.version;
+        }
+
+        // Get all forms meta data
+        setStatus('Retrieving metadata...');
+        const metaResponse = await api.post(`api/v1/form-defn-meta/${project_id}`);
+        const metaForms = metaResponse.data;
+
+        if (!Array.isArray(metaForms)) {
+            setStatus('Invalid metadata response');
+            console.warn('Invalid metadata response');
+            return;
+        }
+
+        // Check for updates
+        setStatus('Checking for updates...');
+        for (const remoteForm of metaForms) {
+            const { id, version, short_title } = remoteForm;
+
+            if (!localForms[id] || localForms[id] !== version) {
+                // Download form
+                setStatus(`Downloading form: ${short_title}...`);
+
+                try {
+                    const formResponse = await api.get(`api/v1/form-definition/detail/${id}`);
+                    const form = formResponse.data;
+
+                    if (!form || typeof form !== 'object') {
+                        setStatus(`Invalid form data for: ${short_title}`);
+                        console.warn(`Invalid form data for ID ${id}:`, form);
+                        continue;
+                    }
+
+                    // Save form to database
+                    await insert('form_defn', { ...form, project: project_id, form_id: id });
+                    setStatus(`Downloaded: ${short_title} (v${version})`);
+                } catch (error) {
+                    setStatus(`Failed to download: ${short_title}`);
+                    console.error(`Error downloading form ${id}:`, error);
+                }
+            } else {
+                setStatus(`Up to date: ${short_title} (v${version})`);
+            }
+        }
+
+        setStatus('Sync completed successfully!');
+    } catch (error) {
+        setStatus('Sync failed - ' + error);
+        console.error('Error getting forms:', error);
+    } finally {
+        // Clear activity indicator
+        clearInterval(activityInterval);
+    }
+};
+
+export const submitProjectData = async (project_id, setStatus) => {
+
+
+    try {
+        const finalizedData = await select('form_data', 'project = ? AND status = ?', [project_id, 'finalized']);
+
+        if (finalizedData && finalizedData.length > 0) {
+            // If there are finalized forms, submit them
+            await submitForms(finalizedData);
+        } else {
+            // If no finalized forms, show alert
+            Alert.alert(
+                'Nothing to Submit',
+                'There are no finalized forms to submit for this project.',
+                [{ text: 'OK' }]
+            );
+        }
+    } catch (error) {
+        // Handle any errors
+        console.error('Error submitting forms:', error);
+        Alert.alert(
+            'Submission Failed',
+            'An error occurred while submitting forms. Please try again.',
+            [{ text: 'OK' }]
+        );
+    }
+
+}
+
+
+
+export const syncMessages = async (formData, participants = []) => {
+    try {
+
+        // 1. Ensure Conversation exists on Backend
+        console.log('api chat', {
+            title: formData.title || `Chat for ${formData.uuid}`,
+            form: formData.form, // ensure this matches backend expected ID
+            instance: formData.original_uuid,
+            participants: participants
+        })
+
+        const convResponse = await api.post('api/v1/chat/conversations', {
+            title: formData.title || `Chat for ${formData.uuid}`,
+            form: formData.form, // ensure this matches backend expected ID
+            instance: formData.original_uuid,
+            participants: participants
+        });
+
+        console.log('conv', convResponse)
+        const conversation = convResponse.data.data;
+
+        console.log(`api/v1/chat/conversations/${conversation.id}/messages`)
+        // 2. Fetch remote messages
+        const msgResponse = await api.get(`api/v1/chat/conversations/${conversation.id}/messages`);
+
+        // 3. Save to local SQLite
+        for (const msg of msgResponse.data) {
+            await insert_into_messages({
+                remote_id: msg.id,
+                local_id: msg.external_id,
+                conversation_id: conversation.id,
+                formDataUUID: formData.original_uuid,
+                text: msg.text,
+                sender_id: msg.sender.id,
+                sender_name: msg.sender.username,
+                sync_status: 'synced',
+                created_at: msg.created_at
+            });
+        }
+        return conversation.id;
+    } catch (error) {
+        console.error("Sync failed, using offline mode", error);
+        return null;
+    }
+};
+
 
 export const postData = async (endpoint, data = {}, headers = {}) => {
     try {

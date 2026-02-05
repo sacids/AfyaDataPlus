@@ -1,7 +1,8 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScreenWrapper } from '../../components/layout/ScreenWrapper';
 import { getStyles } from '../../constants/styles';
 import { useTheme } from '../../context/ThemeContext';
 import { evaluateCustomFunctions, replaceVariables } from '../../lib/form/validation';
@@ -9,14 +10,11 @@ import { useAuthStore } from '../../store/authStore';
 import { useFormStore } from '../../store/FormStore';
 import { insert } from '../../utils/database';
 
-
 const SavePage = () => {
-
-
     const theme = useTheme();
     const styles = getStyles(theme);
 
-    const [title, setTitle] = useState(null);
+    const [title, setTitle] = useState('');
     const { user } = useAuthStore();
 
     const {
@@ -27,7 +25,6 @@ const SavePage = () => {
     } = useFormStore();
 
     const saveForm = async (status) => {
-        //console.log("Saving form");
         try {
             await insert("form_data", {
                 form: schema.form,
@@ -35,7 +32,7 @@ const SavePage = () => {
                 uuid: formUUID,
                 parent_uuid: parentUUID,
                 original_uuid: formUUID,
-                title: title,
+                title: title || "Untitled Record",
                 created_by: user?.id,
                 created_by_name: user?.fullName ?? user?.id,
                 created_on: new Date().toISOString(),
@@ -44,51 +41,114 @@ const SavePage = () => {
                 deleted: 0,
                 synced: 0,
                 form_data: JSON.stringify(formData),
-            })
-            router.dismissTo('/Main')
+            });
+            router.dismissTo('/Main');
         } catch (e) {
-            console.log(e)
+            console.error(e);
         }
-    }
+    };
 
     useEffect(() => {
-        const instance_name = schema.meta.instance_name
-        const tt1 = replaceVariables(instance_name, formData)
-        const tt = evaluateCustomFunctions(tt1, formData)
-        setTitle(tt)
+        const instance_name = schema?.meta?.instance_name;
+        if (instance_name) {
+            const tt1 = replaceVariables(instance_name, formData);
+            const tt = evaluateCustomFunctions(tt1, formData);
+            setTitle(tt);
+        }
     }, []);
 
-
     return (
-        <KeyboardAvoidingView style={styles.pageContainer}>
-            <View style={{ flex: 1, padding: 10, justifyContent: 'center', paddingVertical: 20, }}>
+        <ScreenWrapper withStepPadding={false}>
 
-                <View style={{}}>
-                    <Text style={{ fontWeight: "bold", fontSize: 20, paddingBottom: 20, color: theme.colors.text }}>
-                        You are at the end of
-                    </Text>
-                    <TextInput
-                        multiline={false}
-                        style={[styles.inputBase, styles.textInput]}
-                        value={title ? title : "Untitled Form"}
-                        onChangeText={(e) => { setTitle(e) }}
-                    />
-                    <View style={{ flexDirection: "row", backgroundColor: "#bde1f2", borderRadius: 10, padding: 15, fontSize: 16 }}>
-                        <MaterialCommunityIcons name="information-outline" size={24} color="black" />
-                        <Text style={{ paddingHorizontal: 10 }}>Once the message is sent, you will not have the option to make edits. To make changes, `Save as Draft` until you are prepared to send it.</Text>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={{ flex: 1 }}
+            >
+                <ScrollView contentContainerStyle={styles.scrollContent}>
+
+                    {/* Header Icon Section */}
+                    <View style={{ alignItems: 'center', marginVertical: 20 }}>
+                        <View style={{
+                            backgroundColor: theme.colors.primary + '15',
+                            padding: 20,
+                            borderRadius: 50
+                        }}>
+                            <MaterialCommunityIcons
+                                name="content-save-check-outline"
+                                size={50}
+                                color={theme.colors.primary}
+                            />
+                        </View>
+                        <Text style={[styles.pageTitle, { marginTop: 15, fontSize: 22 }]}>
+                            Finish Record
+                        </Text>
+                        <Text style={styles.hint}>Give your record a recognizable name</Text>
                     </View>
-                </View>
-                <View style={{ flexDirection: "row", marginTop: 30, justifyContent: "space-around" }}>
-                    <TouchableOpacity onPress={() => saveForm('draft')} style={[styles.button, { backgroundColor: "white" }]} >
-                        <Text style={{ color: "black", fontSize: 18 }}>Save as Draft</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => saveForm('finalized')} style={[styles.button, { backgroundColor: "maroon" }]} >
-                        <Text style={{ color: "white", fontSize: 18 }}>Finalize Form</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
-        </KeyboardAvoidingView>
-    )
-}
 
-export default SavePage
+                    {/* Title Input Card */}
+                    <View style={styles.container}>
+                        <Text style={[styles.label, { marginBottom: 8 }]}>Record Title</Text>
+                        <TextInput
+                            placeholder="Enter record title..."
+                            style={[styles.inputBase, { fontSize: 18, fontWeight: '600', color: theme.colors.text }]}
+                            value={title}
+                            onChangeText={setTitle}
+                        />
+                    </View>
+
+                    {/* Informational Alert Box */}
+                    <View style={{
+                        flexDirection: 'row',
+                        backgroundColor: '#e3f2fd',
+                        padding: 16,
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: '#bbdefb'
+                    }}>
+                        <MaterialIcons name="info" size={24} color="#1976d2" />
+                        <Text style={{
+                            flex: 1,
+                            marginLeft: 12,
+                            color: '#1976d2',
+                            fontSize: 13,
+                            lineHeight: 18,
+                            fontWeight: '500'
+                        }}>
+                            Finalizing marks this record as complete. You can `Save as Draft` if you plan to edit this information later.
+                        </Text>
+                    </View>
+
+                    {/* Action Buttons */}
+                    <View style={{ marginTop: 40, gap: 12 }}>
+                        <TouchableOpacity
+                            onPress={() => saveForm('finalized')}
+                            style={[styles.button, { backgroundColor: theme.colors.primary, height: 55 }]}
+                        >
+                            <MaterialIcons name="assignment-turned-in" size={20} color="white" />
+                            <Text style={styles.buttonText}>Finalize Record</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            onPress={() => saveForm('draft')}
+                            style={[
+                                styles.button,
+                                {
+                                    backgroundColor: 'transparent',
+                                    borderWidth: 1.5,
+                                    borderColor: theme.colors.inputBorder,
+                                    height: 55
+                                }
+                            ]}
+                        >
+                            <MaterialIcons name="edit-note" size={20} color={theme.colors.text} />
+                            <Text style={[styles.buttonText, { color: theme.colors.text }]}>Save as Draft</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                </ScrollView>
+            </KeyboardAvoidingView>
+        </ScreenWrapper>
+    );
+};
+
+export default SavePage;

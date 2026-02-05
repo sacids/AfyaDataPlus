@@ -15,7 +15,8 @@ export const useFormStore = create((set, get) => ({
 
   //setSchema: (schema) => set({ schema, formData: {}, errors: {}, currentPage: 0, formUUID: randomUUID() }),
   setSchema: (schema, formData = null, formUUID = null, parentUUID = null) => set(() => {
-    //console.log('setSchema called:', { schema, formUUID });
+
+    console.log('setSchema called:', { schema, formUUID });
     return {
       schema,
       formData: formData !== null ? formData : {},
@@ -44,14 +45,15 @@ export const useFormStore = create((set, get) => ({
       errors: { ...state.errors, [name]: '' },
     })),
   validateAndNavigate: (direction) => {
-    const { schema, currentPage, formData } = get();
+    const { schema, currentPage, formData, language } = get();
     if (!schema) return false;
 
     set({ formDirection: direction });
 
     if (direction === 'next') {
       const currentPageSchema = schema.pages[currentPage];
-      const { isValid, errors } = validatePage(currentPageSchema, formData);
+      const langList = schema?.language || ['::Default'];
+      const { isValid, errors } = validatePage(currentPageSchema, formData, language, langList);
       if (!isValid) {
         set({ errors });
         return false;

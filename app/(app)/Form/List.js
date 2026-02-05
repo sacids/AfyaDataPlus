@@ -1,7 +1,9 @@
-import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, FlatList, Text, TouchableOpacity, View } from 'react-native';
+import { AppHeader } from '../../../components/layout/AppHeader';
+import { ScreenWrapper } from '../../../components/layout/ScreenWrapper';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
 import useProjectStore from '../../../store/projectStore';
@@ -48,18 +50,20 @@ const ListEmptyForms = () => {
     const renderItem = ({ item }) => {
         return (
             <TouchableOpacity onPress={() => router.push(`/Form/New?fdefn_id=${item.id}`)}>
-                <View style={styles.card}>
+                <View style={[styles.card, { flexDirection: 'row', alignContent: 'center', alignItems: 'center' }]}>
                     <View style={{ flex: 1, marginRight: 10 }}>
                         <Text style={styles.title}>{item.title}</Text>
 
-                        <Text
-                            numberOfLines={2}
-                            ellipsizeMode="tail"
-                            style={[styles.metaText, { fontSize: 12 }]}>
-                            {item.description}
-                        </Text>
+                        {item.description && (
+                            <Text
+                                numberOfLines={2}
+                                ellipsizeMode="tail"
+                                style={[styles.tiny, { fontSize: 12 }]}>
+                                {item.description}
+                            </Text>
+                        )}
 
-                        <Text style={styles.metaText}>VERSION: {item.version}</Text>
+                        <Text style={styles.tiny}>VERSION: {item.version}</Text>
                     </View>
 
                     <MaterialIcons
@@ -81,40 +85,24 @@ const ListEmptyForms = () => {
 
 
     return (
-        <View style={styles.pageContainer}>
 
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15, paddingTop: 40, paddingBottom: 10 }}>
+        <ScreenWrapper>
+            <AppHeader
+                title={"Project Forms"}
+                searchEnabled={false}
+            />
 
-                <View>
-                    <TouchableOpacity
-                        style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}
-                        onPress={() => router.back()}
-                    >
-                        <MaterialCommunityIcons name={'arrow-left'} size={24} color={theme.colors.text} />
-
-                        <Text style={styles.pageTitle}>Project Forms</Text>
-                    </TouchableOpacity>
-                </View>
-                <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <TouchableOpacity onPress={() => alert('Filter not implemented')}>
-                        <MaterialIcons name={'search'} size={24} color={theme.colors.text} />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => alert('Filter not implemented')}>
-                        <MaterialCommunityIcons name="dots-vertical" size={24} color={theme.colors.text} />
-                    </TouchableOpacity>
-                </View>
-            </View>
 
             <FlatList
                 data={filteredData}
                 renderItem={renderItem}
                 keyExtractor={(item) => item.id.toString()}
                 scrollEventThrottle={16}
-                contentContainerStyle={styles.flatListContent}
+                contentContainerStyle={styles.scrollContent}
                 style={styles.flatList}
                 ListEmptyComponent={<Text style={{ padding: 20 }}>No data available</Text>}
             />
-        </View>
+        </ScreenWrapper>
     )
 }
 

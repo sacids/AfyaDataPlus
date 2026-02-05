@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
 import { getStyles } from '../../constants/styles';
 import { useTheme } from '../../context/ThemeContext';
 import { getLabel } from '../../lib/form/utils';
@@ -134,55 +134,58 @@ const FormPage = ({ pageIndex }) => {
 
 
   return (
-    <ScrollView
-      style={styles.pageContainer}
-      contentContainerStyle={styles.scrollContent}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1 }}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 40}
     >
-      {hasVisibleFields && (
-        <>
-          {label && <Text style={styles.pageTitle}>{label}</Text>}
-          {hint && <Text style={styles.hint}>{hint}</Text>}
-        </>
-      )}
-      <View>
-        {page.fields.flatMap((fieldGroup, groupIndex) =>
-          Object.entries(fieldGroup).map(([colName, field]) => {
-            if (field.type === 'calculate') {
-              return null
-            };
-
-            //console.log(JSON.stringify(field, null,3))
-
-            const Component = elementComponents[field.type];
-            if (!Component) {
-              return (
-                <Text
-                  key={`unsupported-${groupIndex}-${colName}`}
-                  style={styles.errorText}
-                >
-                  Unsupported element: {field.type}
-                </Text>
-              );
-            }
-
-            const isRelevant = field.relevant
-              ? evaluateField('relevant', field, formData)
-              : true;
-
-            //if (field.relevant) console.log('field detail', field.name, field.type, field.relevant, isRelevant, JSON.stringify(formData, null, 4))
-            if (!isRelevant) return null;
-
-            return (
-              <Component
-                key={field.name}
-                element={field}
-                value={formData[field.name] || null}
-              />
-            );
-          })
+      <ScrollView contentContainerStyle={[styles.scrollContent]}>
+        {hasVisibleFields && (
+          <>
+            {label && <Text style={styles.pageTitle}>{label}</Text>}
+            {hint && <Text style={styles.hint}>{hint}</Text>}
+          </>
         )}
-      </View>
-    </ScrollView>
+        <View>
+          {page.fields.flatMap((fieldGroup, groupIndex) =>
+            Object.entries(fieldGroup).map(([colName, field]) => {
+              if (field.type === 'calculate') {
+                return null
+              };
+
+              //console.log(JSON.stringify(field, null,3))
+
+              const Component = elementComponents[field.type];
+              if (!Component) {
+                return (
+                  <Text
+                    key={`unsupported-${groupIndex}-${colName}`}
+                    style={styles.errorText}
+                  >
+                    Unsupported element: {field.type}
+                  </Text>
+                );
+              }
+
+              const isRelevant = field.relevant
+                ? evaluateField('relevant', field, formData)
+                : true;
+
+              //if (field.relevant) console.log('field detail', field.name, field.type, field.relevant, isRelevant, JSON.stringify(formData, null, 4))
+              if (!isRelevant) return null;
+
+              return (
+                <Component
+                  key={field.name}
+                  element={field}
+                  value={formData[field.name] || null}
+                />
+              );
+            })
+          )}
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 

@@ -27,6 +27,7 @@ export const AuthProvider = ({ children }) => {
         const loadStoredAuth = async () => {
             try {
                 const storedData = await SecureStore.getItemAsync(TOKEN_KEY);
+                //console.log('stored data', JSON.stringify(storedData, null, 2))
                 if (storedData) {
                     const parsed = JSON.parse(storedData);
                     setAuthState(parsed);
@@ -61,6 +62,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     const login = async (username, password) => {
+        console.log('credentials', username, password)
         const user_key = replaceSpecialChars(username);
 
         if (!netInfo.isConnected) {
@@ -77,7 +79,7 @@ export const AuthProvider = ({ children }) => {
 
         try {
             // Use the 'api' instance instead of raw axios
-            const result = await api.post(`${config.BASE_URL}auth/login/`, {
+            const result = await api.post(`${config.BASE_URL}/api/v1/token/`, {
                 username_or_email: username,
                 password: password,
             });
@@ -115,7 +117,7 @@ export const AuthProvider = ({ children }) => {
         onLogin: login,
         onLogout: logout,
         autoLogin: attemptAutoLogin,
-        setAuthState, 
+        setAuthState,
         authState,
     };
 

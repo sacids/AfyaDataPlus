@@ -35,16 +35,16 @@ api.interceptors.response.use(
 
     try {
       console.log('Token expired. Attempting device auto-login...');
-      
+
       const username = getDeviceId();
       const password = await generatePassword(username);
-      
+
       // Request new tokens using device credentials
       const loginResponse = await axios.post(`${config.BASE_URL}/api/v1/token/`, {
         username,
         password,
       });
-      
+
       const { access, refresh, user } = loginResponse.data;
 
       // Update SecureStore (Shared with AuthContext)

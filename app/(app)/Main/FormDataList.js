@@ -16,7 +16,7 @@ import {
 
 import FormDataHeader from '../../../components/FormDataHeader';
 import FormDataItem from '../../../components/FormDataItem';
-import { getFormData, select, update } from '../../../utils/database';
+import { getFormData, update } from '../../../utils/database';
 
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -56,10 +56,9 @@ export default function FormDataList() {
     try {
       let results = []
       if (currentData) {
-        results = await select('form_data', 'parent_uuid = ?', currentData.original_uuid)
+        results = await getFormData(currentProject?.project, currentData.original_uuid);
       } else {
-
-        results = await getFormData(currentProject?.project);
+        results = await getFormData(currentProject?.project, false);
       }
 
       setData(results);
@@ -139,7 +138,7 @@ export default function FormDataList() {
   const doSubmit = async (data = []) => {
 
 
-    await submitForms(data);
+    await submitForms([data]);
 
     await fetchData();
     clearSelections();
@@ -169,19 +168,13 @@ export default function FormDataList() {
 
   const actOnData = (item) => {
 
-    if (item.status.toLowerCase() === 'finalized') {
-      doSubmit([item]);
-    } else if (item.status.toLowerCase() === 'sent') {
-
+    if (item.status.toLowerCase() === 'draft') {
+      router.push('/Form/New?fdata_id=' + item.id);
+    } else {
       //console.log('sending to Main', item.id, item.form)
       setCurrentData(item)
       router.push(`/Main/`);
-    } else {
-      // draft thus edit the form
-      router.push('/Form/New?fdata_id=' + item.id);
-
     }
-
   };
 
   const renderItem = ({ item }) => (
@@ -190,7 +183,7 @@ export default function FormDataList() {
       isSelected={selectedIds.includes(item.id)}
       toggleSelection={toggleSelection}
       onPress={() => actOnData(item)}
-      onLongPress={() => toggleSelection(item.id)}
+      onLongPress={() => doSubmit(item)}
       onAction={confirmAndHandleAction}
       onSwipeChange={(isSwiped) => handleSwipeChange(item.id, isSwiped)}
       setResetSwipe={(resetFn) => (resetSwipeRef.current = resetFn)}
@@ -368,7 +361,7 @@ export default function FormDataList() {
       )}
 
 
-      <View style={{ flex: 1 }}>
+      <View style={[{ flex: 1 }]}>
         {showFormStatus ? (
           <ScrollView style={{ padding: 15 }}>
             <Text style={[{ paddingVertical: 10, color: theme.colors.secText }]}>{getFormStatus}</Text>

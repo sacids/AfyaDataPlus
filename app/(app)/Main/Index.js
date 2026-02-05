@@ -1,32 +1,56 @@
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { FlatList, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FormDataView from '../../../components/form/FormDataView';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
-import { select } from '../../../utils/database';
+import { select, update } from '../../../utils/database';
 
+import { useFormStore } from '../../../store/FormStore';
 // Import components and styles from List.js
-import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, MaterialIcons, Octicons } from '@expo/vector-icons';
 import { ScrollView } from 'react-native-gesture-handler';
+import api from '../../../api/axiosInstance';
+import { AppHeader } from '../../../components/layout/AppHeader';
+import { ScreenWrapper } from '../../../components/layout/ScreenWrapper';
 import useProjectStore from '../../../store/projectStore';
+import { getProjfectForms, submitProjectData } from '../../../utils/services';
 
 export default function FormDataOrProjectListScreen() {
     const [formData, setFormData] = useState(null);
     const [breadCrumb, setBreadCrumb] = useState([]);
     const [formDefn, setFormDefn] = useState(null);
     const [projects, setProjects] = useState([]);
+    const [curProjectStats, setCurrentProjetStats] = useState({});
     const [loading, setLoading] = useState(true);
+
+    const [formSyncStatus, setFormSyncStatus] = useState('Current Available Forms');
+    const [dataSyncStatus, setDataSyncStatus] = useState('Current Project Form Stats');
+
     const [mode, setMode] = useState(null); // 'formDetail' or 'projectList'
+    const [formDefns, setFormDefns] = useState([]);
     const [previousId, setPreviousId] = useState(null);
+    const [menuVisible, setMenuVisible] = useState(false);
     const opacitySteps = [0.2, 0.15, 0.1, 0.07, 0.05];
     const router = useRouter();
     const { currentProject, setCurrentProject, currentData, setCurrentData } = useProjectStore();
 
+    const { language, setLanguage, schema, } = useFormStore();
+
     const theme = useTheme();
     const styles = getStyles(theme);
     const insets = useSafeAreaInsets();
+
+    //console.log('formDefn', JSON.stringify(formDefn?.languages, null, 5))
+
+
+    const handleOutsidePress = () => {
+        if (menuVisible) {
+            setMenuVisible(false);
+        }
+    };
+
 
     // Use useFocusEffect to reload when screen comes into focus
     useFocusEffect(
@@ -42,6 +66,12 @@ export default function FormDataOrProjectListScreen() {
                 getFormDataBreadcrumbs(currentData);
                 setMode('formDetail');
                 fetchFormData();
+            } else if (currentProject) {
+                console.log('current project')
+                setMode('projectDetail');
+                getProjectFormDefinitions(currentProject.project);
+                getProjectStats(currentProject.project);
+                loadProjectsWithStats();
             } else {
                 setMode('projectList');
                 loadProjectsWithStats();
@@ -58,7 +88,7 @@ export default function FormDataOrProjectListScreen() {
 
     // Also use useEffect for initial load
     useEffect(() => {
-        if (currentData !== previousId) {
+        if (currentData) {
             setFormData(null);
             setFormDefn(null);
             setLoading(true);
@@ -75,6 +105,14 @@ export default function FormDataOrProjectListScreen() {
 
             setPreviousId(currentData);
             setLoading(false);
+        } else if (currentProject) {
+            setMode('projectDetail');
+            getProjectFormDefinitions(currentProject.project);
+            getProjectStats(currentProject.project);
+            loadProjectsWithStats();
+        } else {
+            setMode('projectList');
+            loadProjectsWithStats();
         }
     }, [currentData, previousId]);
 
@@ -104,7 +142,47 @@ export default function FormDataOrProjectListScreen() {
         }
     };
 
+    const getProjectFormDefinitions = async (project_uuid) => {
+        try {
+
+            const result = await select('form_defn', 'project = ?', [project_uuid], "*", " is_root DESC ")
+            setFormDefns(result);
+        } catch (error) {
+            console.error('Error fetching project form definitions:', error);
+            setFormDefns([]);
+        }
+    };
+
+
+    const getProjectStats = async (project_uuid) => {
+        try {
+            const select_str = `
+                COUNT(*) as total,
+                SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END) as drafts,
+                SUM(CASE WHEN status = 'finalized' THEN 1 ELSE 0 END) as finalized,
+                SUM(CASE WHEN status = 'submitted' OR status = 'sent' THEN 1 ELSE 0 END) as sent,
+                SUM(CASE WHEN status = 'archived' THEN 1 ELSE 0 END) as archived`;
+
+            const result = await select('form_data', 'project = ?', [project_uuid], select_str)
+
+            const stats = {
+                total: result[0].total || 0,
+                drafts: result[0].drafts || 0,
+                finalized: result[0].finalized || 0,
+                sent: result[0].sent || 0,
+                archived: result[0].archived || 0
+            };
+
+            setCurrentProjetStats(stats)
+        } catch (error) {
+            console.error('Error fetching project stats:', error);
+            const stats = { total: 0, drafts: 0, finalized: 0, sent: 0, archived: 0 };
+            setCurrentProjetStats(stats)
+        }
+    };
+
     const loadProjectsWithStats = async () => {
+
         try {
             // Load all active projects
             const projects = await select('projects', 'active = 1 ORDER BY sort_order');
@@ -153,143 +231,40 @@ export default function FormDataOrProjectListScreen() {
     const handleProjectPress = (project) => {
         setCurrentData(null)
         setCurrentProject(project);
+        setMode('projectDetail');
+        getProjectFormDefinitions(project.project);
+        getProjectStats(project.project);
+        loadProjectsWithStats();
         router.dismissTo('/Main/');
     };
 
+    const handleUnsubscribe = async (project) => {
+        console.log(project)
+        const response = await api.post('/api/v1/project/unsubscribe', {
+            "code": project.code
+        });
+        console.log(JSON.stringify(response.data, null, 2))
+        const status = response.data;
+        if (status.error) {
+            // failed to unsubscribe
+            update('projects', { active: 0 }, 'id = ?', [project.id])
+            setCurrentData(null)
+            setCurrentProject(null)
+            setProjects([])
+            setMode('projectList');
+            loadProjectsWithStats();
 
-    // Create styles for project list mode
-    const projectListStyles = StyleSheet.create({
-
-        selectedProject: {
-
-            backgroundColor: theme.colors.primary,
-            padding: 15,
-            borderRadius: 10,
-        },
-
-        selectedProjectText: {
-            color: 'white',
-        },
-
-        container: {
-            flex: 1,
-            backgroundColor: theme.colors.background,
-            paddingHorizontal: 15,
-        },
-        header: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            paddingTop: 40,
-            paddingBottom: 15,
-        },
-        headerLeft: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 10,
-        },
-        headerTitle: {
-            fontSize: 18,
-            fontWeight: 'bold',
-            color: theme.colors.text,
-        },
-        currentProject: {
-            color: theme.colors.text,
-            marginBottom: 15,
-            fontSize: 16,
-        },
-        projectCard: {
-            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-            borderRadius: 8,
-            padding: 8,
-            marginBottom: 10,
-            borderColor: theme.colors.inputBorder,
-            borderWidth: 1,
-        },
-        projectHeader: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 10,
-        },
-        projectTitle: {
-            fontSize: 16,
-            fontWeight: 'bold',
-            color: theme.colors.text,
-            flex: 1,
-        },
-        projectMeta: {
-            flexDirection: 'row',
-            gap: 15,
-            marginBottom: 10,
-        },
-        metaText: {
-            color: '#ccc',
-            fontSize: 12,
-        },
-        statsContainer: {
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            gap: 10,
-        },
-        statItem: {
-            backgroundColor: 'rgba(255, 255, 255, 0.2)',
-            borderRadius: 8,
-            paddingHorizontal: 8,
-            paddingVertical: 4,
-            alignItems: 'center',
-            flexDirection: 'row',
-            gap: 2,
-        },
-        statLabel: {
-            color: theme.colors.secText,
-            fontSize: 9,
-        },
-        statValue: {
-            color: theme.colors.text,
-            fontSize: 9,
-            marginHorizontal: 2,
-            fontWeight: 'bold',
-        },
-        listContent: {
-            paddingBottom: 20,
-        },
-        emptyText: {
-            color: theme.colors.text,
-            textAlign: 'center',
-            marginTop: 40,
-        },
-        loadingContainer: {
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-            backgroundColor: theme.colors.background,
-        },
-        loadingText: {
-            color: theme.colors.text,
-        },
-        // New style for form detail header
-        formHeader: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            paddingTop: 40,
-            paddingBottom: 15,
-            paddingHorizontal: 15,
-            backgroundColor: theme.colors.background,
-        },
-        formHeaderLeft: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 10,
-        },
-        formHeaderTitle: {
-            fontSize: 18,
-            fontWeight: 'bold',
-            color: theme.colors.text,
-        },
-    });
-
+        } else {
+            // unsubscribed succesfully
+            update('projects', { active: 0 }, 'id = ?', [project.id])
+            setCurrentData(null)
+            setCurrentProject(null)
+            setProjects([])
+            setMode('projectList');
+            loadProjectsWithStats();
+        }
+        alert(status.message)
+    };
 
     async function getFormDataBreadcrumbs(formDataItem) {
         //console.log('get form data bc', JSON.stringify(formDataItem, null, 2))
@@ -369,46 +344,62 @@ export default function FormDataOrProjectListScreen() {
         setBreadCrumb(orderedBreadcrumbs);
         return orderedBreadcrumbs;
     }
-
+    const rightAction = useMemo(() => [
+        {
+            icon: 'more-vert',
+            onPress: () => setMenuVisible(true),
+        }
+    ], [currentData]); // Only re-create if theme changes
 
 
 
     if (loading) {
         return (
-            <View style={projectListStyles.loadingContainer}>
-                <Text style={projectListStyles.loadingText}>
+            <View style={styles.loadingContainer}>
+                <Text style={styles.loadingText}>
                     {mode === 'formDetail' ? 'Loading form data...' : 'Loading...'}
                 </Text>
             </View>
         );
     }
 
+
+
     // Render Form Detail mode
     if (mode === 'formDetail' && formData && formDefn) {
 
+
         return (
-            <View style={[styles.pageContainer, { paddingBottom: insets.bottom, paddingTop: insets.top }]}>
+            <ScreenWrapper>
 
+                <AppHeader title={currentProject.title} subTitle={currentData?.title} rightActions={rightAction} />
 
-                <View style={styles.header}>
-                    <TouchableOpacity
-                        style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}
-                        onPress={() => router.back()}
-                    >
-                        <MaterialCommunityIcons name={'arrow-left'} size={24} color={theme.colors.text} />
-                        <Text style={styles.pageTitle}>Form Details</Text>
-                    </TouchableOpacity>
-                </View>
+                {menuVisible && (
+                    <TouchableWithoutFeedback onPress={handleOutsidePress}>
+                        <View style={lstyles.overlay}>
+                            <View style={[lstyles.menu, { backgroundColor: theme.colors.background },]}>
+                                <View
+                                    style={{
+                                        ...StyleSheet.absoluteFillObject,
+                                        backgroundColor: theme.isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                                        borderRadius: 6,
+                                    }}
+                                />
+                                <Text style={[styles.label, { paddingVertical: 8, fontSize: 14 }]}>Change Language</Text>
+                                {formDefn?.languages?.map((lang, idx) => (
+                                    <TouchableOpacity key={idx} onPress={() => { setLanguage('::' + lang); setMenuVisible(false) }}>
+                                        <Text style={[styles.label, { paddingVertical: 4, paddingLeft: 5, fontSize: 12 }, { color: language === '::' + lang ? theme.colors.primary : theme.colors.text }]}>- {lang}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+                    </TouchableWithoutFeedback>
+                )}
 
-                <ScrollView>
+                <ScrollView >
                     {breadCrumb && breadCrumb.length > 0 && (
-                        <>
+                        <View style={styles.scrollContent}>
                             {breadCrumb.map((crumb, index) => {
-                                // Pre-defined opacity steps for up to 5 levels of breadcrumbs
-                                const opacitySteps = [0.2, 0.15, 0.1, 0.07, 0.05];
-
-                                // Get opacity for this index, or use the last value if we have more than 5 items
-                                const opacity = opacitySteps[Math.min(index, opacitySteps.length - 1)];
 
                                 // Calculate background color with appropriate opacity
                                 const backgroundColor = theme.isDark
@@ -426,18 +417,27 @@ export default function FormDataOrProjectListScreen() {
                                                 styles.card,
                                                 {
                                                     flexDirection: 'column',
+                                                    marginBottom: 0,
                                                     backgroundColor: backgroundColor,
                                                 }
                                             ]}
                                         >
-                                            <Text style={styles.label}>{crumb.data_title}</Text>
-                                            <Text style={styles.title}>{crumb.defn_title}</Text>
+                                            <View style={[styles.badge, { backgroundColor: theme.colors.primary }]}>
+                                                <Text numberOfLines={1} style={[styles.badgeText, { marginBottom: 4 }]}>
+                                                    {crumb.defn_title}
+                                                </Text>
+                                            </View>
+
+                                            <Text numberOfLines={1} style={[styles.tiny, { fontWeight: '700' }]}>
+                                                {crumb.data_title || 'Untitled Record'}
+                                            </Text>
+
                                         </TouchableOpacity>
                                         <MaterialCommunityIcons name="chevron-down" size={24} color={theme.colors.inputBorder} style={{ marginLeft: 30 }} />
                                     </View>
                                 );
                             })}
-                        </>
+                        </View>
                     )}
 
                     {/* Form Data View */}
@@ -448,7 +448,7 @@ export default function FormDataOrProjectListScreen() {
 
 
                 <TouchableOpacity
-                    style={[styles.fab, styles.fabContent, { backgroundColor: theme.colors.primary }]}
+                    style={[styles.fab]}
                     onPress={() => {
                         setCurrentData(null)
                         router.push(`/Main/`)
@@ -456,77 +456,266 @@ export default function FormDataOrProjectListScreen() {
                 >
                     <MaterialIcons name="home-filled" size={24} color="lightgray" />
                 </TouchableOpacity>
-            </View>
+            </ScreenWrapper>
+        );
+    }
+
+    if (mode === 'projectDetail') {
+        return (
+            <ScreenWrapper>
+                <AppHeader
+                    title={currentProject?.title || "Project Details"}
+                    searchEnabled={false}
+                />
+
+                <ScrollView contentContainerStyle={styles.scrollContent}>
+
+                    {/* 1. PROJECT HEADER CARD */}
+                    <View style={[styles.card, { flexDirection: 'column', paddingVertical: 20 }]}>
+                        <Text style={styles.pageTitle}>{currentProject.title}</Text>
+                        <Text style={[styles.hint, { color: theme.colors.primary, fontWeight: 'bold', marginTop: 4 }]}>
+                            {currentProject.code}
+                        </Text>
+
+                        {currentProject.description && (
+                            <Text style={[styles.bodyText, { marginTop: 12, opacity: 0.7 }]}>
+                                {currentProject.description}
+                            </Text>
+                        )}
+
+                        {currentProject.tags && (
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 15 }}>
+                                {currentProject.tags.split(',').map((tag, i) => (
+                                    <View key={i} style={{ backgroundColor: theme.colors.inputBorder, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 }}>
+                                        <Text style={[styles.tiny, { fontSize: 10 }]}>{tag.trim().toUpperCase()}</Text>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
+                    </View>
+
+                    {/* 2. STATS GRID (EVENLY SPACED) */}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={[styles.sectionTitle, { fontSize: 13, marginBottom: 2, marginTop: 10, opacity: 0.6 }]}>
+                            PROJECT DATA
+                        </Text>
+                        <TouchableOpacity
+                            onPress={() => submitProjectData(currentProject.project, setDataSyncStatus)}>
+                            <MaterialIcons name="send" size={26} color={theme.colors.primary} />
+                        </TouchableOpacity>
+                    </View>
+                    <Text style={[styles.hint, { marginBottom: 10, }]}>{dataSyncStatus}</Text>
+
+
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+                        {[
+                            { label: 'SENT', val: curProjectStats.sent || 0, color: '#2ecc71', icon: 'cloud-done' },
+                            { label: 'FINAL', val: curProjectStats.finalized || 0, color: theme.colors.primary, icon: 'check-circle' },
+                            { label: 'DRAFT', val: curProjectStats.draft || 0, color: '#f1c40f', icon: 'edit' },
+                            { label: 'ARCHIVE', val: curProjectStats.archived || 0, color: '#95a5a6', icon: 'archive' }
+                        ].map((stat, idx) => (
+                            <View key={idx} style={[styles.card, { width: '48%', flexDirection: 'column', alignItems: 'center', paddingVertical: 15 }]}>
+                                <MaterialIcons name={stat.icon} size={20} color={stat.color} />
+                                <Text style={[styles.pageTitle, { fontSize: 20, marginVertical: 4 }]}>{stat.val}</Text>
+                                <Text style={styles.tiny}>{stat.label}</Text>
+                            </View>
+                        ))}
+                    </View>
+
+                    {/* 3. AVAILABLE FORMS LIST */}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={[styles.sectionTitle, { fontSize: 13, marginBottom: 2, marginTop: 10, opacity: 0.6 }]}>
+                            PROJECT FORMS
+                        </Text>
+                        <TouchableOpacity
+                            onPress={() => getProjfectForms(currentProject.project, setFormSyncStatus)}>
+                            <MaterialIcons name="refresh" size={30} color={theme.colors.primary} />
+                        </TouchableOpacity>
+                    </View>
+                    <Text style={[styles.hint, { marginBottom: 10, }]}>{formSyncStatus}</Text>
+
+                    {/* SAFE MAPPING with Optional Chaining and Empty State Check */}
+                    {formDefns && formDefns.length > 0 ? (
+                        formDefns.map((form) => (
+                            <TouchableOpacity
+                                key={form.id}
+                                style={[styles.card, { paddingVertical: 15 }]}
+                                onPress={() => {
+                                    if (form.is_root) {
+                                        router.push(`/Form/New?fdefn_id=${form.id}`)
+                                    }
+                                }}
+                            >
+                                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                                    <MaterialCommunityIcons
+                                        name="file-document-outline"
+                                        size={24}
+                                        color={theme.colors.primary}
+                                    />
+                                    <View style={{ marginLeft: 12, flex: 1 }}>
+                                        <Text style={styles.bodyText}>{form.title}</Text>
+                                        <Text style={styles.tiny}>Version: {form.version}</Text>
+                                    </View>
+                                    {form.is_root ? (
+                                        <MaterialIcons
+                                            name="add"
+                                            size={24}
+                                            color={theme.colors.hint}
+                                        />
+                                    ) : null}
+                                </View>
+                            </TouchableOpacity>
+                        ))
+                    ) : (
+                        <View style={[styles.card, { padding: 30, alignItems: 'center', borderStyle: 'dashed' }]}>
+                            <Text style={styles.hint}>No forms available for this project</Text>
+                        </View>
+                    )}
+
+                    {/* 4. UNSUBSCRIBE ACTION */}
+                    <TouchableOpacity
+                        style={{
+                            marginTop: 20,
+                            marginBottom: 50,
+                            padding: 16,
+                            backgroundColor: theme.colors.error + '15', // Subtle red background
+                            borderRadius: 12,
+                            flexDirection: 'row',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            borderWidth: 1,
+                            borderColor: theme.colors.error + '30'
+                        }}
+                        onPress={() => handleUnsubscribe(currentProject)}
+                    >
+                        <MaterialIcons name="notifications-off" size={20} color={theme.colors.error} />
+                        <Text style={[styles.label, { color: theme.colors.error, marginLeft: 8, marginBottom: 0 }]}>
+                            Unsubscribe from Project
+                        </Text>
+                    </TouchableOpacity>
+
+                </ScrollView>
+
+
+                <TouchableOpacity
+                    style={[styles.fab]}
+                    onPress={() => {
+                        setMode('listProjects')
+                    }}
+                >
+                    <Octicons name="arrow-switch" size={24} color="lightgray" />
+                </TouchableOpacity>
+            </ScreenWrapper >
         );
     }
 
     // Render Project List mode (default)
     return (
-        <View style={[styles.pageContainer, { paddingBottom: insets.bottom, paddingTop: insets.top, paddingHorizontal: 10 }]}>
-            <View style={styles.header}>
-                <TouchableOpacity style={[styles.headerLeft, { flexDirection: 'row' }]} onPress={() => router.back()}>
-                    <MaterialIcons name="keyboard-arrow-left" size={24} color="white" />
-                    <Text style={styles.pageTitle}>My Projects</Text>
-                </TouchableOpacity>
-            </View>
+        <ScreenWrapper>
 
+            <AppHeader
+                title='My Projects'
+                searchEnabled={false}
+            />
 
-
-            {currentProject && (
-                <View style={[projectListStyles.selectedProject, { marginVertical: 10 }]}>
-                    <Text style={projectListStyles.selectedProjectText}>
-                        Current: {currentProject.title} ({currentProject.code})
-                    </Text>
-                </View>
-            )}
-
-
+            <TouchableOpacity
+                onPress={() => router.push('/Project/Join')}
+                style={[styles.button, { justifyContent: 'space-between', margin: 16, paddingHorizontal: 16 }]}>
+                <Text style={[styles.buttonText, { fontWeight: 'bold' }]}>
+                    Join New Project
+                </Text>
+                <MaterialCommunityIcons name="shape-square-rounded-plus" size={26} color='white' />
+            </TouchableOpacity>
 
             <FlatList
                 data={projects}
                 renderItem={({ item }) => (
                     <TouchableOpacity
                         onPress={() => handleProjectPress(item)}
-                        style={projectListStyles.projectCard}
+                        style={styles.card}
                     >
-                        <View style={projectListStyles.projectHeader}>
-                            <Text style={projectListStyles.projectTitle}>{item.title}</Text>
-                            <MaterialIcons name="keyboard-arrow-right" size={24} color="white" />
+                        {/* Header Section */}
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                            <Text style={styles.pageTitle}>{item.title}</Text>
+                            <MaterialIcons name="keyboard-arrow-right" size={24} color={theme.colors.text} />
                         </View>
 
-                        <View style={projectListStyles.projectMeta}>
-                            <Text style={projectListStyles.metaText}>Code: {item.code}</Text>
-                            <Text style={projectListStyles.metaText}>Category: {item.category}</Text>
+                        {/* Meta Info Section */}
+                        <View style={{ marginBottom: 12 }}>
+                            <Text style={styles.hint}>Code: {item.code}</Text>
+                            <Text style={styles.hint}>Category: {item.category}</Text>
                         </View>
 
-                        <View style={projectListStyles.statsContainer}>
-                            <View style={projectListStyles.statItem}>
-                                <Text style={projectListStyles.statValue}>{item.formDefnCount}</Text>
-                                <Text style={projectListStyles.statLabel}>Forms</Text>
+                        {/* Stats Section */}
+                        <View style={{
+                            flexDirection: 'row',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            paddingTop: 10,
+                            borderTopWidth: 0.5,
+                            borderTopColor: theme.colors.inputBorder
+                        }}>
+                            <View style={{ alignItems: 'center' }}>
+                                <Text style={[styles.bodyText, { fontWeight: 'bold' }]}>{item.formDefnCount}</Text>
+                                <Text style={styles.tiny}>Forms</Text>
                             </View>
 
-                            <View style={projectListStyles.statItem}>
-                                <Text style={projectListStyles.statValue}>{item.formDataTotal}</Text>
-                                <Text style={projectListStyles.statLabel}>Total - </Text>
-                                <Text style={projectListStyles.statValue}>{item.formDataDrafts}</Text>
-                                <Text style={projectListStyles.statLabel}>Draft</Text>
-                                <Text style={projectListStyles.statValue}>{item.formDataFinalized}</Text>
-                                <Text style={projectListStyles.statLabel}>Fin</Text>
-                                <Text style={projectListStyles.statValue}>{item.formDataSent}</Text>
-                                <Text style={projectListStyles.statLabel}>Sent</Text>
-                                <Text style={projectListStyles.statValue}>{item.formDataArchived}</Text>
-                                <Text style={projectListStyles.statLabel}>Arch</Text>
+                            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', flex: 1 }}>
+                                <View style={{ alignItems: 'center' }}>
+                                    <Text style={styles.tiny}>Total: {item.formDataTotal}</Text>
+                                </View>
+                                <Text style={styles.tiny}>|</Text>
+                                <Text style={[styles.tiny, { color: '#f1c40f' }]}>Draft: {item.formDataDrafts}</Text>
+                                <Text style={[styles.tiny, { color: '#2ecc71' }]}>Fin: {item.formDataFinalized}</Text>
+                                <Text style={[styles.tiny, { color: theme.colors.primary }]}>Sent: {item.formDataSent}</Text>
                             </View>
                         </View>
                     </TouchableOpacity>
                 )}
                 keyExtractor={(item) => item.id.toString()}
-                contentContainerStyle={projectListStyles.listContent}
+                contentContainerStyle={styles.scrollContent}
                 ListEmptyComponent={
-                    <Text style={projectListStyles.emptyText}>No active projects found</Text>
+                    <Text style={[styles.hint, { textAlign: 'center', marginTop: 20 }]}>
+                        No active projects found
+                    </Text>
                 }
             />
 
-        </View>
+            {/* Standardized FAB */}
+            <TouchableOpacity
+                style={[styles.fab, { backgroundColor: theme.colors.primary }]}
+                onPress={() => {
+                    setCurrentData(null)
+                    router.push(`/Main/`)
+                }}
+            >
+                <MaterialIcons name="home-filled" size={24} color="white" />
+            </TouchableOpacity>
+        </ScreenWrapper>
     );
 }
+
+
+const lstyles = StyleSheet.create({
+
+    overlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'transparent',
+        zIndex: 100,
+        justifyContent: 'flex-start',
+        alignItems: 'flex-end',
+    },
+
+    menu: {
+        marginTop: 80, // slightly more than header height
+        marginRight: 15,
+        borderRadius: 6,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        width: 190,
+        elevation: 5,
+        zIndex: 101,
+    },
+
+
+});

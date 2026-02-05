@@ -16,7 +16,7 @@ import api from '../../../api/axiosInstance';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
 import useProjectStore from '../../../store/projectStore';
-import { insert } from '../../../utils/database';
+import { insert, select } from '../../../utils/database';
 
 const listProjects = async () => {
 
@@ -76,9 +76,11 @@ const JoinProjectScreen = () => {
       if (!result.error) {
         console.log('joining project', JSON.stringify(project, null, 2))
         await insert('projects', project);
+        const joinedProject = await select('projects', 'project = ?', [project.id])
+
         Alert.alert('Joined Successfully', `You have joined ${project.title}`);
-        setCurrentProject(project.id);
-        router.replace('/Main');
+        setCurrentProject(joinedProject);
+        router.dismissTo('/Main');
       } else {
         Alert.alert('Join Failed', result.message || 'Unable to join project');
       }
