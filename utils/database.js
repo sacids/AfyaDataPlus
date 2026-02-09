@@ -33,7 +33,8 @@ let FORM_DEFN_SQL = `CREATE TABLE IF NOT EXISTS form_defn (
   title TEXT NOT NULL, 
   version TEXT DEFAULT 0, 
   short_title TEXT, 
-  code INTEGER, 
+  code INTEGER,
+  icon TEXT,
   form_type TEXT, 
   is_root INTEGER DEFAULT 1,
   form_actions TEXT, 
@@ -565,7 +566,7 @@ export const select = async (tableName, whereClause = '', whereArgs = [], fields
                 : 'deleted = 0';
         }
 
-        const sql = `SELECT ${fields} FROM ${tableName} ${finalWhereClause ? `WHERE ${finalWhereClause}` : ''} ${ order_by ? `ORDER BY ${order_by}` : ''};`;
+        const sql = `SELECT ${fields} FROM ${tableName} ${finalWhereClause ? `WHERE ${finalWhereClause}` : ''} ${order_by ? `ORDER BY ${order_by}` : ''};`;
         //console.log(sql, finalWhereArgs)
         const result = await db.getAllAsync(sql, finalWhereArgs);
         return result;
@@ -584,24 +585,23 @@ export const getFormData = async (project_id, currentData_uuid = false) => {
         let result = [];
         if (currentData_uuid) {
             params = [...params, currentData_uuid]
-            query = `SELECT fd.*, fdef.title AS form_title 
+            query = `SELECT fd.*, is_root, fdef.title AS form_title 
                      FROM form_data fd 
                      JOIN form_defn fdef ON fd.form = CAST(fdef.form_id AS TEXT) 
                      WHERE fd.deleted = ?
                      AND fd.project = ?
                      AND parent_uuid = ?`;
         } else {
-            query = `SELECT fd.*, fdef.title AS form_title 
+            query = `SELECT fd.*, is_root, fdef.title AS form_title 
                      FROM form_data fd 
                      JOIN form_defn fdef ON fd.form = CAST(fdef.form_id AS TEXT) 
                      WHERE fd.deleted = ?
-                     AND fd.project = ?;
+                     AND fd.project = ?
                      AND fdef.is_root = 1`;
+            console.log('query', query)
         }
         result = await db.getAllAsync(query, params);
 
-
-        //console.log('database get form data', query, params, JSON.stringify(result, null, 2));
         return result;
     } catch (error) {
         console.error('Error getting form data:', error);
@@ -711,7 +711,7 @@ export const deleteTableData = async (tableName, whereClause, params = []) => {
 // Insert a record
 export const insert = async (tableName, data) => {
 
-    //console.log('Inserting data:', tableName, data);
+    console.log('Inserting data:', tableName, JSON.stringify(data, null, 8));
 
     try {
         // Fetch local table column names
@@ -753,7 +753,7 @@ export const insert = async (tableName, data) => {
 
         const sql = `INSERT OR REPLACE INTO ${tableName} (${filteredKeys.join(', ')}) VALUES (${placeholders});`;
         const result = await db.runAsync(sql, values);
-        //console.log('Inserting sql:', sql, values, result);
+        console.log('Inserting sql:', result);
         return result;
     } catch (error) {
         console.error('Error inserting data:', error);

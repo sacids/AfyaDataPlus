@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
@@ -19,22 +20,19 @@ import useProjectStore from '../../../store/projectStore';
 import { insert, select } from '../../../utils/database';
 
 const listProjects = async () => {
-
   const response = await api.get('/api/v1/projects');
   return response.data;
-
 };
 
 const joinProject = async (code) => {
-
   const response = await api.post('/api/v1/project/request-access', {
     code
   });
-  //console.log(JSON.stringify(response.data, null, 2))
   return response.data;
 };
 
 const JoinProjectScreen = () => {
+  const { t } = useTranslation();
   const theme = useTheme();
   const styles = getStyles(theme);
   const [projects, setProjects] = useState([]);
@@ -43,18 +41,14 @@ const JoinProjectScreen = () => {
   const insets = useSafeAreaInsets();
 
   const { setCurrentProject } = useProjectStore();
-
   const router = useRouter();
 
   const fetchProjects = async () => {
     try {
       const data = await listProjects();
-      //console.log('data', JSON.stringify(data, null, 2));
       setProjects(data);
     } catch (error) {
       console.error('Error fetching projects:', error);
-      //console.log('Error fetching projects:', error);
-
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -74,25 +68,33 @@ const JoinProjectScreen = () => {
     try {
       const result = await joinProject(project.code);
       if (!result.error) {
-        console.log('joining project', JSON.stringify(project, null, 2))
         await insert('projects', project);
-        const joinedProject = await select('projects', 'project = ?', [project.id])
+        const joinedProject = await select('projects', 'project = ?', [project.id]);
 
-        Alert.alert('Joined Successfully', `You have joined ${project.title}`);
+        Alert.alert(
+          t('projects:joinedSuccessfully'),
+          `${t('projects:joinedSuccessfully')}: ${project.title}`
+        );
         setCurrentProject(joinedProject);
         router.dismissTo('/Main');
       } else {
-        Alert.alert('Join Failed', result.message || 'Unable to join project');
+        Alert.alert(
+          t('projects:joinFailed'),
+          result.message || t('errors:unknown')
+        );
       }
     } catch (err) {
       console.error('Join error:', err);
-      Alert.alert('Error', 'Something went wrong.');
+      Alert.alert(
+        t('errors:errorTitle'),
+        t('errors:unknown')
+      );
     }
   };
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={[styles.pageContainer, { justifyContent: 'center', alignItems: 'center' }]}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
@@ -108,7 +110,7 @@ const JoinProjectScreen = () => {
         borderColor: theme.colors.inputBorder,
         borderWidth: 1,
       }}>
-      <View style={{ flex: 1, }}>
+      <View style={{ flex: 1 }}>
         <Text style={styles.title}>{item.title}</Text>
         <Text style={{ color: theme.colors.secText, marginVertical: 6, fontSize: 10 }}>
           {item.description}
@@ -129,23 +131,46 @@ const JoinProjectScreen = () => {
             </View>
           ))}
         </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+          <MaterialIcons name="code" size={12} color={theme.colors.secText} />
+          <Text style={{ fontSize: 10, color: theme.colors.secText, marginLeft: 4 }}>
+            {t('projects:code')}: {item.code}
+          </Text>
+        </View>
+        {item.category && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+            <MaterialIcons name="category" size={12} color={theme.colors.secText} />
+            <Text style={{ fontSize: 10, color: theme.colors.secText, marginLeft: 4 }}>
+              {t('projects:category')}: {item.category}
+            </Text>
+          </View>
+        )}
       </View>
       <TouchableOpacity style={styles.button} onPress={() => handleJoin(item)}>
-        <Text style={styles.buttonText}>Request to Join</Text>
+        <Text style={styles.buttonText}>{t('projects:requestJoin')}</Text>
       </TouchableOpacity>
     </View>
   );
 
   return (
-    <View style={styles.pageContainer}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15, paddingTop: insets.top + 10, paddingBottom: 10 }}>
-
-        <TouchableOpacity onPress={() => router.back()} style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+    <View style={[styles.pageContainer, { paddingBottom: insets.bottom }]}>
+      <View style={{
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 15,
+        paddingTop: insets.top + 10,
+        paddingBottom: 10
+      }}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}
+        >
           <MaterialCommunityIcons name={'arrow-left'} size={24} color={theme.colors.text} />
-          <Text style={styles.pageTitle}>Available Projects</Text>
+          <Text style={styles.pageTitle}>{t('projects:availableProjects')}</Text>
         </TouchableOpacity>
         <View style={{ flexDirection: 'row', gap: 10 }}>
-          <TouchableOpacity onPress={() => alert('Filter not implemented')}>
+          <TouchableOpacity onPress={() => alert(t('alerts:information'))}>
             <MaterialIcons name={'search'} size={24} color={theme.colors.text} />
           </TouchableOpacity>
         </View>
@@ -155,8 +180,22 @@ const JoinProjectScreen = () => {
         contentContainerStyle={styles.scrollContent}
         data={projects}
         keyExtractor={(item) => item.id.toString()}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[theme.colors.primary]}
+            tintColor={theme.colors.primary}
+          />
+        }
         renderItem={renderItem}
+        ListEmptyComponent={
+          <View style={{ alignItems: 'center', padding: 20 }}>
+            <Text style={{ color: theme.colors.secText, textAlign: 'center' }}>
+              {t('projects:noActiveProjects')}
+            </Text>
+          </View>
+        }
       />
     </View>
   );

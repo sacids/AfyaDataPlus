@@ -13,6 +13,7 @@ import imagePickerField from './elements/ImagePickerField';
 import NoteField from './elements/NoteField';
 import NumberInputField from './elements/NumberInput';
 import SelectMultipleField from './elements/SelectMultiple';
+import SelectMultipleFromFileField from './elements/SelectMultipleFromFile';
 import SelectOneField from './elements/SelectOne';
 import TextInputField from './elements/TextInput';
 import SavePage from './SavePage';
@@ -23,6 +24,7 @@ const elementComponents = {
   decimal: DecimalInput,
   select_one: SelectOneField,
   select_multiple: SelectMultipleField,
+  select_multiple_from_file: SelectMultipleFromFileField,
   number: NumberInputField,
   integer: NumberInputField,
   date: DatePickerField,
