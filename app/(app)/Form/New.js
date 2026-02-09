@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import FormBuilder from '../../../components/form/FormBuilder';
 import { parseSchema } from '../../../lib/form/schemaParser';
@@ -15,10 +16,9 @@ import { evaluateCustomFunctions, replaceVariables } from '../../../lib/form/val
 import { useAuthStore } from '../../../store/authStore';
 import useProjectStore from '../../../store/projectStore';
 
-
-
 const New = () => {
   const { fdefn_id, fdata_id, parent_uuid } = useLocalSearchParams();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [menuVisible, setMenuVisible] = useState(false);
   const { language, setLanguage, schema, setSchema, formData, setFormData, formUUID, setFormUUID, parentUUID, setParentUUID } = useFormStore();
@@ -30,16 +30,11 @@ const New = () => {
   const styles = getStyles(theme);
 
   const saveAsDraft = async () => {
-    // Save the form as a draft
-
-    const instance_name = schema.meta.instance_name
-    const temp = replaceVariables(instance_name, formData)
-    const title = evaluateCustomFunctions(temp, formData)
+    const instance_name = schema.meta.instance_name;
+    const temp = replaceVariables(instance_name, formData);
+    const title = evaluateCustomFunctions(temp, formData);
 
     try {
-
-      //console.log("Saving form", formUUID);
-
       await insert("form_data", {
         form: schema.form,
         project: schema.project,
@@ -49,25 +44,27 @@ const New = () => {
         created_by: user.id,
         created_by_name: user.fullName ?? user.id,
         created_on: new Date().toISOString(),
-        status: 'draft',
+        status: t('status:draft').toLowerCase(),
         status_date: new Date().toISOString(),
         deleted: 0,
         synced: 0,
         form_data: JSON.stringify(formData),
-      })
-      router.dismissTo('/Main')
+      });
+      router.dismissTo('/Main');
     } catch (e) {
-      console.log(e)
+      console.log(e);
+      Alert.alert(
+        t('errors:errorTitle'),
+        t('errors:failedSave')
+      );
     }
   };
-
 
   const handleOutsidePress = () => {
     if (menuVisible) {
       setMenuVisible(false);
     }
   };
-
 
   useEffect(() => {
     async function loadForm() {
@@ -78,7 +75,6 @@ const New = () => {
 
           const FD = JSON.parse(FormDataItem[0].form_data);
           const FUUID = FormDataItem[0].uuid;
-          //console.log('old uuid', FUUID)
           setFormUUID(FUUID);
           setFormData(FD);
 
@@ -88,7 +84,7 @@ const New = () => {
           if (parsedSchema.meta.default_language) {
             setLanguage('::' + parsedSchema.meta.default_language);
           } else {
-            setLanguage('::Default');
+            setLanguage('::' + t('forms:defaultLanguage'));
           }
           return;
         }
@@ -96,45 +92,47 @@ const New = () => {
           const FormDefn = await select('form_defn', 'id = ?', fdefn_id);
           const parsedSchema = parseSchema(FormDefn[0]);
 
-          //console.log('parsed schema', JSON.stringify(parsedSchema, null, 6))
-
           setSchema(parsedSchema);
 
           if (currentData) {
-            //console.log('setting parent uuid to ', currentData.uuid)
-            setParentUUID(currentData.uuid)
+            setParentUUID(currentData.uuid);
           }
           if (parsedSchema.meta.default_language) {
             setLanguage('::' + parsedSchema.meta.default_language);
           } else {
-            setLanguage('::Default');
+            setLanguage('::' + t('forms:defaultLanguage'));
           }
           return;
         }
 
       } catch (error) {
-        //console.error('Error loading form:', error);
-        Alert.alert('Error', 'Failed to load form: ' + error.message);
+        console.error('Error loading form:', error);
+        Alert.alert(
+          t('errors:errorTitle'),
+          t('errors:failedLoad') + ': ' + error.message
+        );
       } finally {
         setLoading(false);
       }
     }
 
     loadForm();
-  }, [fdata_id, fdefn_id, setFormData, setFormUUID, setLanguage, setSchema]);
+  }, [fdata_id, fdefn_id, setFormData, setFormUUID, setLanguage, setSchema, t]);
 
   if (loading) {
     return (
-      <View style={[styles.pageContainer, { marginBottom: insets.bottom, }]}>
-        <ActivityIndicator size="large" color="white" />
+      <View style={[styles.pageContainer, { marginBottom: insets.bottom }]}>
+        <ActivityIndicator size="large" color={theme.colors.text} />
       </View>
     );
   }
 
   if (!schema) {
     return (
-      <View style={[styles.pageContainer, { paddingBottom: insets.bottom, }]}>
-        <Text style={styles.errorText}>Error: Form schema not loaded</Text>
+      <View style={[styles.pageContainer, { paddingBottom: insets.bottom }]}>
+        <Text style={styles.errorText}>
+          {t('errors:errorTitle')}: {t('errors:schemaNotLoaded')}
+        </Text>
       </View>
     );
   }
@@ -158,7 +156,7 @@ const New = () => {
       {menuVisible && (
         <TouchableWithoutFeedback onPress={handleOutsidePress}>
           <View style={lstyles.overlay}>
-            <View style={[lstyles.menu, { backgroundColor: theme.colors.background },]}>
+            <View style={[lstyles.menu, { backgroundColor: theme.colors.background }]}>
               <View
                 style={{
                   ...StyleSheet.absoluteFillObject,
@@ -166,11 +164,29 @@ const New = () => {
                   borderRadius: 6,
                 }}
               />
-              <TouchableOpacity onPress={() => saveAsDraft()}><Text style={[styles.label, { paddingVertical: 8, fontSize: 14 }]}>Save Draft</Text></TouchableOpacity>
-              <Text style={[styles.label, { paddingVertical: 8, fontSize: 14 }]}>Change Language</Text>
+              <TouchableOpacity onPress={() => saveAsDraft()}>
+                <Text style={[styles.label, { paddingVertical: 8, fontSize: 14 }]}>
+                  {t('forms:saveAsDraft')}
+                </Text>
+              </TouchableOpacity>
+              <Text style={[styles.label, { paddingVertical: 8, fontSize: 14 }]}>
+                {t('forms:changeLanguage')}
+              </Text>
               {schema.language.map((lang, idx) => (
-                <TouchableOpacity key={idx} onPress={() => { setLanguage('::' + lang); setMenuVisible(false) }}>
-                  <Text style={[styles.label, { paddingVertical: 4, paddingLeft: 5, fontSize: 12 }, { color: language === '::' + lang ? theme.colors.primary : theme.colors.text }]}>- {lang}</Text>
+                <TouchableOpacity
+                  key={idx}
+                  onPress={() => {
+                    setLanguage('::' + lang);
+                    setMenuVisible(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.label,
+                    { paddingVertical: 4, paddingLeft: 5, fontSize: 12 },
+                    { color: language === '::' + lang ? theme.colors.primary : theme.colors.text }
+                  ]}>
+                    - {lang}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -191,9 +207,7 @@ const New = () => {
 
 export default New;
 
-
 const lstyles = StyleSheet.create({
-
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'transparent',
@@ -201,9 +215,8 @@ const lstyles = StyleSheet.create({
     justifyContent: 'flex-start',
     alignItems: 'flex-end',
   },
-
   menu: {
-    marginTop: 80, // slightly more than header height
+    marginTop: 80,
     marginRight: 15,
     borderRadius: 6,
     paddingVertical: 8,
@@ -212,6 +225,4 @@ const lstyles = StyleSheet.create({
     elevation: 5,
     zIndex: 101,
   },
-
-
 });

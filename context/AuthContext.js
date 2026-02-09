@@ -27,7 +27,7 @@ export const AuthProvider = ({ children }) => {
         const loadStoredAuth = async () => {
             try {
                 const storedData = await SecureStore.getItemAsync(TOKEN_KEY);
-                //console.log('stored data', JSON.stringify(storedData, null, 2))
+                //console.log('stored data', JSON.stringify(JSON.parse(storedData), null, 2))
                 if (storedData) {
                     const parsed = JSON.parse(storedData);
                     setAuthState(parsed);

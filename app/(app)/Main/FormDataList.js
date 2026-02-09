@@ -1,6 +1,7 @@
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Alert,
   FlatList,
@@ -9,20 +10,16 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View
 } from 'react-native';
-
 
 import FormDataHeader from '../../../components/FormDataHeader';
 import FormDataItem from '../../../components/FormDataItem';
 import { getFormData, update } from '../../../utils/database';
 
-
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
-
 
 import { useFocusEffect } from '@react-navigation/native';
 import { submitForms } from '../../../lib/form/submitForms';
@@ -30,9 +27,9 @@ import { useFilterStore } from '../../../store/filterStore';
 import useProjectStore from '../../../store/projectStore';
 import { getForms } from '../../../utils/services';
 
-
 export default function FormDataList() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [data, setData] = useState([]);
   const [menuVisible, setMenuVisible] = useState(false);
   const [filteredData, setFilteredData] = useState([]);
@@ -41,7 +38,7 @@ export default function FormDataList() {
   const [showSearchBar, setShowSearchBar] = useState(false);
   const [selectAll, setSelectAll] = useState(false);
   const [swipedItemId, setSwipedItemId] = useState(null);
-  const [getFormStatus, setGetFormStatus] = useState('Ready to sync');
+  const [getFormStatus, setGetFormStatus] = useState(t('sync:readyToSync'));
   const [showFormStatus, setShowFormStatus] = useState(false);
   const resetSwipeRef = useRef(null);
   const selectedTag = useFilterStore((state) => state.filter);
@@ -50,7 +47,6 @@ export default function FormDataList() {
 
   const theme = useTheme();
   const styles = getStyles(theme);
-
 
   const fetchData = async () => {
     try {
@@ -66,7 +62,10 @@ export default function FormDataList() {
 
     } catch (error) {
       console.error('Error fetching data:', error);
-      Alert.alert('Error', 'Failed to fetch data.');
+      Alert.alert(
+        t('errors:errorTitle'),
+        t('errors:failedLoad')
+      );
     }
   };
 
@@ -91,19 +90,35 @@ export default function FormDataList() {
   };
 
   const confirmAndHandleAction = async (uuid, action) => {
-    const message =
-      action === 'delete'
-        ? 'Are you sure you want to delete this item?'
-        : 'Are you sure you want to archive this item?';
+    let message = '';
+    let alertTitle = '';
 
-    Alert.alert('Confirm Action', message, [
-      { text: 'Cancel', style: 'cancel' },
+    switch (action) {
+      case 'delete':
+        message = t('data:confirmDelete');
+        alertTitle = t('data:confirmAction');
+        break;
+      case 'archive':
+        message = t('data:confirmArchive');
+        alertTitle = t('data:confirmAction');
+        break;
+      case 'submit':
+        message = t('forms:submitForm') + '?';
+        alertTitle = t('alerts:confirmation');
+        break;
+      default:
+        message = t('alerts:confirmation');
+        alertTitle = t('alerts:confirmation');
+    }
+
+    Alert.alert(alertTitle, message, [
+      { text: t('common:cancel'), style: 'cancel' },
       {
-        text: 'OK',
+        text: t('common:ok'),
         onPress: async () => {
-
           if (action === 'submit') {
-            console.log('do bulk submit');
+            // Submit logic will be handled elsewhere
+            return;
           } else {
             try {
               await update(
@@ -116,7 +131,10 @@ export default function FormDataList() {
               clearSelections();
             } catch (error) {
               console.error(`Error performing ${action}:`, error);
-              Alert.alert('Error', `Failed to ${action} item.`);
+              Alert.alert(
+                t('errors:errorTitle'),
+                t('errors:failedDelete')
+              );
             }
           }
         },
@@ -136,43 +154,16 @@ export default function FormDataList() {
   };
 
   const doSubmit = async (data = []) => {
-
-
     await submitForms([data]);
-
     await fetchData();
     clearSelections();
-
   }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   const actOnData = (item) => {
-
     if (item.status.toLowerCase() === 'draft') {
       router.push('/Form/New?fdata_id=' + item.id);
     } else {
-      //console.log('sending to Main', item.id, item.form)
-      setCurrentData(item)
+      setCurrentData(item);
       router.push(`/Main/`);
     }
   };
@@ -213,37 +204,31 @@ export default function FormDataList() {
 
   async function initialize() {
     try {
-
       await fetchData();
     } catch (error) {
       console.error('Error during initialization:', error);
-      Alert.alert('Error', 'Failed to initialize data: ' + error.message);
+      Alert.alert(
+        t('errors:errorTitle'),
+        t('errors:failedLoad') + ': ' + error.message
+      );
     }
   }
 
   useFocusEffect(
     useCallback(() => {
-      // Code to run every time the screen is focused
-      //console.log('FormDataList screen is focused');
-
       initialize();
-
       return () => {
         // Optional cleanup when the screen loses focus
-        //console.log('FormDataList screen is unfocused');
       };
     }, [currentProject?.project])
   );
 
   useEffect(() => {
-
-
     initialize();
   }, []);
 
-
   useEffect(() => {
-    let tempData = [...data]; // Start with a fresh copy of the original data
+    let tempData = [...data];
 
     if (searchQuery) {
       const sq = searchQuery.toLowerCase();
@@ -252,43 +237,35 @@ export default function FormDataList() {
       );
     }
 
-    //console.log('Applying tag filter. selectedTag:', selectedTag, typeof selectedTag);
-    if (selectedTag && selectedTag === 'Archived') {
-      tempData = tempData.filter((item) =>
-        item.archived
-      );
+    if (selectedTag && selectedTag === t('common:archived')) {
+      tempData = tempData.filter((item) => item.archived);
     }
-    if (selectedTag && selectedTag !== 'Archived' && selectedTag !== 'All') {
+
+    if (selectedTag && selectedTag !== t('common:archived') && selectedTag !== 'All') {
       const tq = selectedTag.toLowerCase();
       tempData = tempData.filter((item) =>
         item.status && item.status.toLowerCase() === tq
       );
     }
 
-
     if (selectedTag && selectedTag === 'All') {
       tempData = tempData.filter((item) => !item.archived);
     }
 
     setFilteredData(tempData);
-
-  }, [data, searchQuery, selectedTag]); // Dependencies are the sources of truth
-
-
+  }, [data, searchQuery, selectedTag]);
 
   return (
     <View style={[styles.pageContainer, { paddingBottom: insets.bottom, paddingTop: insets.top }]}>
       {selectedIds.length > 0 && (
         <View style={[lstyles.actionBar, styles.pageContainer]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15 }}>
-
             <TouchableOpacity onPress={clearSelections}>
               <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
             </TouchableOpacity>
             <Text style={styles.pageTitle}>{selectedIds.length}</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15 }}>
-
             <TouchableOpacity onPress={toggleSelectAll} style={styles.checkboxRow}>
               <MaterialIcons
                 name={selectAll ? 'check-box' : 'check-box-outline-blank'}
@@ -307,7 +284,6 @@ export default function FormDataList() {
             </TouchableOpacity>
           </View>
         </View>
-
       )}
 
       {showSearchBar && (
@@ -315,11 +291,19 @@ export default function FormDataList() {
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholder="Search..."
+            placeholder={t('data:searchPlaceholder')}
             placeholderTextColor={theme.colors.secText}
             style={styles.textInput}
           />
-          <Ionicons name="close-circle-outline" size={30} color={theme.colors.text} onPress={() => { setSearchQuery(''); setShowSearchBar(false) }} />
+          <Ionicons
+            name="close-circle-outline"
+            size={30}
+            color={theme.colors.text}
+            onPress={() => {
+              setSearchQuery('');
+              setShowSearchBar(false);
+            }}
+          />
         </View>
       )}
 
@@ -327,44 +311,23 @@ export default function FormDataList() {
         <Text
           style={[styles.pageTitle, { flexShrink: 1 }]}
           numberOfLines={1}
-        >{currentProject?.title || 'Project Title'}</Text>
+        >
+          {currentProject?.title || t('projects:projectDetails')}
+        </Text>
         <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
           <TouchableOpacity onPress={() => setShowSearchBar(!showSearchBar)}>
             <MaterialIcons name='search' size={24} color={theme.colors.text} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={toggleMenu}>
-            <MaterialCommunityIcons name="dots-vertical" size={24} color={theme.colors.text} />
           </TouchableOpacity>
         </View>
       </View>
 
 
-      {menuVisible && (
-        <TouchableWithoutFeedback onPress={handleOutsidePress}>
-          <View style={lstyles.overlay}>
-            <View style={[lstyles.menu, { backgroundColor: theme.colors.background },]}>
-              <View
-                style={{
-                  ...StyleSheet.absoluteFillObject,
-                  backgroundColor: theme.isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-                  borderRadius: 6,
-                }}
-              />
-              {currentProject?.title && <TouchableOpacity onPress={syncSurveys}><Text style={[styles.label, { paddingVertical: 8, fontSize: 14 }]}>Sync Surveys</Text></TouchableOpacity>}
-              <TouchableOpacity onPress={() => goToStack('/Project/List')}><Text style={[styles.label, { paddingVertical: 8, fontSize: 14 }]}>My Projects</Text></TouchableOpacity>
-              <TouchableOpacity onPress={() => goToStack('/Project/Join')}><Text style={[styles.label, { paddingVertical: 8, fontSize: 14 }]}>Join a Project</Text></TouchableOpacity>
-              <TouchableOpacity><Text style={[styles.label, { paddingVertical: 8, fontSize: 14 }]}>Help and Feedback</Text></TouchableOpacity>
-              <TouchableOpacity onPress={() => goToStack('/Project/Settings')}><Text style={[styles.label, { paddingVertical: 8, fontSize: 14 }]}>Settings</Text></TouchableOpacity>
-            </View>
-          </View>
-        </TouchableWithoutFeedback>
-      )}
-
-
-      <View style={[{ flex: 1 }]}>
+      <View style={{ flex: 1 }}>
         {showFormStatus ? (
           <ScrollView style={{ padding: 15 }}>
-            <Text style={[{ paddingVertical: 10, color: theme.colors.secText }]}>{getFormStatus}</Text>
+            <Text style={[{ paddingVertical: 10, color: theme.colors.secText }]}>
+              {getFormStatus}
+            </Text>
             <TouchableOpacity
               style={{
                 borderRadius: 8,
@@ -381,7 +344,7 @@ export default function FormDataList() {
                 setShowFormStatus(false);
               }}
             >
-              <Text style={styles.buttonText}>Close</Text>
+              <Text style={styles.buttonText}>{t('common:close')}</Text>
             </TouchableOpacity>
           </ScrollView>
         ) : (
@@ -393,7 +356,11 @@ export default function FormDataList() {
             contentContainerStyle={lstyles.flatListContent}
             style={lstyles.flatList}
             ListHeaderComponent={<FormDataHeader data={data} />}
-            ListEmptyComponent={<Text style={{ padding: 20, color: theme.colors.text }}>No data available</Text>}
+            ListEmptyComponent={
+              <Text style={{ padding: 20, color: theme.colors.text }}>
+                {t('data:noData')}
+              </Text>
+            }
           />
         )}
       </View>
@@ -404,9 +371,7 @@ export default function FormDataList() {
       >
         <MaterialIcons name="add-box" size={24} color="lightgray" />
       </TouchableOpacity>
-
-
-    </View >
+    </View>
   );
 }
 
@@ -420,7 +385,7 @@ const lstyles = StyleSheet.create({
     color: '#f1f1f1',
   },
   flatListContent: {
-    paddingBottom: 80, // Space for FAB
+    paddingBottom: 80,
   },
   actionBar: {
     flexDirection: 'row',
@@ -435,7 +400,6 @@ const lstyles = StyleSheet.create({
     right: 0,
     zIndex: 100,
   },
-
   actionText: {
     fontWeight: '600',
     fontSize: 18,
@@ -476,16 +440,11 @@ const lstyles = StyleSheet.create({
     borderColor: '#ccc',
     borderWidth: 1,
   },
-
   fabLabel: {
     color: 'white',
     marginLeft: 8,
     fontWeight: '600',
   },
-
-
-
-
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'transparent',
@@ -493,9 +452,8 @@ const lstyles = StyleSheet.create({
     justifyContent: 'flex-start',
     alignItems: 'flex-end',
   },
-
   menu: {
-    marginTop: 80, // slightly more than header height
+    marginTop: 80,
     marginRight: 15,
     borderRadius: 6,
     paddingVertical: 8,

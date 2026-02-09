@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FormDataView from '../../../components/form/FormDataView';
 import { getStyles } from '../../../constants/styles';
@@ -10,6 +10,7 @@ import { select, update } from '../../../utils/database';
 import { useFormStore } from '../../../store/FormStore';
 // Import components and styles from List.js
 import { MaterialCommunityIcons, MaterialIcons, Octicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { ScrollView } from 'react-native-gesture-handler';
 import api from '../../../api/axiosInstance';
 import { AppHeader } from '../../../components/layout/AppHeader';
@@ -25,8 +26,8 @@ export default function FormDataOrProjectListScreen() {
     const [curProjectStats, setCurrentProjetStats] = useState({});
     const [loading, setLoading] = useState(true);
 
-    const [formSyncStatus, setFormSyncStatus] = useState('Current Available Forms');
-    const [dataSyncStatus, setDataSyncStatus] = useState('Current Project Form Stats');
+    const [formSyncStatus, setFormSyncStatus] = useState('');
+    const [dataSyncStatus, setDataSyncStatus] = useState('');
 
     const [mode, setMode] = useState(null); // 'formDetail' or 'projectList'
     const [formDefns, setFormDefns] = useState([]);
@@ -38,19 +39,18 @@ export default function FormDataOrProjectListScreen() {
 
     const { language, setLanguage, schema, } = useFormStore();
 
+    // Initialize translation
+    const { t, i18n } = useTranslation();
+
     const theme = useTheme();
     const styles = getStyles(theme);
     const insets = useSafeAreaInsets();
-
-    //console.log('formDefn', JSON.stringify(formDefn?.languages, null, 5))
-
 
     const handleOutsidePress = () => {
         if (menuVisible) {
             setMenuVisible(false);
         }
     };
-
 
     // Use useFocusEffect to reload when screen comes into focus
     useFocusEffect(
@@ -62,7 +62,6 @@ export default function FormDataOrProjectListScreen() {
             setMode(null);
 
             if (currentData) {
-                //console.log('form detail')
                 getFormDataBreadcrumbs(currentData);
                 setMode('formDetail');
                 fetchFormData();
@@ -77,7 +76,6 @@ export default function FormDataOrProjectListScreen() {
                 loadProjectsWithStats();
             }
 
-
             setLoading(false);
 
             return () => {
@@ -88,6 +86,8 @@ export default function FormDataOrProjectListScreen() {
 
     // Also use useEffect for initial load
     useEffect(() => {
+
+
         if (currentData) {
             setFormData(null);
             setFormDefn(null);
@@ -144,7 +144,6 @@ export default function FormDataOrProjectListScreen() {
 
     const getProjectFormDefinitions = async (project_uuid) => {
         try {
-
             const result = await select('form_defn', 'project = ?', [project_uuid], "*", " is_root DESC ")
             setFormDefns(result);
         } catch (error) {
@@ -152,7 +151,6 @@ export default function FormDataOrProjectListScreen() {
             setFormDefns([]);
         }
     };
-
 
     const getProjectStats = async (project_uuid) => {
         try {
@@ -182,7 +180,6 @@ export default function FormDataOrProjectListScreen() {
     };
 
     const loadProjectsWithStats = async () => {
-
         try {
             // Load all active projects
             const projects = await select('projects', 'active = 1 ORDER BY sort_order');
@@ -202,10 +199,10 @@ export default function FormDataOrProjectListScreen() {
                         'project = ? AND deleted = 0',
                         [project.project],
                         `COUNT(*) as total,
-             SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END) as drafts,
-             SUM(CASE WHEN status = 'finalized' THEN 1 ELSE 0 END) as finalized,
-             SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sent,
-             SUM(archived) as archived`
+                         SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END) as drafts,
+                         SUM(CASE WHEN status = 'finalized' THEN 1 ELSE 0 END) as finalized,
+                         SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sent,
+                         SUM(archived) as archived`
                     );
 
                     return {
@@ -267,9 +264,7 @@ export default function FormDataOrProjectListScreen() {
     };
 
     async function getFormDataBreadcrumbs(formDataItem) {
-        //console.log('get form data bc', JSON.stringify(formDataItem, null, 2))
         if (!formDataItem || typeof formDataItem !== 'object') {
-            //console.log('shida')
             return [];
         }
 
@@ -277,27 +272,19 @@ export default function FormDataOrProjectListScreen() {
         let currentItem = formDataItem;
         let visited = new Set(); // To prevent infinite loops if there's a circular reference
 
-        // console.log('Starting with current item:', JSON.stringify(currentItem, null, 2))
-        // console.log('Initial parent_uuid:', currentItem.parent_uuid)
-
         // Traverse up the parent chain
         while (currentItem && currentItem.parent_uuid) {
             // Prevent infinite loops
             if (visited.has(currentItem.parent_uuid)) {
-                //console.log('Circular reference detected, breaking loop');
+                console.log('Circular reference detected, breaking loop');
                 break;
             }
             visited.add(currentItem.parent_uuid);
 
             try {
-                //console.log(`Looking for parent with UUID: ${currentItem.parent_uuid}`)
-
                 // Fetch the parent item from form_data table
-                // Note: You might need to check both uuid and original_uuid fields
                 const parentData = await select('form_data', 'uuid = ? OR original_uuid = ?',
                     [currentItem.parent_uuid, currentItem.parent_uuid]);
-
-                //console.log('Query result - parentData:', JSON.stringify(parentData, null, 2))
 
                 if (!parentData || parentData.length === 0) {
                     console.log('No parent found, breaking loop');
@@ -305,14 +292,11 @@ export default function FormDataOrProjectListScreen() {
                 }
 
                 const parent = parentData[0];
-                //console.log('Found parent:', JSON.stringify(parent, null, 2))
 
                 // Fetch the form definition for this parent to get the defn_title
                 const formDefn = await select('form_defn', 'form_id = ?', [parent.form]);
-                //console.log('Form definition for parent:', JSON.stringify(formDefn, null, 2))
 
                 // Add parent to breadcrumbs array
-                // Use push to add in order of traversal (closest parent first)
                 breadcrumbs.push({
                     data_title: parent?.title || '',
                     defn_title: formDefn[0]?.title || formDefn[0]?.short_title || parent?.form || '',
@@ -321,12 +305,8 @@ export default function FormDataOrProjectListScreen() {
                     data: parent,
                 });
 
-                //console.log(`Added breadcrumb: ${formDefn[0]?.title || 'Unknown'} - ${parent?.title || 'Untitled'}`)
-
                 // Update currentItem to be the parent for next iteration
                 currentItem = parent;
-                // console.log('New current item (parent):', JSON.stringify(currentItem, null, 2))
-                // console.log('Next parent_uuid to look for:', currentItem.parent_uuid)
 
             } catch (error) {
                 console.error('Error fetching parent breadcrumb:', error);
@@ -334,77 +314,47 @@ export default function FormDataOrProjectListScreen() {
             }
         }
 
-        // console.log('Final breadcrumbs array length:', breadcrumbs.length)
-        // console.log('print bc - ', JSON.stringify(breadcrumbs, null, 2))
-
-        // If you want the array in root → parent order, reverse it
-        // (Currently it's closest parent → root)
+        // Reverse to get root → parent order
         const orderedBreadcrumbs = breadcrumbs.reverse();
-
         setBreadCrumb(orderedBreadcrumbs);
         return orderedBreadcrumbs;
     }
+
     const rightAction = useMemo(() => [
         {
-            icon: 'more-vert',
-            onPress: () => setMenuVisible(true),
+            icon: 'settings',
+            onPress: () => router.push('Project/Settings'),
         }
-    ], [currentData]); // Only re-create if theme changes
-
-
+    ], [currentData]);
 
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
                 <Text style={styles.loadingText}>
-                    {mode === 'formDetail' ? 'Loading form data...' : 'Loading...'}
+                    {mode === 'formDetail' ? t('common.loadingFormData') : t('common.loading')}
                 </Text>
             </View>
         );
     }
 
-
-
     // Render Form Detail mode
     if (mode === 'formDetail' && formData && formDefn) {
-
-
         return (
             <ScreenWrapper>
+                <AppHeader
+                    title={currentProject.title}
+                    subTitle={currentData?.title}
+                    rightActions={rightAction}
+                />
 
-                <AppHeader title={currentProject.title} subTitle={currentData?.title} rightActions={rightAction} />
-
-                {menuVisible && (
-                    <TouchableWithoutFeedback onPress={handleOutsidePress}>
-                        <View style={lstyles.overlay}>
-                            <View style={[lstyles.menu, { backgroundColor: theme.colors.background },]}>
-                                <View
-                                    style={{
-                                        ...StyleSheet.absoluteFillObject,
-                                        backgroundColor: theme.isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-                                        borderRadius: 6,
-                                    }}
-                                />
-                                <Text style={[styles.label, { paddingVertical: 8, fontSize: 14 }]}>Change Language</Text>
-                                {formDefn?.languages?.map((lang, idx) => (
-                                    <TouchableOpacity key={idx} onPress={() => { setLanguage('::' + lang); setMenuVisible(false) }}>
-                                        <Text style={[styles.label, { paddingVertical: 4, paddingLeft: 5, fontSize: 12 }, { color: language === '::' + lang ? theme.colors.primary : theme.colors.text }]}>- {lang}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
-                    </TouchableWithoutFeedback>
-                )}
-
-                <ScrollView >
+                <ScrollView>
                     {breadCrumb && breadCrumb.length > 0 && (
                         <View style={styles.scrollContent}>
                             {breadCrumb.map((crumb, index) => {
-
                                 // Calculate background color with appropriate opacity
                                 const backgroundColor = theme.isDark
-                                    ? `rgb(${50 - (index * 5)}, ${50 - (index * 5)}, ${50 - (index * 5)})`  // Starts at 60, decreases to 30
-                                    : `rgb(${210 + (index * 5)}, ${210 + (index * 5)}, ${210 + (index * 5)})`; // Starts at 210, increases to 241
+                                    ? `rgb(${50 - (index * 5)}, ${50 - (index * 5)}, ${50 - (index * 5)})`
+                                    : `rgb(${210 + (index * 5)}, ${210 + (index * 5)}, ${210 + (index * 5)})`;
 
                                 return (
                                     <View key={index}>
@@ -429,11 +379,16 @@ export default function FormDataOrProjectListScreen() {
                                             </View>
 
                                             <Text numberOfLines={1} style={[styles.tiny, { fontWeight: '700' }]}>
-                                                {crumb.data_title || 'Untitled Record'}
+                                                {crumb.data_title || t('data.untitledRecord')}
                                             </Text>
 
                                         </TouchableOpacity>
-                                        <MaterialCommunityIcons name="chevron-down" size={24} color={theme.colors.inputBorder} style={{ marginLeft: 30 }} />
+                                        <MaterialCommunityIcons
+                                            name="chevron-down"
+                                            size={24}
+                                            color={theme.colors.inputBorder}
+                                            style={{ marginLeft: 30 }}
+                                        />
                                     </View>
                                 );
                             })}
@@ -445,7 +400,6 @@ export default function FormDataOrProjectListScreen() {
                         <FormDataView schema={formDefn} formData={formData} />
                     </View>
                 </ScrollView>
-
 
                 <TouchableOpacity
                     style={[styles.fab]}
@@ -464,12 +418,12 @@ export default function FormDataOrProjectListScreen() {
         return (
             <ScreenWrapper>
                 <AppHeader
-                    title={currentProject?.title || "Project Details"}
+                    title={currentProject?.title || t('projects:projectDetails')}
                     searchEnabled={false}
+                    rightActions={rightAction}
                 />
 
                 <ScrollView contentContainerStyle={styles.scrollContent}>
-
                     {/* 1. PROJECT HEADER CARD */}
                     <View style={[styles.card, { flexDirection: 'column', paddingVertical: 20 }]}>
                         <Text style={styles.pageTitle}>{currentProject.title}</Text>
@@ -497,22 +451,43 @@ export default function FormDataOrProjectListScreen() {
                     {/* 2. STATS GRID (EVENLY SPACED) */}
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Text style={[styles.sectionTitle, { fontSize: 13, marginBottom: 2, marginTop: 10, opacity: 0.6 }]}>
-                            PROJECT DATA
+                            {t('projects:projectData')}
                         </Text>
                         <TouchableOpacity
                             onPress={() => submitProjectData(currentProject.project, setDataSyncStatus)}>
                             <MaterialIcons name="send" size={26} color={theme.colors.primary} />
                         </TouchableOpacity>
                     </View>
-                    <Text style={[styles.hint, { marginBottom: 10, }]}>{dataSyncStatus}</Text>
-
+                    <Text style={[styles.hint, { marginBottom: 10 }]}>
+                        {dataSyncStatus || t('sync:currentProjectStats')}
+                    </Text>
 
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
                         {[
-                            { label: 'SENT', val: curProjectStats.sent || 0, color: '#2ecc71', icon: 'cloud-done' },
-                            { label: 'FINAL', val: curProjectStats.finalized || 0, color: theme.colors.primary, icon: 'check-circle' },
-                            { label: 'DRAFT', val: curProjectStats.draft || 0, color: '#f1c40f', icon: 'edit' },
-                            { label: 'ARCHIVE', val: curProjectStats.archived || 0, color: '#95a5a6', icon: 'archive' }
+                            {
+                                label: t('common:sent'),
+                                val: curProjectStats.sent || 0,
+                                color: '#2ecc71',
+                                icon: 'cloud-done'
+                            },
+                            {
+                                label: t('common:final'),
+                                val: curProjectStats.finalized || 0,
+                                color: theme.colors.primary,
+                                icon: 'check-circle'
+                            },
+                            {
+                                label: t('common:draft'),
+                                val: curProjectStats.draft || 0,
+                                color: '#f1c40f',
+                                icon: 'edit'
+                            },
+                            {
+                                label: t('common:archive'),
+                                val: curProjectStats.archived || 0,
+                                color: '#95a5a6',
+                                icon: 'archive'
+                            }
                         ].map((stat, idx) => (
                             <View key={idx} style={[styles.card, { width: '48%', flexDirection: 'column', alignItems: 'center', paddingVertical: 15 }]}>
                                 <MaterialIcons name={stat.icon} size={20} color={stat.color} />
@@ -525,14 +500,16 @@ export default function FormDataOrProjectListScreen() {
                     {/* 3. AVAILABLE FORMS LIST */}
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Text style={[styles.sectionTitle, { fontSize: 13, marginBottom: 2, marginTop: 10, opacity: 0.6 }]}>
-                            PROJECT FORMS
+                            {t('projects:projectForms')}
                         </Text>
                         <TouchableOpacity
                             onPress={() => getProjfectForms(currentProject.project, setFormSyncStatus)}>
                             <MaterialIcons name="refresh" size={30} color={theme.colors.primary} />
                         </TouchableOpacity>
                     </View>
-                    <Text style={[styles.hint, { marginBottom: 10, }]}>{formSyncStatus}</Text>
+                    <Text style={[styles.hint, { marginBottom: 10 }]}>
+                        {formSyncStatus || t('sync:currentAvailableForms')}
+                    </Text>
 
                     {/* SAFE MAPPING with Optional Chaining and Empty State Check */}
                     {formDefns && formDefns.length > 0 ? (
@@ -554,7 +531,9 @@ export default function FormDataOrProjectListScreen() {
                                     />
                                     <View style={{ marginLeft: 12, flex: 1 }}>
                                         <Text style={styles.bodyText}>{form.title}</Text>
-                                        <Text style={styles.tiny}>Version: {form.version}</Text>
+                                        <Text style={styles.tiny}>
+                                            {t('forms:version')}: {form.version}
+                                        </Text>
                                     </View>
                                     {form.is_root ? (
                                         <MaterialIcons
@@ -568,7 +547,7 @@ export default function FormDataOrProjectListScreen() {
                         ))
                     ) : (
                         <View style={[styles.card, { padding: 30, alignItems: 'center', borderStyle: 'dashed' }]}>
-                            <Text style={styles.hint}>No forms available for this project</Text>
+                            <Text style={styles.hint}>{t('projects:noFormsAvailable')}</Text>
                         </View>
                     )}
 
@@ -578,7 +557,7 @@ export default function FormDataOrProjectListScreen() {
                             marginTop: 20,
                             marginBottom: 50,
                             padding: 16,
-                            backgroundColor: theme.colors.error + '15', // Subtle red background
+                            backgroundColor: theme.colors.error + '15',
                             borderRadius: 12,
                             flexDirection: 'row',
                             justifyContent: 'center',
@@ -590,12 +569,10 @@ export default function FormDataOrProjectListScreen() {
                     >
                         <MaterialIcons name="notifications-off" size={20} color={theme.colors.error} />
                         <Text style={[styles.label, { color: theme.colors.error, marginLeft: 8, marginBottom: 0 }]}>
-                            Unsubscribe from Project
+                            {t('projects:unsubscribe')}
                         </Text>
                     </TouchableOpacity>
-
                 </ScrollView>
-
 
                 <TouchableOpacity
                     style={[styles.fab]}
@@ -605,24 +582,24 @@ export default function FormDataOrProjectListScreen() {
                 >
                     <Octicons name="arrow-switch" size={24} color="lightgray" />
                 </TouchableOpacity>
-            </ScreenWrapper >
+            </ScreenWrapper>
         );
     }
 
     // Render Project List mode (default)
     return (
         <ScreenWrapper>
-
             <AppHeader
-                title='My Projects'
+                title={t('projects:myProjects')}
                 searchEnabled={false}
+                rightActions={rightAction}
             />
 
             <TouchableOpacity
                 onPress={() => router.push('/Project/Join')}
                 style={[styles.button, { justifyContent: 'space-between', margin: 16, paddingHorizontal: 16 }]}>
                 <Text style={[styles.buttonText, { fontWeight: 'bold' }]}>
-                    Join New Project
+                    {t('projects:joinProject')}
                 </Text>
                 <MaterialCommunityIcons name="shape-square-rounded-plus" size={26} color='white' />
             </TouchableOpacity>
@@ -642,8 +619,12 @@ export default function FormDataOrProjectListScreen() {
 
                         {/* Meta Info Section */}
                         <View style={{ marginBottom: 12 }}>
-                            <Text style={styles.hint}>Code: {item.code}</Text>
-                            <Text style={styles.hint}>Category: {item.category}</Text>
+                            <Text style={styles.hint}>
+                                {t('projects:code')}: {item.code}
+                            </Text>
+                            <Text style={styles.hint}>
+                                {t('projects:category')}: {item.category}
+                            </Text>
                         </View>
 
                         {/* Stats Section */}
@@ -657,17 +638,25 @@ export default function FormDataOrProjectListScreen() {
                         }}>
                             <View style={{ alignItems: 'center' }}>
                                 <Text style={[styles.bodyText, { fontWeight: 'bold' }]}>{item.formDefnCount}</Text>
-                                <Text style={styles.tiny}>Forms</Text>
+                                <Text style={styles.tiny}>{t('common:forms')}</Text>
                             </View>
 
                             <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', flex: 1 }}>
                                 <View style={{ alignItems: 'center' }}>
-                                    <Text style={styles.tiny}>Total: {item.formDataTotal}</Text>
+                                    <Text style={styles.tiny}>
+                                        {t('common:total')}: {item.formDataTotal}
+                                    </Text>
                                 </View>
                                 <Text style={styles.tiny}>|</Text>
-                                <Text style={[styles.tiny, { color: '#f1c40f' }]}>Draft: {item.formDataDrafts}</Text>
-                                <Text style={[styles.tiny, { color: '#2ecc71' }]}>Fin: {item.formDataFinalized}</Text>
-                                <Text style={[styles.tiny, { color: theme.colors.primary }]}>Sent: {item.formDataSent}</Text>
+                                <Text style={[styles.tiny, { color: '#f1c40f' }]}>
+                                    {t('common:draft')}: {item.formDataDrafts}
+                                </Text>
+                                <Text style={[styles.tiny, { color: '#2ecc71' }]}>
+                                    {t('common:final')}: {item.formDataFinalized}
+                                </Text>
+                                <Text style={[styles.tiny, { color: theme.colors.primary }]}>
+                                    {t('common:sent')}: {item.formDataSent}
+                                </Text>
                             </View>
                         </View>
                     </TouchableOpacity>
@@ -676,7 +665,7 @@ export default function FormDataOrProjectListScreen() {
                 contentContainerStyle={styles.scrollContent}
                 ListEmptyComponent={
                     <Text style={[styles.hint, { textAlign: 'center', marginTop: 20 }]}>
-                        No active projects found
+                        {t('projects:noActiveProjects')}
                     </Text>
                 }
             />
@@ -695,9 +684,7 @@ export default function FormDataOrProjectListScreen() {
     );
 }
 
-
 const lstyles = StyleSheet.create({
-
     overlay: {
         ...StyleSheet.absoluteFillObject,
         backgroundColor: 'transparent',
@@ -705,9 +692,8 @@ const lstyles = StyleSheet.create({
         justifyContent: 'flex-start',
         alignItems: 'flex-end',
     },
-
     menu: {
-        marginTop: 80, // slightly more than header height
+        marginTop: 80,
         marginRight: 15,
         borderRadius: 6,
         paddingVertical: 8,
@@ -716,6 +702,4 @@ const lstyles = StyleSheet.create({
         elevation: 5,
         zIndex: 101,
     },
-
-
 });

@@ -1,0 +1,60 @@
+#!/bin/bash
+
+# --- CONFIGURATION ---
+# Path to your .env file - update this to the absolute path
+ENV_FILE="/path/to/your/project/.env"
+BACKUP_DIR="/home/user/backups/tables"
+DATE=$(date +%Y-%m-%d_%H%M%S)
+FILE_NAME="cromis_tables_$DATE.sql.gz"
+
+# Load variables from .env
+if [ -f "$ENV_FILE" ]; then
+    export $(grep -v '^#' "$ENV_FILE" | xargs)
+else
+    echo "Error: .env file not found at $ENV_FILE"
+    exit 1
+fi
+
+# List of tables to back up
+TABLES=(
+    "mk_cromis_form_data"
+    "mk_cromis_farmers"
+    "mk_cromis_form_definition"
+    "mk_cromis_areas"
+    "mk_cromis_primary_societies"
+    "mk_cromis_regions"
+    "auth_group"
+    "auth_group_permissions"
+    "auth_user"
+    "auth_user_groups"
+)
+
+# --- EXECUTION ---
+mkdir -p "$BACKUP_DIR"
+
+# Build table arguments (-t table1 -t table2...)
+TABLE_ARGS=""
+for table in "${TABLES[@]}"; do
+    TABLE_ARGS="$TABLE_ARGS -t $table"
+done
+
+# Map .env vars to PostgreSQL standard env vars for the command
+export PGPASSWORD=$DB_PASSWORD
+
+echo "Starting backup of selected tables from $DB_NAME..."
+
+pg_dump -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" $TABLE_ARGS "$DB_NAME" | gzip > "$BACKUP_DIR/$FILE_NAME"
+
+# Check if backup was successful
+if [ $? -eq 0 ]; then
+    echo "Backup successfully saved to $BACKUP_DIR/$FILE_NAME"
+else
+    echo "Backup failed!"
+    exit 1
+fi
+
+# Clear password from memory
+unset PGPASSWORD
+
+# Delete backups older than 30 days
+find "$BACKUP_DIR" -type f -name "*.sql.gz" -mtime +30 -delete

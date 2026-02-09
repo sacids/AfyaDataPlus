@@ -2,7 +2,7 @@
   "expo": {
     "name": "AfyaDataPlus",
     "slug": "AfyaDataPlus",
-    "version": "2.2.8",
+    "version": "2.3.2",
     "orientation": "portrait",
     "icon": "./assets/images/AfyaDataLogoIcon.png",
     "scheme": "afyadataplus",
@@ -11,6 +11,10 @@
     "ios": {
       "supportsTablet": true
     },
+
+    "assetBundlePatterns": [
+      "assets/i18n/*.json"
+    ],
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/AfyaDataLogoIcon.png",
@@ -42,7 +46,8 @@
       ],
       "expo-sqlite",
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true
