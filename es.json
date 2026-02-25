@@ -2,7 +2,8 @@
   "config": {
     "code": "es",
     "name": "Spanish",
-    "nativeName": "Español"
+    "nativeName": "Español",
+    "version": "1"
   },
   "common": {
     "welcome": "Bienvenido/a",
