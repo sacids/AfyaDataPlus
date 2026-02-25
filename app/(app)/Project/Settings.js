@@ -6,10 +6,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Modal,
+    ActivityIndicator, Alert, FlatList, Modal,
     RefreshControl,
     ScrollView,
     Switch,
@@ -23,7 +20,6 @@ import { getStyles } from '../../../constants/styles';
 import { useAuth } from '../../../context/AuthContext';
 import { useTheme } from '../../../context/ThemeContext';
 import LanguageManager from '../../../i18n/languageManager';
-import { useAuthStore } from '../../../store/authStore';
 import useProjectStore from '../../../store/projectStore';
 import { useThemeStore } from '../../../store/ThemeStore';
 import { createTables, dropTables, remove, select } from '../../../utils/database';
@@ -34,7 +30,6 @@ const Settings = () => {
     const { toggleMode, mode } = useThemeStore();
     const { setCurrentProject } = useProjectStore();
     const { authState, autoLogin, logout } = useAuth();
-    const { user } = useAuthStore();
     const styles = getStyles({ colors });
 
     const [serverUrl, setServerUrl] = useState('');
