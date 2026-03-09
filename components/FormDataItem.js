@@ -11,6 +11,7 @@ import Animated, {
 
 import { getStyles } from '../constants/styles';
 import { useTheme } from '../context/ThemeContext';
+import { FormIcons } from './layout/FormIcons';
 
 const { width } = Dimensions.get('window');
 
@@ -146,7 +147,7 @@ export default function FormDataItem({
                                 {isSelected ? (
                                     <MaterialIcons name="check" size={24} color="#fff" />
                                 ) : (
-                                    <Text style={[styles.badgeText, { fontSize: 16 }]}>{initials}</Text>
+                                    <FormIcons iconName={item.icon} color="#fff" />
                                 )}
                             </View>
                         </Pressable>
@@ -161,12 +162,12 @@ export default function FormDataItem({
 
 
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-
+{/* 
                                 <View style={[styles.badge, { backgroundColor: theme.colors.primary, borderWidth: 1, borderColor: theme.colors.primary }]}>
                                     <Text numberOfLines={1} style={[styles.badgeText,]}>
                                         {item.form_title}
                                     </Text>
-                                </View>
+                                </View> */}
 
                                 <View style={[styles.badge, { backgroundColor: statusTheme.bg + '20', borderWidth: 1, borderColor: statusTheme.bg }]}>
                                     <Text style={[styles.tiny, { color: statusTheme.bg, fontWeight: '800' }]}>

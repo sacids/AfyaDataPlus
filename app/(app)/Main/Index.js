@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FormDataView from '../../../components/form/FormDataView';
 import { getStyles } from '../../../constants/styles';
@@ -25,6 +25,7 @@ export default function FormDataOrProjectListScreen() {
     const [projects, setProjects] = useState([]);
     const [curProjectStats, setCurrentProjetStats] = useState({});
     const [loading, setLoading] = useState(true);
+    const [menuVisible, setMenuVisible] = useState(false);
 
     const [formSyncStatus, setFormSyncStatus] = useState('');
     const [dataSyncStatus, setDataSyncStatus] = useState('');
@@ -32,7 +33,6 @@ export default function FormDataOrProjectListScreen() {
     const [mode, setMode] = useState(null); // 'formDetail' or 'projectList'
     const [formDefns, setFormDefns] = useState([]);
     const [previousId, setPreviousId] = useState(null);
-    const [menuVisible, setMenuVisible] = useState(false);
     const opacitySteps = [0.2, 0.15, 0.1, 0.07, 0.05];
     const router = useRouter();
     const { currentProject, setCurrentProject, currentData, setCurrentData } = useProjectStore();
@@ -66,7 +66,7 @@ export default function FormDataOrProjectListScreen() {
                 setMode('formDetail');
                 fetchFormData();
             } else if (currentProject) {
-                console.log('current project')
+                //console.log('current project')
                 setMode('projectDetail');
                 getProjectFormDefinitions(currentProject.project);
                 getProjectStats(currentProject.project);
@@ -320,12 +320,19 @@ export default function FormDataOrProjectListScreen() {
         return orderedBreadcrumbs;
     }
 
-    const rightAction = useMemo(() => [
+    const goToSettings = useMemo(() => [
         {
             icon: 'settings',
             onPress: () => router.push('Project/Settings'),
         }
-    ], [currentData]);
+    ], []);
+
+    const showMenu = useMemo(() => [
+        {
+            icon: 'dots-vertical',
+            onPress: () => setMenuVisible(true),
+        }
+    ], []);
 
     if (loading) {
         return (
@@ -344,8 +351,45 @@ export default function FormDataOrProjectListScreen() {
                 <AppHeader
                     title={currentProject.title}
                     subTitle={currentData?.title}
-                    rightActions={rightAction}
+                    rightActions={showMenu}
                 />
+
+
+                {menuVisible && (
+                    <TouchableWithoutFeedback onPress={handleOutsidePress}>
+                        <View style={lstyles.overlay}>
+                            <View style={[lstyles.menu, { backgroundColor: theme.colors.background }]}>
+                                <View
+                                    style={{
+                                        ...StyleSheet.absoluteFillObject,
+                                        backgroundColor: theme.isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                                        borderRadius: 6,
+                                    }}
+                                />
+                                <Text style={[styles.label, { paddingVertical: 8, fontSize: 14 }]}>
+                                    {t('forms:changeLanguage')}
+                                </Text>
+                                {schema.language.map((lang, idx) => (
+                                    <TouchableOpacity
+                                        key={idx}
+                                        onPress={() => {
+                                            setLanguage('::' + lang);
+                                            setMenuVisible(false);
+                                        }}
+                                    >
+                                        <Text style={[
+                                            styles.label,
+                                            { paddingVertical: 4, paddingLeft: 5, fontSize: 12 },
+                                            { color: language === '::' + lang ? theme.colors.primary : theme.colors.text }
+                                        ]}>
+                                            - {lang}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+                    </TouchableWithoutFeedback>
+                )}
 
                 <ScrollView>
                     {breadCrumb && breadCrumb.length > 0 && (
@@ -420,20 +464,20 @@ export default function FormDataOrProjectListScreen() {
                 <AppHeader
                     title={currentProject?.title || t('projects:projectDetails')}
                     searchEnabled={false}
-                    rightActions={rightAction}
+                    rightActions={goToSettings}
                 />
 
                 <ScrollView contentContainerStyle={styles.scrollContent}>
                     {/* 1. PROJECT HEADER CARD */}
                     <View style={[styles.card, { flexDirection: 'column', paddingVertical: 20 }]}>
-                        <Text style={styles.pageTitle}>{currentProject.title}</Text>
+                        <Text style={styles.pageTitle}>{currentProject?.title}</Text>
                         <Text style={[styles.hint, { color: theme.colors.primary, fontWeight: 'bold', marginTop: 4 }]}>
                             {currentProject.code}
                         </Text>
 
                         {currentProject.description && (
                             <Text style={[styles.bodyText, { marginTop: 12, opacity: 0.7 }]}>
-                                {currentProject.description}
+                                {currentProject?.description}
                             </Text>
                         )}
 
@@ -592,7 +636,7 @@ export default function FormDataOrProjectListScreen() {
             <AppHeader
                 title={t('projects:myProjects')}
                 searchEnabled={false}
-                rightActions={rightAction}
+                rightActions={goToSettings}
             />
 
             <TouchableOpacity

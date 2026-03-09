@@ -585,20 +585,20 @@ export const getFormData = async (project_id, currentData_uuid = false) => {
         let result = [];
         if (currentData_uuid) {
             params = [...params, currentData_uuid]
-            query = `SELECT fd.*, is_root, fdef.title AS form_title 
+            query = `SELECT fd.*, is_root, fdef.title AS form_title, fdef.icon 
                      FROM form_data fd 
                      JOIN form_defn fdef ON fd.form = CAST(fdef.form_id AS TEXT) 
                      WHERE fd.deleted = ?
                      AND fd.project = ?
                      AND parent_uuid = ?`;
         } else {
-            query = `SELECT fd.*, is_root, fdef.title AS form_title 
+            query = `SELECT fd.*, is_root, fdef.title AS form_title, fdef.icon 
                      FROM form_data fd 
                      JOIN form_defn fdef ON fd.form = CAST(fdef.form_id AS TEXT) 
                      WHERE fd.deleted = ?
                      AND fd.project = ?
                      AND fdef.is_root = 1`;
-            console.log('query', query)
+            //console.log('query', query)
         }
         result = await db.getAllAsync(query, params);
 
@@ -884,10 +884,20 @@ export const dropTables = async () => {
     ];
 
     try {
-        await db.execAsync('DROP TRIGGER IF EXISTS soft_delete_form_data_cascade');
+        // Disable foreign key enforcement
+        await db.execAsync('PRAGMA foreign_keys = OFF;');
+
+        // Drop triggers first (important)
+        await db.execAsync('DROP TRIGGER IF EXISTS soft_delete_form_data_cascade;');
+
+        // Drop tables
         for (const table of TABLES_TO_DROP) {
-            await db.execAsync(`DROP TABLE IF EXISTS ${table}`);
+            await db.execAsync(`DROP TABLE IF EXISTS ${table};`);
         }
+
+        // Re-enable foreign keys
+        await db.execAsync('PRAGMA foreign_keys = ON;');
+
         console.log('All tables and triggers dropped');
     } catch (e) {
         console.error('Failed to drop tables:', e);

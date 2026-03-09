@@ -47,8 +47,8 @@ const SavePage = () => {
             
             if (status !== 'granted') {
                 Alert.alert(
-                    t('savePage.permissionDenied'),
-                    t('savePage.locationPermissionDenied'),
+                    t('savePage:permissionDenied'),
+                    t('savePage:locationPermissionDenied'),
                     [{ text: t('common.ok') }]
                 );
                 setIsGettingLocation(false);
@@ -74,8 +74,8 @@ const SavePage = () => {
         } catch (error) {
             console.error('Error getting location:', error);
             Alert.alert(
-                t('savePage.locationError'),
-                t('savePage.locationErrorDescription'),
+                t('savePage:locationError'),
+                t('savePage:locationErrorDescription'),
                 [{ text: t('common.ok') }]
             );
         } finally {
@@ -96,7 +96,7 @@ const SavePage = () => {
                 uuid: formUUID,
                 parent_uuid: parentUUID,
                 original_uuid: formUUID,
-                title: title || t('savePage.untitledRecord'),
+                title: title || t('savePage:untitledRecord'),
                 created_by: user?.id,
                 created_by_name: user?.fullName ?? user?.id,
                 created_on: new Date().toISOString(),
@@ -110,7 +110,7 @@ const SavePage = () => {
             router.dismissTo('/Main');
         } catch (e) {
             console.error(e);
-            Alert.alert(t('common.error'), t('savePage.saveFailed'));
+            Alert.alert(t('common.error'), t('savePage:saveFailed'));
         }
     };
 
@@ -147,16 +147,16 @@ const SavePage = () => {
                             />
                         </View>
                         <Text style={[styles.pageTitle, { marginTop: 15, fontSize: 22 }]}>
-                            {t('savePage.finishRecord')}
+                            {t('savePage:finishRecord')}
                         </Text>
-                        <Text style={styles.hint}>{t('savePage.recordNameHint')}</Text>
+                        <Text style={styles.hint}>{t('savePage:recordNameHint')}</Text>
                     </View>
 
                     {/* Title Input Card */}
                     <View style={styles.container}>
-                        <Text style={[styles.label, { marginBottom: 8 }]}>{t('savePage.recordTitle')}</Text>
+                        <Text style={[styles.label, { marginBottom: 8 }]}>{t('savePage:recordTitle')}</Text>
                         <TextInput
-                            placeholder={t('savePage.enterRecordTitle')}
+                            placeholder={t('savePage:enterRecordTitle')}
                             style={[styles.inputBase, { fontSize: 18, fontWeight: '600', color: theme.colors.text }]}
                             value={title}
                             onChangeText={setTitle}
@@ -165,7 +165,7 @@ const SavePage = () => {
 
                     {/* GPS Location Section - Commented out as in original */}
                     {/* <View style={styles.container}>
-                        <Text style={[styles.label, { marginBottom: 8 }]}>{t('savePage.gpsLocation')}</Text>
+                        <Text style={[styles.label, { marginBottom: 8 }]}>{t('savePage:gpsLocation')}</Text>
                         <View style={{
                             flexDirection: 'row',
                             alignItems: 'center',
@@ -182,7 +182,7 @@ const SavePage = () => {
                                     </View>
                                 ) : (
                                     <Text style={{ color: theme.colors.placeholder }}>
-                                        {isGettingLocation ? t('savePage.gettingLocation') : t('savePage.noGpsData')}
+                                        {isGettingLocation ? t('savePage:gettingLocation') : t('savePage:noGpsData')}
                                     </Text>
                                 )}
                             </View>
@@ -203,12 +203,12 @@ const SavePage = () => {
                                     color={theme.colors.primary} 
                                 />
                                 <Text style={{ marginLeft: 4, color: theme.colors.primary, fontSize: 12 }}>
-                                    {isGettingLocation ? t('savePage.getting') : t('savePage.getLocation')}
+                                    {isGettingLocation ? t('savePage:getting') : t('savePage:getLocation')}
                                 </Text>
                             </TouchableOpacity>
                         </View>
                         <Text style={[styles.hint, { marginTop: 4 }]}>
-                            {t('savePage.gpsHint')}
+                            {t('savePage:gpsHint')}
                         </Text>
                     </View> */}
 
@@ -230,7 +230,7 @@ const SavePage = () => {
                             lineHeight: 18,
                             fontWeight: '500'
                         }}>
-                            {t('savePage.finalizationInfo')}
+                            {t('savePage:finalizationInfo')}
                         </Text>
                     </View>
 
@@ -243,7 +243,7 @@ const SavePage = () => {
                         >
                             <MaterialIcons name="assignment-turned-in" size={20} color="white" />
                             <Text style={styles.buttonText}>
-                                {isGettingLocation ? t('savePage.gettingLocation') : t('savePage.finalizeRecord')}
+                                {isGettingLocation ? t('savePage:gettingLocation') : t('savePage:finalizeRecord')}
                             </Text>
                         </TouchableOpacity>
 
@@ -262,7 +262,7 @@ const SavePage = () => {
                         >
                             <MaterialIcons name="edit-note" size={20} color={theme.colors.text} />
                             <Text style={[styles.buttonText, { color: theme.colors.text }]}>
-                                {t('savePage.saveAsDraft')}
+                                {t('savePage:saveAsDraft')}
                             </Text>
                         </TouchableOpacity>
                     </View>

@@ -4,12 +4,8 @@ import { Picker } from '@react-native-picker/picker';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
-import {
-  deserializeMultiSelect,
-  getAvailableChoices,
-  toggleMultiSelect
-} from '../../../lib/form/engine';
 import { getLabel } from '../../../lib/form/utils';
+import { buildConstraint, evaluateExpression } from '../../../lib/form/validation';
 import { useFormStore } from '../../../store/FormStore';
 
 
@@ -20,17 +16,6 @@ const SelectOne = ({ element, value }) => {
 
   // Ensure value is a string or null
   const selectedValue = typeof value === 'string' ? value : null;
-
-
-  const selectedValues = deserializeMultiSelect(value);
-
-
-  const toggleOption = (optionValue) => {
-    const newValues = toggleMultiSelect(selectedValues, optionValue);
-    updateFormData(element.name, newValues);
-  };
-
-  const available_options = getAvailableChoices(element, formData);
 
   const handleSelect = (optionValue) => {
     // If the same option is selected, allow deselecting (set to null)
@@ -46,6 +31,33 @@ const SelectOne = ({ element, value }) => {
   const isPicker = appearances.some(a => a === 'picker' || a === 'dropdown' || a === 'minimal');
 
 
+  const available_options = element.options.filter((option) => {
+
+
+    let passChoiceFilter = true
+    let passConstraint = true
+    let tmp_formData = {}
+
+
+    //if (!element.constraint) return true
+
+    if (element.choice_filter) {
+      tmp_formData = { ...formData };
+      tmp_formData[element.name] = option.name;
+      const constraint = buildConstraint(option, element.choice_filter);
+
+      passChoiceFilter = evaluateExpression(constraint, tmp_formData, element.name) !== false;
+      //console.log('choice filter 2', option.name, constraint, passChoiceFilter)
+    }
+
+    if (element.constraint) {
+      tmp_formData = { ...formData };
+      tmp_formData[element.name] = option.name;
+      passConstraint = evaluateExpression(element.constraint, tmp_formData, element.name) !== false;
+    }
+
+    return passChoiceFilter && passConstraint
+  });
 
   // Render slider appearance
   if (isSlider) {
@@ -162,6 +174,7 @@ const SelectOne = ({ element, value }) => {
       <View
         style={[
           styles.inputBase,
+          styles.selectOne,
           errors[element.name] ? styles.inputError : null,
         ]}
       >

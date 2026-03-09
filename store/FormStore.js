@@ -16,7 +16,7 @@ export const useFormStore = create((set, get) => ({
   //setSchema: (schema) => set({ schema, formData: {}, errors: {}, currentPage: 0, formUUID: randomUUID() }),
   setSchema: (schema, formData = null, formUUID = null, parentUUID = null) => set(() => {
 
-    console.log('setSchema called:', { schema, formUUID });
+    //console.log('setSchema called:', { schema, formUUID });
     return {
       schema,
       formData: formData !== null ? formData : {},

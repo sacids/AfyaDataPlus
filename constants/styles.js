@@ -379,19 +379,19 @@ export const getStyles = (theme) =>
 
     // Default appearance (Radio list)
     selectOne: {
-      padding: 5,
+      padding: 4,
       backgroundColor: 'transparent',
       borderWidth: 0, // We often want individual item borders instead of a group border
     },
     checkboxContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      padding: 12,
+      padding: 4,
       backgroundColor: theme.colors.inputBackground,
       borderRadius: 8,
-      borderWidth: 1,
-      borderColor: theme.colors.inputBorder,
-      marginBottom: 8,
+      //borderWidth: 1,
+      //borderColor: theme.colors.inputBorder,
+      marginBottom: 4,
     },
     checkboxLabel: {
       ...Typography.body,

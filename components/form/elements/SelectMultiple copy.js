@@ -2,12 +2,8 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
-import {
-  deserializeMultiSelect,
-  toggleMultiSelect,
-  getAvailableChoices
-} from '../../../lib/form/engine';
 import { getLabel } from '../../../lib/form/utils';
+import { buildConstraint, evaluateExpression } from '../../../lib/form/validation';
 import { useFormStore } from '../../../store/FormStore';
 
 const SelectMultiple = ({ element, value }) => {
@@ -19,15 +15,45 @@ const SelectMultiple = ({ element, value }) => {
   const hint = getLabel(element, 'hint', language, schema.language)
 
   // Ensure value is an array; default to empty array if undefined
-  const selectedValues = deserializeMultiSelect(value);
-
+  const selectedValues = Array.isArray(value) ? value : [];
 
   const toggleOption = (optionValue) => {
-    const newValues = toggleMultiSelect(selectedValues, optionValue);
+    const newValues = selectedValues.includes(optionValue)
+      ? selectedValues.filter((val) => val !== optionValue)
+      : [...selectedValues, optionValue];
     updateFormData(element.name, newValues);
   };
 
-  const available_options = getAvailableChoices(element, formData);
+
+  const available_options = element.options.filter((option) => {
+
+
+    let passChoiceFilter = true
+    let passConstraint = true
+    let tmp_formData = {}
+
+
+    //if (!element.constraint) return true
+
+    if (element.choice_filter) {
+      tmp_formData = { ...formData };
+      tmp_formData[element.name] = option.name;
+      const constraint = buildConstraint(option, element.choice_filter);
+
+      //console.log('choice filter 2', option, constraint, passChoiceFilter)
+
+      passChoiceFilter = evaluateExpression(constraint, tmp_formData, element.name) !== false;
+      //console.log('choice filter 2', option.name, constraint, passChoiceFilter)
+    }
+
+    if (element.constraint) {
+      tmp_formData = { ...formData };
+      tmp_formData[element.name] = option.name;
+      passConstraint = evaluateExpression(element.constraint, tmp_formData, element.name) !== false;
+    }
+
+    return passChoiceFilter && passConstraint
+  });
 
 
   return (
@@ -45,6 +71,7 @@ const SelectMultiple = ({ element, value }) => {
       <View
         style={[
           styles.inputBase,
+          styles.selectMultiple,
           errors[element.name] ? styles.inputError : null,
         ]}
       >
