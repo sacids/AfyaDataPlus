@@ -1,7 +1,6 @@
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
-import * as FileSystem from 'expo-file-system';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -186,19 +185,21 @@ const Settings = () => {
                             );
 
                             fetchProjects();
+
+                            setIsResetting(false);
                         } catch (error) {
                             Alert.alert(
                                 t('errors:errorTitle'),
                                 t('settings:resetFailed')
                             );
                             console.error(error);
+                            setIsResetting(false);
                         }
                     },
                     style: 'destructive',
                 },
             ]
         );
-        setIsResetting(false);
     };
 
     const deleteProject = async (project) => {
@@ -332,27 +333,6 @@ const Settings = () => {
         setLanguagesNeedingUpdate(updates);
     };
 
-    const checkForUpdates = async (langCode) => {
-        try {
-            const downloadedLang = downloadedLanguages.find(lang => lang.code === langCode);
-            if (!downloadedLang) return false;
-
-            // Fetch latest version info from server
-            const serverLangs = await LanguageManager.fetchAvailableLanguages();
-            const serverLang = serverLangs.find(lang => lang.code === langCode);
-
-            if (!serverLang || !serverLang.version) return false;
-
-            const currentVersion = downloadedLang.version || '0';
-            const serverVersion = serverLang.version;
-
-            // Simple version comparison (assuming semantic versioning)
-            return this.compareVersions(serverVersion, currentVersion) > 0;
-        } catch (error) {
-            console.error('Error checking for updates:', error);
-            return false;
-        }
-    };
 
     const compareVersions = (v1, v2) => {
         const parts1 = v1.split('.').map(Number);
@@ -421,14 +401,14 @@ const Settings = () => {
                                 t('alerts:successTitle'),
                                 t('settings:languageRemoved')
                             );
-                        } catch (error) {
+                        } catch (s) {
                             Alert.alert(
                                 t('errors:errorTitle'),
                                 t('errors:languageRemoveFailed')
                             );
                         }
                     },
-                    style: 'destructive',
+                    style: 'destructive'
                 },
             ]
         );
@@ -451,8 +431,8 @@ const Settings = () => {
                     text: t('common:clear'),
                     onPress: async () => {
                         try {
-                            const cacheDir = `${FileSystem.cacheDirectory}`;
-                            await FileSystem.deleteAsync(cacheDir, { idempotent: true });
+                            // const cacheDir = `${FileSystem.cacheDirectory}`;
+                            // await FileSystem.deleteAsync(cacheDir, { idempotent: true });
                             Alert.alert(
                                 t('alerts:successTitle'),
                                 t('settings:cacheCleared')
@@ -684,13 +664,11 @@ const Settings = () => {
                     </Text>
 
                     {projects.length > 0 ? (
-                        <FlatList
-                            data={projects}
-                            renderItem={renderProjectItem}
-                            keyExtractor={(item) => item.id.toString()}
-                            scrollEnabled={false}
-                            style={{ maxHeight: 320 }}
-                        />
+                        projects.map((item) => (
+                            <View key={item.id.toString()}>
+                                {renderProjectItem({ item })}
+                            </View>
+                        ))
                     ) : (
                         <Text style={[styles.text, { paddingVertical: 20 }]}>
                             {t('projects:noActiveProjects')}

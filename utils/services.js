@@ -118,6 +118,7 @@ export const getProjfectForms = async (project_id, setStatus) => {
 
         // Get all forms meta data
         setStatus('Retrieving metadata...');
+        console.log('project forms', `api/v1/form-defn-meta/${project_id}`)
         const metaResponse = await api.post(`api/v1/form-defn-meta/${project_id}`);
         const metaForms = metaResponse.data;
 

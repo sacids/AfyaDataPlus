@@ -152,7 +152,7 @@ const New = () => {
           </TouchableOpacity>
         </View>
       </View>
-
+ 
       {menuVisible && (
         <TouchableWithoutFeedback onPress={handleOutsidePress}>
           <View style={lstyles.overlay}>
