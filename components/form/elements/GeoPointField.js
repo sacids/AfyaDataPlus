@@ -1,5 +1,5 @@
 import * as Location from 'expo-location';
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { getStyles } from '../../../constants/styles';
@@ -7,130 +7,152 @@ import { useTheme } from '../../../context/ThemeContext';
 import { getLabel } from '../../../lib/form/utils';
 import { useFormStore } from '../../../store/FormStore';
 
-const GeoPoint = ({ element, value }) => {
-  const { updateFormData, errors, language, schema } = useFormStore();
+const GeoPoint = ({ element }) => {
+  // 1. SELECTORS: Fetch data internally to avoid parent re-renders
+  const updateFormData = useFormStore(state => state.updateFormData);
+
+  // Use the safety pattern for errors to avoid the "Cannot convert undefined to object" crash
+  const error = useFormStore(state =>
+    (state.errors && state.errors[element.name]) ? state.errors[element.name] : null
+  );
+
+  // Fetch the value internally
+  const globalValue = useFormStore(state => state.formData[element.name]);
+
+  const language = useFormStore(state => state.language);
+  const schemaLanguage = useFormStore(state => state.schema?.language);
+
   const [locationPermission, setLocationPermission] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const theme = useTheme();
   const styles = getStyles(theme);
 
-  // Ensure value is an object { latitude, longitude } or null
-  const geoValue = value && typeof value === 'object' && value.latitude && value.longitude ? value : null;
+  // 2. STRICTOR NULL SAFETY
+  // We check if globalValue is an object and has the keys we need
+  const geoValue = globalValue &&
+    typeof globalValue === 'object' &&
+    globalValue.latitude != null &&
+    globalValue.longitude != null
+    ? globalValue
+    : null;
 
+  const label = getLabel(element, 'label', language, schemaLanguage);
+  const hint = getLabel(element, 'hint', language, schemaLanguage);
 
-  const label = getLabel(element, 'label', language, schema.language)
-  const hint = getLabel(element, 'hint', language, schema.language)
-
-  // Request location permissions on mount
   useEffect(() => {
+    let isMounted = true;
     (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      setLocationPermission(status === 'granted');
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (isMounted) setLocationPermission(status === 'granted');
+      } catch (e) {
+        console.error("Permission request failed", e);
+      }
     })();
+    return () => { isMounted = false; };
   }, []);
 
   const setCurrentLocation = async () => {
     if (!locationPermission) {
-      Alert.alert('Permission Denied', 'Location permission is required to set a geopoint.');
-      return;
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Please enable location permissions in settings.');
+        return;
+      }
+      setLocationPermission(true);
     }
 
     setIsLoading(true);
     try {
-      const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      // Accuracy.Low or Balanced is faster and less likely to crash/hang than High
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+        timeout: 10000 // Increased timeout for slower devices
+      });
+
       const newGeoPoint = {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
         accuracy: location.coords.accuracy,
       };
-      updateFormData(element.name, newGeoPoint);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to get location: ' + error.message);
+
+      // Defer store update to keep UI responsive
+      requestAnimationFrame(() => {
+        updateFormData(element.name, newGeoPoint);
+      });
+    } catch (err) {
+      Alert.alert('Location Error', 'Could not fetch coordinates. Check your GPS signal.');
     } finally {
       setIsLoading(false);
     }
   };
 
   const clearGeoPoint = () => {
-    Alert.alert(
-      'Remove Geopoint',
-      'Are you sure you want to remove this location?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: () => updateFormData(element.name, null),
-        },
-      ]
-    );
+    Alert.alert('Remove Geopoint', 'Clear this location?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Remove', style: 'destructive', onPress: () => updateFormData(element.name, null) },
+    ]);
   };
 
   return (
     <View style={styles.container}>
-      {
-        label ? (<View style={styles.labelContainer}>
-          {(element.required) && <Text style={styles.required}>*</Text>}
+      {label && (
+        <View style={styles.labelContainer}>
+          {element.required && <Text style={styles.required}>*</Text>}
           <Text style={styles.label}>{label}</Text>
-        </View>) : null
-      }
-      {
-        hint && (<Text style={styles.hint}>{hint}</Text>)
-      }
-      <View
-        style={[
-          styles.mapContainer,
-          errors[element.name] ? styles.inputError : null,
-        ]}
-      >
+        </View>
+      )}
+      {hint && <Text style={styles.hint}>{hint}</Text>}
+
+      <View style={[styles.mapContainer, error ? styles.inputError : null, { height: 200, overflow: 'hidden', borderRadius: 8 }]}>
         {geoValue ? (
           <>
             <MapView
               style={styles.map}
               liteMode={true}
-              region={{
+              key={`${geoValue.latitude}-${geoValue.longitude}`} // Force re-render only when coordinates change
+              initialRegion={{
                 latitude: geoValue.latitude,
                 longitude: geoValue.longitude,
                 latitudeDelta: 0.01,
                 longitudeDelta: 0.01,
               }}
-              scrollEnabled={true}
-              zoomEnabled={true}
             >
-              <Marker
-                coordinate={geoValue}
-                title={element['label' + language]}
-                onLongPress={clearGeoPoint}
-              />
+              <Marker coordinate={{ latitude: geoValue.latitude, longitude: geoValue.longitude }} />
             </MapView>
-            <Text style={styles.locationText}>{geoValue.latitude}, {geoValue.longitude}, {geoValue.accuracy}</Text>
+            <View style={{ position: 'absolute', bottom: 5, left: 5, backgroundColor: 'rgba(255,255,255,0.7)', padding: 2, borderRadius: 4 }}>
+              <Text style={{ fontSize: 10 }}>
+                {geoValue.latitude.toFixed(5)}, {geoValue.longitude.toFixed(5)}
+              </Text>
+            </View>
           </>
         ) : (
-          <View style={[styles.map, styles.noLocation]}>
-            <Text style={styles.placeholderText}>No location selected</Text>
+          <View style={[styles.map, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#f0f0f0' }]}>
+            <Text style={{ color: '#999' }}>No location selected</Text>
           </View>
         )}
+
         {isLoading && (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={styles.button.backgroundColor} />
+          <View style={[styles.loadingContainer, { position: 'absolute', backgroundColor: 'rgba(255,255,255,0.6)', width: '100%', height: '100%', justifyContent: 'center' }]}>
+            <ActivityIndicator size="large" color={theme.colors.primary} />
           </View>
         )}
       </View>
+
       <TouchableOpacity
-        style={[styles.geoButton, styles.button]}
+        style={[styles.button, { marginTop: 10, backgroundColor: theme.colors.primary, padding: 12, borderRadius: 8 }]}
         onPress={setCurrentLocation}
-        onLongPress={clearGeoPoint}
+        onLongPress={geoValue ? clearGeoPoint : null}
         disabled={isLoading}
       >
-        <Text style={styles.buttonText}>
-          {geoValue ? 'Refresh Location' : 'Add Geopoint'}
+        <Text style={[styles.buttonText, { textAlign: 'center', color: '#fff', fontWeight: 'bold' }]}>
+          {geoValue ? 'Refresh Location' : 'Capture Location'}
         </Text>
       </TouchableOpacity>
-      {errors[element.name] && (
-        <Text style={styles.errorText}>{errors[element.name]}</Text>
-      )}
+
+      {error && <Text style={styles.errorText}>{error}</Text>}
     </View>
   );
 };
 
-export default GeoPoint;
+export default memo(GeoPoint);

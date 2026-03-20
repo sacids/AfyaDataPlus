@@ -73,7 +73,17 @@
     "forgotPassword": "Forgot Password?",
     "rememberMe": "Remember Me",
     "createAccount": "Create Account",
-    "syncAuth": "Sync Authentication"
+    "syncAuth": "Sync Authentication",
+    "loginAction": "Login",
+    "registerAction": "Register",
+    "phonePlaceholder": "Phone Number",
+    "passwordPlaceholder": "Password",
+    "fullNamePlaceholder": "Full Name",
+    "confirmPasswordPlaceholder": "Confirm Password",
+    "fillAllFields": "Please fill in all fields",
+    "invalidCredentials": "Invalid phone number or password",
+    "registrationFailed": "Registration failed. Please try again.",
+    "logoutConfirm": "Are you sure you want to sign out?"
   },
   
   "disease": {
@@ -91,6 +101,7 @@
     "eastAfrica": "East Africa"
   },
   
+  
   "messages": {
     "title": "Messages",
     "typeMessage": "Type a message...",
@@ -98,7 +109,16 @@
     "syncing": "Syncing messages...",
     "failedSync": "Message will sync later",
     "sending": "Sending...",
-    "messageSent": "Message sent"
+    "messageSent": "Message sent",
+    "emptyState": "No messages yet. Start a conversation!",
+    "placeholder": "Type a message...",
+    "send": "Send",
+    "lockedTitle": "Submission Required",
+    "lockedSubtitle": "You can only message about reports that have been submitted to the server.",
+    "submittingTitle": "Submitting Data...",
+    "submittingSubtitle": "Please wait while we upload your report to the server.",
+    "submitNow": "Submit Now",
+    "goBack": "Go Back"
   },
   
   "projects": {
@@ -404,6 +424,19 @@
     "finalizationInfo": "Finalizing marks this record as complete and will capture your current GPS location. You can `Save as Draft` if you plan to edit this information later.",
     "finalizeRecord": "Finalize Record",
     "saveAsDraft": "Save as Draft"
+  },
+
+  "onBoarding": {
+    "welcomeTitle": "Welcome to AfyaData",
+    "welcomeSubtitle": "Empowering communities through participatory health surveillance.",
+    "step2Title": "Secure Reporting",
+    "step2Subtitle": "Your data is encrypted and used to enhance early warning systems for public health.",
+    "finalTitle": "Get Started",
+    "finalSubtitle": "Sign in to your existing account or create a new one to begin.",
+    "registerAction": "I'm New Here",
+    "loginAction": "I Have an Account"
   }
+
+  
 
 }

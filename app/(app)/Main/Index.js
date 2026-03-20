@@ -1,12 +1,13 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import FormDataView from '../../../components/form/FormDataView';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
 import { select, update } from '../../../utils/database';
 
+import { useAuthStore } from '../../../store/authStore';
 import { useFormStore } from '../../../store/FormStore';
 // Import components and styles from List.js
 import { MaterialCommunityIcons, MaterialIcons, Octicons } from '@expo/vector-icons';
@@ -14,9 +15,10 @@ import { useTranslation } from 'react-i18next';
 import { ScrollView } from 'react-native-gesture-handler';
 import api from '../../../api/axiosInstance';
 import { AppHeader } from '../../../components/layout/AppHeader';
+import { FormIcons } from '../../../components/layout/FormIcons';
 import { ScreenWrapper } from '../../../components/layout/ScreenWrapper';
 import useProjectStore from '../../../store/projectStore';
-import { getProjfectForms, submitProjectData } from '../../../utils/services';
+import { getProjfectForms } from '../../../utils/services';
 
 export default function FormDataOrProjectListScreen() {
     const [formData, setFormData] = useState(null);
@@ -35,6 +37,7 @@ export default function FormDataOrProjectListScreen() {
     const [previousId, setPreviousId] = useState(null);
     const opacitySteps = [0.2, 0.15, 0.1, 0.07, 0.05];
     const router = useRouter();
+    const { user } = useAuthStore()
     const { currentProject, setCurrentProject, currentData, setCurrentData } = useProjectStore();
 
     const { language, setLanguage, schema, } = useFormStore();
@@ -161,7 +164,7 @@ export default function FormDataOrProjectListScreen() {
                 SUM(CASE WHEN status = 'submitted' OR status = 'sent' THEN 1 ELSE 0 END) as sent,
                 SUM(CASE WHEN status = 'archived' THEN 1 ELSE 0 END) as archived`;
 
-            const result = await select('form_data', 'project = ?', [project_uuid], select_str)
+            const result = await select('form_data', 'project = ? and created_by = ?', [project_uuid, user.id], select_str)
 
             const stats = {
                 total: result[0].total || 0,
@@ -221,6 +224,23 @@ export default function FormDataOrProjectListScreen() {
             setLoading(false);
         } catch (error) {
             console.error('Failed to load projects:', error);
+            setLoading(false);
+        }
+    };
+
+    const handleSyncProjectForms = async () => {
+        try {
+            setLoading(true);
+            // 1. Perform the sync (API -> SQLite)
+            await getProjfectForms(currentProject.project, setFormSyncStatus)
+
+            // 2. CRITICAL: Re-fetch from SQLite to update local state
+            getProjectFormDefinitions(currentProject.project);
+
+            Alert.alert(t('alerts:success'), t('projects:syncComplete'));
+        } catch (error) {
+            Alert.alert(t('alerts:error'), t('projects:syncFailed'));
+        } finally {
             setLoading(false);
         }
     };
@@ -329,7 +349,7 @@ export default function FormDataOrProjectListScreen() {
 
     const showMenu = useMemo(() => [
         {
-            icon: 'dots-vertical',
+            icon: 'more-vert',
             onPress: () => setMenuVisible(true),
         }
     ], []);
@@ -498,7 +518,7 @@ export default function FormDataOrProjectListScreen() {
                             {t('projects:projectData')}
                         </Text>
                         <TouchableOpacity
-                            onPress={() => submitProjectData(currentProject.project, setDataSyncStatus)}>
+                            onPress={() => handleSyncProjectForms()}>
                             <MaterialIcons name="send" size={26} color={theme.colors.primary} />
                         </TouchableOpacity>
                     </View>
@@ -568,8 +588,8 @@ export default function FormDataOrProjectListScreen() {
                                 }}
                             >
                                 <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                                    <MaterialCommunityIcons
-                                        name="file-document-outline"
+                                    <FormIcons
+                                        iconName={form.icon}
                                         size={24}
                                         color={theme.colors.primary}
                                     />

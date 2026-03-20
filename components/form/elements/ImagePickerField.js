@@ -1,133 +1,138 @@
 import { Directory, File, Paths } from 'expo-file-system';
+import * as ImageManipulator from 'expo-image-manipulator'; // Add this
 import * as ImagePicker from 'expo-image-picker';
-import { Alert, Image, Text, TouchableOpacity, View } from 'react-native';
+import { memo, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Image, Text, TouchableOpacity, View } from 'react-native';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
 import { getLabel } from '../../../lib/form/utils';
+import { getParam } from '../../../lib/form/validation';
 import { useFormStore } from '../../../store/FormStore';
 
+const ImagePickerField = ({ element }) => {
+  const updateFormData = useFormStore(state => state.updateFormData);
+  const globalValue = useFormStore(state => state.formData[element.name]);
+  const formUUID = useFormStore(state => state.formUUID);
+  const { language, schema, errors } = useFormStore();
 
-const ImagePickerField = ({ element, value }) => {
-  const { updateFormData, errors, formUUID, language, formData, schema } = useFormStore();
   const theme = useTheme();
   const styles = getStyles(theme);
+  const [isProcessing, setIsProcessing] = useState(false);
 
 
-  const label = getLabel(element, 'label', language, schema.language)
-  const hint = getLabel(element, 'hint', language, schema.language)
-
-  // Helper function to get image URI using File class
-  const getImageUri = (imageFileName) => {
-    if (!imageFileName || !formUUID) return null;
-
+  const imageUri = useMemo(() => {
+    if (!globalValue || !formUUID) return null;
     try {
-      const imageFile = new File(Paths.document, formUUID, imageFileName);
+      const imageFile = new File(Paths.document, formUUID, globalValue);
       return imageFile.uri;
     } catch (error) {
-      console.log('Error creating file path:', error);
       return null;
     }
-  };
+  }, [globalValue, formUUID]);
 
   const pickImage = async (fromCamera = false) => {
+
+
+    const quality = parseFloat(getParam('image-quality', '1'));
+
     const permission = fromCamera
       ? await ImagePicker.requestCameraPermissionsAsync()
       : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permission.granted) {
-      Alert.alert('Permission Denied', 'Permission is required to select an image.');
+      Alert.alert('Permission Denied', 'Permission is required.');
       return;
     }
 
-    const result = fromCamera
-      ? await ImagePicker.launchCameraAsync({ quality: 0.5, base64: false })
-      : await ImagePicker.launchImageLibraryAsync({ quality: 0.5, base64: false });
+    const result = await (fromCamera
+      ? ImagePicker.launchCameraAsync({ quality: quality })
+      : ImagePicker.launchImageLibraryAsync({ quality: quality }));
 
     if (!result.canceled) {
-      const originalUri = result.assets[0].uri;
-      const filename = originalUri.split('/').pop();
-
+      setIsProcessing(true);
       try {
-        // Create form directory using Directory class
-        const formDirectory = new Directory(Paths.document, formUUID);
+        let sourceUri = result.assets[0].uri;
+        const maxPixels = parseInt(getParam(element, 'max-pixels'));
 
-        // Check if directory exists using the property (not function)
-        if (!formDirectory.exists) {
-          formDirectory.create();
+        // 2. AUTO-RESIZE LOGIC
+        if (maxPixels && (result.assets[0].width > maxPixels || result.assets[0].height > maxPixels)) {
+          const actions = [];
+
+          // Determine scale maintaining aspect ratio
+          if (result.assets[0].width > result.assets[0].height) {
+            actions.push({ resize: { width: maxPixels } });
+          } else {
+            actions.push({ resize: { height: maxPixels } });
+          }
+
+          const manipulatedImage = await ImageManipulator.manipulateAsync(
+            sourceUri,
+            actions,
+            { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+          );
+          sourceUri = manipulatedImage.uri;
         }
 
-        const newFileName = `${element.name}__${filename}`;
+        // 3. SAVE TO PERMANENT STORAGE
+        const formDirectory = new Directory(Paths.document, formUUID);
+        if (!formDirectory.exists) formDirectory.create();
 
-        // Create destination file using Directory's createFile method
+        const filename = sourceUri.split('/').pop();
+        const newFileName = `${element.name}__${Date.now()}__${filename}`;
+
         const destFile = new File(formDirectory, newFileName);
+        const sourceFile = new File(sourceUri);
 
-        // Create source file from the picked image URI
-        const sourceFile = new File(originalUri);
-
-        // Copy the image to the destination using the copy() method
         sourceFile.copy(destFile);
 
-        updateFormData(element.name, newFileName);
+        requestAnimationFrame(() => {
+          updateFormData(element.name, newFileName);
+          setIsProcessing(false);
+        });
 
       } catch (err) {
-        console.error('Image saving failed', err);
-        Alert.alert('Error', 'Failed to save the image.');
+        console.error('Image processing failed', err);
+        Alert.alert('Error', 'Failed to process image.');
+        setIsProcessing(false);
       }
     }
   };
 
-  const imageUri = getImageUri(value);
+  const label = getLabel(element, 'label', language, schema?.language);
 
   return (
     <View style={styles.container}>
-      {
-        label ? (<View style={styles.labelContainer}>
-          {(element.required) && <Text style={styles.required}>*</Text>}
+      {label && (
+        <View style={styles.labelContainer}>
+          {element.required && <Text style={styles.required}>*</Text>}
           <Text style={styles.label}>{label}</Text>
-        </View>) : null
-      }
-      {
-        hint && (<Text style={styles.hint}>{hint}</Text>)
-      }
+        </View>
+      )}
 
-      <View
-        style={[
-          styles.mapContainer,
-          errors[element.name] ? styles.inputError : null,
-          {
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: theme.colors.inputBackground,
-          },
-        ]}
-      >
-        {value && imageUri ? (
-          <Image
-            source={{ uri: imageUri }}
-            style={[{ width: 165, height: 165, borderRadius: 4 }, styles.noLocation]}
-          />
+
+      <View style={[styles.mapContainer, { height: 200, backgroundColor: '#f0f0f0', borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: errors?.[element.name] ? 'red' : '#ccc' }]}>
+        {isProcessing ? (
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        ) : imageUri ? (
+          <Image source={{ uri: imageUri }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
         ) : (
-
-          <View style={[styles.map, styles.noLocation]}>
-            <Text style={styles.placeholderText}>No image selected</Text>
+          <View style={[styles.map, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#f0f0f0' }]}>
+            <Text style={{ color: '#999' }}>No image selected</Text>
           </View>
+
         )}
       </View>
 
-      <View style={{ flexDirection: 'row', flex: 1, gap: 10 }}>
-        <TouchableOpacity onPress={() => pickImage(false)} style={[{ flex: 1 }, styles.button]}>
-          <Text style={styles.buttonText}>Gallery</Text>
+      <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+        <TouchableOpacity onPress={() => pickImage(false)} style={[styles.button, { flex: 1, backgroundColor: theme.colors.primary }]}>
+          <Text style={{ color: '#fff', textAlign: 'center' }}>Gallery</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => pickImage(true)} style={[{ flex: 1 }, styles.button]}>
-          <Text style={styles.buttonText}>Camera</Text>
+        <TouchableOpacity onPress={() => pickImage(true)} style={[styles.button, { flex: 1, backgroundColor: theme.colors.primary }]}>
+          <Text style={{ color: '#fff', textAlign: 'center' }}>Camera</Text>
         </TouchableOpacity>
       </View>
-
-      {errors[element.name] && (
-        <Text style={styles.errorText}>{errors[element.name]}</Text>
-      )}
     </View>
   );
 };
 
-export default ImagePickerField;
+export default memo(ImagePickerField);

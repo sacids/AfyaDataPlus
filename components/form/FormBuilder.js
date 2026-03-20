@@ -1,5 +1,4 @@
-import { useEffect } from 'react';
-import { Gesture } from 'react-native-gesture-handler';
+import { useEffect, useRef } from 'react';
 import Animated from 'react-native-reanimated';
 import { getStyles } from '../../constants/styles';
 import { useTheme } from '../../context/ThemeContext';
@@ -7,33 +6,30 @@ import { useFormStore } from '../../store/FormStore';
 import FormPage from './FormPage';
 import NavigationButtons from './NavigationButtons';
 
-const FormBuilder = ({ schema, formData, formUUID, parentUUID = null, config = { useSwipe: true, useButtons: true } }) => {
-  const { setSchema, currentPage, validateAndNavigate } = useFormStore();
+const FormBuilder = ({ schema, formData, formUUID, parentUUID = null }) => {
+
+  const setSchema = useFormStore(state => state.setSchema);
+  const currentPage = useFormStore(state => state.currentPage);
 
   const colors = useTheme();
   const styles = getStyles(colors);
+  const lastSchemaId = useRef(null);
+
 
   useEffect(() => {
-    setSchema(schema, formData, formUUID, parentUUID);
-  }, [schema]);
+    // Use a unique property (like an ID or Name) to check if we really need to reset
+    if (schema && schema.id !== lastSchemaId.current) {
+      setSchema(schema, formData, formUUID, parentUUID);
+      lastSchemaId.current = schema.id;
+    }
+  }, [schema]); // This now only triggers if the reference changes
 
-  const swipeGesture = Gesture.Pan()
-    .onEnd((event) => {
-      if (event.translationX < -50) {
-        Animated.runOnJS(validateAndNavigate)('next');
-      } else if (event.translationX > 50) {
-        Animated.runOnJS(validateAndNavigate)('prev');
-      }
-    })
-    .enabled(config.useSwipe ?? true);
 
   return (
-    //<GestureDetector gesture={swipeGesture}>
     <Animated.View style={styles.pageContainer}>
       <FormPage pageIndex={currentPage} />
-      {config.useButtons && <NavigationButtons />}
+      <NavigationButtons />
     </Animated.View>
-    //</GestureDetector>
   );
 };
 

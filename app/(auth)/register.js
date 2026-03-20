@@ -1,91 +1,115 @@
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { useEffect, useState } from 'react';
-import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+
+import {
+  ActivityIndicator,
+  Image, // Added
+  Keyboard,
+  KeyboardAvoidingView, // Added
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback
+} from 'react-native';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import api from '../../api/axiosInstance';
-import { config } from '../../constants/config'; // 2. Import config
-import { useAuth } from '../../context/AuthContext'; // 1. Import useAuth
+import { config } from '../../constants/config';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuthStore } from '../../store/authStore';
-import { getDeviceId } from '../../utils/deviceUtils';
-import { generatePassword } from '../../utils/passwordUtils';
-
 
 
 const logo = require('../../assets/images/AfyaDataLogo.png');
 
 const RegisterScreen = () => {
-  const { setAuthState } = useAuth(); // 3. Use setAuthState to update UI context
+  const { t } = useTranslation(); // Added
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isFormValid, setIsFormValid] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
   const insets = useSafeAreaInsets();
   const { setUser } = useAuthStore();
-
-
   const theme = useTheme();
 
   useEffect(() => {
-    const isValid = fullName.trim().length > 0 && phoneNumber.trim().length >= 10;
+    const isValid =
+      fullName.trim().length > 0 &&
+      phoneNumber.trim().length >= 10 &&
+      password.length >= 6 &&
+      password === confirmPassword;
     setIsFormValid(isValid);
-  }, [fullName, phoneNumber]);
-
+  }, [fullName, phoneNumber, password, confirmPassword]);
   const handleRegister = async () => {
     try {
-      const username = getDeviceId();
-      const password = await generatePassword(username);
+      setError('');
 
-      // Uses the centralized axiosInstance
+      // 1. API Request
       const response = await api.post('/api/v1/register', {
         fullName,
-        phoneNumber,
-        username,
-        password,
+        username: phoneNumber,
+        password: password,
         passwordConfirm: password,
+        phoneNumber
       });
 
+      console.log('registration response', JSON.stringify(response.data))
+
+
+      // 3. Save Credentials for Auto-Login/Interceptors (Critical for your setup)
+      console.log('saving username saved_username', phoneNumber)
+
       const { access, refresh, user } = response.data;
+      const authData = { access, refresh, user };
 
-      // 4. Create the unified auth object
-      const authData = {
-        access,
-        refresh,
-        user,
-      };
-
-      // 5. Store using the unified TOKEN_KEY [Matches AuthContext]
+      // 2. Save Session Tokenssss
       await SecureStore.setItemAsync(config.TOKEN_KEY, JSON.stringify(authData));
+      await SecureStore.setItemAsync('saved_username', phoneNumber);
+      await SecureStore.setItemAsync('saved_password', password);
 
-      // 6. Optional: Store credentials for offline login logic
-      const userKey = username.replace(/[^a-zA-Z0-9]/g, "-");
-      await SecureStore.setItemAsync(userKey, JSON.stringify({
-        result: authData,
-        passwd: password,
-        username: username
-      }));
+      // 4. Update Zustand and Auth Context
+      setUser(user);
+      setAuthState({
+        isLoading: false,
+        isSignout: false,
+        userToken: access
+      });
 
-      // 7. Update all state managers
-      setUser(user); // Zustand
-      if (setAuthState) setAuthState(authData); // AuthContext
-
+      // 5. Navigate to Main App
       router.replace('/(app)/Main');
-    } catch (error) {
-      console.error('Registration error:', error);
-      setError('Registration failed. Please try again.');
+
+    } catch (err) {
+      setLoading(false);
+      console.error('Registration error:', err);
+
+      // Handle Validation Errors from Response
+      if (err.response && err.response.data && err.response.data.errors) {
+        const serverErrors = err.response.data.errors;
+        // Flatten the error object into a single string
+        const errorMessages = Object.keys(serverErrors)
+          .map(key => `${serverErrors[key].join(' ')}`)
+          .join('\n');
+        setError(errorMessages);
+      } else if (err.response && err.response.data && err.response.data.error_msg) {
+        setError(err.response.data.error_msg);
+      } else {
+        setError(t('auth:registrationFailed'));
+      }
     }
   };
 
+  
 
   const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: theme.colors.background,
-      padding: 16,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
+    container: { flexGrow: 1, backgroundColor: theme.colors.background, padding: 20, justifyContent: 'center', alignItems: 'center' },
     input: {
       backgroundColor: theme.colors.inputBackground,
       borderColor: theme.colors.inputBorder,
@@ -103,43 +127,62 @@ const RegisterScreen = () => {
       alignItems: 'center',
       width: '100%',
     },
-    buttonText: {
-      color: theme.colors.buttonText,
-      fontWeight: 'bold',
-    },
-    errorText: {
-      color: 'red',
-      marginBottom: 16,
-      textAlign: 'center',
-    },
+    buttonText: { color: theme.colors.buttonText, fontWeight: 'bold' },
+    errorText: { color: theme.colors.error, marginBottom: 16, textAlign: 'center' },
   });
 
+
   return (
-    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
-      <Image
-        source={logo}
-        style={{ width: 120, height: 120, resizeMode: 'contain', marginBottom: 30 }}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Full Name"
-        placeholderTextColor={theme.colors.secText}
-        value={fullName}
-        onChangeText={setFullName}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Phone Number"
-        placeholderTextColor={theme.colors.secText}
-        keyboardType="phone-pad"
-        value={phoneNumber}
-        onChangeText={setPhoneNumber}
-      />
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      <TouchableOpacity style={styles.button} onPress={handleRegister} disabled={!isFormValid}>
-        <Text style={styles.buttonText}>Register</Text>
-      </TouchableOpacity>
-    </View>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1, backgroundColor: theme.colors.background }}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView contentContainerStyle={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+          <Image source={logo} style={{ width: 120, height: 120, resizeMode: 'contain', marginBottom: 30 }} />
+
+          <TextInput
+            style={styles.input}
+            placeholder={t('auth:fullNamePlaceholder')}
+            value={fullName}
+            placeholderTextColor={theme.colors.secText}
+            onChangeText={setFullName}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder={t('auth:phonePlaceholder')}
+            keyboardType="phone-pad"
+            placeholderTextColor={theme.colors.secText}
+            value={phoneNumber}
+            onChangeText={setPhoneNumber}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder={t('auth:passwordPlaceholder')}
+            placeholderTextColor={theme.colors.secText}
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder={t('auth:confirmPasswordPlaceholder')}
+            placeholderTextColor={theme.colors.secText}
+            secureTextEntry
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+          />
+
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+          <TouchableOpacity style={styles.button} onPress={handleRegister} disabled={!isFormValid || loading}>
+            {loading ? <ActivityIndicator color={theme.colors.buttonText} /> : <Text style={styles.buttonText}>{t('auth:registerAction')}</Text>}
+          </TouchableOpacity>
+
+
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 };
 

@@ -40,7 +40,7 @@ const JoinProjectScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const insets = useSafeAreaInsets();
 
-  const { setCurrentProject } = useProjectStore();
+  const { setCurrentProject, setCurrentData } = useProjectStore();
   const router = useRouter();
 
   const fetchProjects = async () => {
@@ -69,14 +69,14 @@ const JoinProjectScreen = () => {
       const result = await joinProject(project.code);
       if (!result.error) {
         await insert('projects', project);
-        const joinedProject = await select('projects', 'project = ?', [project.id]);
-
+        const joinedProject = await select('projects', 'project = ?', [project.id])[0];
+        setCurrentData(null)
+        setCurrentProject(joinedProject);
         Alert.alert(
           t('projects:joinedSuccessfully'),
           `${t('projects:joinedSuccessfully')}: ${project.title}`
         );
-        setCurrentProject(joinedProject);
-        router.dismissTo('/Main');
+        router.replace('/(app)/Main/');
       } else {
         Alert.alert(
           t('projects:joinFailed'),

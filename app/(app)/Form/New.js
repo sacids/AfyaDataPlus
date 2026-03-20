@@ -25,9 +25,10 @@ const New = () => {
   const { currentProject, setCurrentProject, currentData, setCurrentData } = useProjectStore();
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
-
   const theme = useTheme();
+
   const styles = getStyles(theme);
+
 
   const saveAsDraft = async () => {
     const instance_name = schema.meta.instance_name;
@@ -66,6 +67,8 @@ const New = () => {
     }
   };
 
+
+
   useEffect(() => {
     async function loadForm() {
       try {
@@ -90,6 +93,7 @@ const New = () => {
         }
         if (fdefn_id) {
           const FormDefn = await select('form_defn', 'id = ?', fdefn_id);
+          //console.log('form definition', JSON.stringify(FormDefn, null, 5))
           const parsedSchema = parseSchema(FormDefn[0]);
 
           setSchema(parsedSchema);
@@ -117,7 +121,7 @@ const New = () => {
     }
 
     loadForm();
-  }, [fdata_id, fdefn_id, setFormData, setFormUUID, setLanguage, setSchema, t]);
+  }, [fdata_id, fdefn_id, t]);
 
   if (loading) {
     return (
@@ -152,7 +156,7 @@ const New = () => {
           </TouchableOpacity>
         </View>
       </View>
- 
+
       {menuVisible && (
         <TouchableWithoutFeedback onPress={handleOutsidePress}>
           <View style={lstyles.overlay}>
@@ -199,7 +203,6 @@ const New = () => {
         formData={formData}
         formUUID={formUUID}
         parentUUID={parentUUID}
-        config={{ useSwipe: true, useButtons: true }}
       />
     </View>
   );

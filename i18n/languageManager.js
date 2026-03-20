@@ -23,7 +23,7 @@ class LanguageManager {
     // Cache directory for downloaded languages
     this.cacheDir = `${LegacyFileSystem.cacheDirectory}i18n/`;
 
-    console.log('LanguageManager: Loaded', Object.keys(this.bundledLanguages).length, 'bundled languages');
+    //console.log('LanguageManager: Loaded', Object.keys(this.bundledLanguages).length, 'bundled languages');
 
     // Initialize directories and i18n
     this.initializeDirectories();
@@ -224,7 +224,7 @@ class LanguageManager {
         this.loadLanguageIntoI18n(langCode, translations);
       });
 
-      console.log(`Loaded ${Object.keys(this.bundledLanguages).length} bundled languages into i18n`);
+      //console.log(`Loaded ${Object.keys(this.bundledLanguages).length} bundled languages into i18n`);
     } catch (error) {
       console.error('Error initializing i18n:', error);
     }
