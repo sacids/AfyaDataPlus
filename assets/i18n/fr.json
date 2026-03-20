@@ -70,7 +70,17 @@
     "forgotPassword": "Mot de passe oublié ?",
     "rememberMe": "Se souvenir de moi",
     "createAccount": "Créer un compte",
-    "syncAuth": "Synchroniser l'authentification"
+    "syncAuth": "Synchroniser l'authentification",
+    "loginAction": "Se connecter",
+    "registerAction": "S'inscrire",
+    "phonePlaceholder": "Numéro de téléphone",
+    "passwordPlaceholder": "Mot de passe",
+    "fullNamePlaceholder": "Nom complet",
+    "confirmPasswordPlaceholder": "Confirmez le mot de passe",
+    "fillAllFields": "Veuillez remplir tous les champs",
+    "invalidCredentials": "Numéro de téléphone ou mot de passe invalide",
+    "registrationFailed": "L'inscription a échoué. Veuillez réessayer.",
+    "logoutConfirm": "Êtes-vous sûr de vouloir vous déconnecter ?"
   },
   
   "disease": {
@@ -95,7 +105,16 @@
     "syncing": "Synchronisation des messages...",
     "failedSync": "Le message sera synchronisé plus tard",
     "sending": "Envoi en cours...",
-    "messageSent": "Message envoyé"
+    "messageSent": "Message envoyé",
+    "emptyState": "Aucun message pour le moment. Commencez une conversation !",
+    "placeholder": "Tapez un message...",
+    "send": "Envoyer",
+    "lockedTitle": "Soumission Requise",
+    "lockedSubtitle": "Vous ne pouvez envoyer des messages que pour les rapports ayant été soumis au serveur.",
+    "submittingTitle": "Soumission des données...",
+    "submittingSubtitle": "Veuillez patienter pendant que nous téléchargeons votre rapport sur le serveur.",
+    "submitNow": "Soumettre maintenant",
+    "goBack": "Retourner"
   },
   
   "projects": {
@@ -379,5 +398,16 @@
     "monthsAgo_plural": "Il y a {{count}} mois",
     "yearsAgo": "Il y a {{count}} an",
     "yearsAgo_plural": "Il y a {{count}} ans"
+  },
+
+  "onBoarding": {
+    "welcomeTitle": "Bienvenue sur AfyaData",
+    "welcomeSubtitle": "Autonomiser les communautés grâce à la surveillance sanitaire participative.",
+    "step2Title": "Signalement Sécurisé",
+    "step2Subtitle": "Vos données sont cryptées pour améliorer les systèmes d'alerte précoce en santé publique.",
+    "finalTitle": "Commencer",
+    "finalSubtitle": "Connectez-vous à votre compte ou créez-en un nouveau pour commencer.",
+    "registerAction": "Je suis nouveau ici",
+    "loginAction": "J'ai déjà un compte"
   }
 }

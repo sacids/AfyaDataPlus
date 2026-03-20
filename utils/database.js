@@ -7,6 +7,7 @@ export const openDatabase = () => {
 
 const db = openDatabase();
 
+
 const MIGRATION_SQL = `CREATE TABLE IF NOT EXISTS migration (
   table_name TEXT PRIMARY KEY, 
   version INTEGER DEFAULT 0
@@ -578,10 +579,10 @@ export const select = async (tableName, whereClause = '', whereArgs = [], fields
 
 
 
-export const getFormData = async (project_id, currentData_uuid = false) => {
+export const getFormData = async (user_id, project_id, currentData_uuid = false) => {
     try {
         let query = '';
-        let params = [0, project_id];
+        let params = [0, project_id, user_id];
         let result = [];
         if (currentData_uuid) {
             params = [...params, currentData_uuid]
@@ -590,6 +591,7 @@ export const getFormData = async (project_id, currentData_uuid = false) => {
                      JOIN form_defn fdef ON fd.form = CAST(fdef.form_id AS TEXT) 
                      WHERE fd.deleted = ?
                      AND fd.project = ?
+                     AND fd.created_by = ?
                      AND parent_uuid = ?`;
         } else {
             query = `SELECT fd.*, is_root, fdef.title AS form_title, fdef.icon 
@@ -597,11 +599,13 @@ export const getFormData = async (project_id, currentData_uuid = false) => {
                      JOIN form_defn fdef ON fd.form = CAST(fdef.form_id AS TEXT) 
                      WHERE fd.deleted = ?
                      AND fd.project = ?
+                     AND fd.created_by = ?
                      AND fdef.is_root = 1`;
             //console.log('query', query)
         }
+        //console.log('query', query, params)
         result = await db.getAllAsync(query, params);
-
+        //console.log('results', JSON.stringify(result, null, 5))
         return result;
     } catch (error) {
         console.error('Error getting form data:', error);
@@ -660,7 +664,7 @@ export const update = async (tableName, data, whereClause, whereArgs = []) => {
         const setClause = keys.map((key) => `${key} = ?`).join(', ');
         const values = [...keys.map((key) => data[key]), ...whereArgs];
         const sql = `UPDATE ${tableName} SET ${setClause} WHERE ${whereClause};`;
-        console.log('Updating sql:', sql, values);
+        //console.log('Updating sql:', sql, values);
         const result = await db.runAsync(sql, values);
         return result.changes;
     } catch (error) {
@@ -711,7 +715,7 @@ export const deleteTableData = async (tableName, whereClause, params = []) => {
 // Insert a record
 export const insert = async (tableName, data) => {
 
-    console.log('Inserting data:', tableName, JSON.stringify(data, null, 8));
+    //console.log('Inserting data:', tableName, JSON.stringify(data, null, 8));
 
     try {
         // Fetch local table column names
@@ -753,7 +757,7 @@ export const insert = async (tableName, data) => {
 
         const sql = `INSERT OR REPLACE INTO ${tableName} (${filteredKeys.join(', ')}) VALUES (${placeholders});`;
         const result = await db.runAsync(sql, values);
-        console.log('Inserting sql:', result);
+        //console.log('Inserting sql:', result);
         return result;
     } catch (error) {
         console.error('Error inserting data:', error);

@@ -34,7 +34,7 @@
     "no": "Hapana",
     "ok": "Sawa",
     "draft": "Rasimu",
-    "final": "Hatimaye",
+    "final": "Imekamilika",
     "sent": "Imetumwa",
     "archived": "Imehifadhiwa",
     "total": "Jumla",
@@ -70,8 +70,18 @@
     "forgotPassword": "Umesahau Nenosiri?",
     "rememberMe": "Nikumbuke",
     "createAccount": "Unda Akaunti",
-    "syncAuth": "Sawazisha Uthibitishaji"
-  },
+    "syncAuth": "Sawazisha Uthibitishaji",
+    "loginAction": "Ingia",
+    "registerAction": "Jisajili",
+    "phonePlaceholder": "Namba ya Simu",
+    "passwordPlaceholder": "Nywila",
+    "fullNamePlaceholder": "Jina Kamili",
+    "confirmPasswordPlaceholder": "Thibitisha Nywila",
+    "fillAllFields": "Tafadhali jaza sehemu zote",
+    "invalidCredentials": "Namba ya simu au nywila si sahihi",
+    "registrationFailed": "Usajili umeshindikana. Tafadhali jaribu tena.",
+    "logoutConfirm": "Je, una uhakika unataka kutoka?"
+    },
   
   "disease": {
     "knowledge": "Ujuzi wa Magonjwa",
@@ -95,7 +105,16 @@
     "syncing": "Inasawazisha ujumbe...",
     "failedSync": "Ujumbe utasawazishwa baadaye",
     "sending": "Inatumwa...",
-    "messageSent": "Ujumbe umetumwa"
+    "messageSent": "Ujumbe umetumwa",
+    "emptyState": "Hakuna ujumbe bado. Anza mazungumzo!",
+    "placeholder": "Andika ujumbe...",
+    "send": "Tuma",
+    "lockedTitle": "Unapaswa Kutuma Kwanza",
+    "lockedSubtitle": "Unaweza tu kutuma ujumbe kuhusu taarifa ambazo tayari zimeshawasilishwa kwenye seva.",
+    "submittingTitle": "Inatuma Taarifa...",
+    "submittingSubtitle": "Tafadhali subiri wakati tunapakia taarifa yako kwenye seva.",
+    "submitNow": "Tuma Sasa",
+    "goBack": "Rudi Nyuma"
   },
   
   "projects": {
@@ -379,5 +398,16 @@
     "monthsAgo_plural": "miezi {{count}} iliyopita",
     "yearsAgo": "mwaka {{count}} uliopita",
     "yearsAgo_plural": "miaka {{count}} iliyopita"
+  },
+
+  "onBoarding": {
+    "welcomeTitle": "Karibu AfyaData",
+    "welcomeSubtitle": "Kuwezesha jamii kupitia ufuatiliaji wa afya shirikishi.",
+    "step2Title": "Ripoti Salama",
+    "step2Subtitle": "Takwimu zako zinalindwa na kutumika kuimarisha mifumo ya onyo la mapema.",
+    "finalTitle": "Anza Sasa",
+    "finalSubtitle": "Ingia kwenye akaunti yako au fungua mpya ili kuanza kutoa taarifa.",
+    "registerAction": "Mimi ni Mgeni",
+    "loginAction": "Nina Akaunti Tayari"
   }
 }

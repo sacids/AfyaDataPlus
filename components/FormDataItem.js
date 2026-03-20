@@ -1,6 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import React from 'react';
-import { Dimensions, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Pressable, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
     runOnJS,
@@ -24,6 +24,7 @@ export default function FormDataItem({
     toggleSelection,
     onSwipeChange,
     setResetSwipe,
+    isSubmitting,
 }) {
     const translateX = useSharedValue(0);
     const isSwiped = useSharedValue(false);
@@ -81,8 +82,8 @@ export default function FormDataItem({
     // Updated color logic to match dashboard health stats
     const getStatusTheme = (initial) => {
         switch (initial?.toUpperCase()) {
-            case 'D': return { bg: '#f1c40f', label: 'Draft' };
-            case 'S': return { bg: '#2ecc71', label: 'Sent' };
+            case 'D': return { bg: '#d9be52', label: 'Draft' };
+            case 'S': return { bg: '#428c61', label: 'Sent' };
             case 'F': return { bg: theme.colors.primary, label: 'Finalized' };
             default: return { bg: theme.colors.hint, label: 'Other' };
         }
@@ -93,11 +94,17 @@ export default function FormDataItem({
 
     return (
         <GestureDetector gesture={combinedGesture}>
-            <View style={{ marginVertical: 4, marginHorizontal: 12, position: 'relative', overflow: 'hidden' }}>
+            <View style={{
+                marginVertical: 4,
+                marginHorizontal: 12,
+                position: 'relative',
+                overflow: 'hidden',
+            }}>
 
                 {/* Background Swipe Actions */}
                 <View style={[styles.swipeActions, { borderRightRadius: 12 }]}>
                     <Pressable
+
                         style={[styles.swipeButton, { backgroundColor: theme.colors.error }]}
                         onPress={() => {
                             translateX.value = withTiming(0, {}, () => {
@@ -124,10 +131,14 @@ export default function FormDataItem({
                 </View>
 
                 {/* Foreground Card */}
-                <Animated.View style={[animatedStyle, styles.swipeForeground]}>
+                <Animated.View style={[animatedStyle, styles.swipeForeground, isSubmitting && { backgroundColor: theme.isDark ? '#232312' : '#efefef', }]}>
                     <Pressable
-                        onPress={() => (translateX.value < 0 ? resetSwipe() : onPress())}
-                        onLongPress={onLongPress}
+                        onPress={() => {
+                            if (isSubmitting) return;
+                            translateX.value < 0 ? resetSwipe() : onPress();
+                        }}
+                        onLongPress={() => !isSubmitting && onLongPress()}
+                        disabled={isSubmitting}
                         style={[
                             styles.card,
                             { marginBottom: 0, flexDirection: 'row' }, // Reset margin for animation container
@@ -136,15 +147,18 @@ export default function FormDataItem({
                     >
                         {/* Avatar/Selection Section */}
                         <Pressable
-                            onPress={() => toggleSelection(item.id)}
+                            onPress={() => !isSubmitting && toggleSelection(item.id)}
                             style={{ justifyContent: 'center', marginRight: 12 }}
+                            disabled={isSubmitting}
                         >
                             <View style={[
                                 styles.avatar,
                                 { backgroundColor: isSelected ? theme.colors.primary : statusTheme.bg },
                                 { width: 44, height: 44, borderRadius: 22 }
                             ]}>
-                                {isSelected ? (
+                                {isSubmitting ? (
+                                    <ActivityIndicator size="small" color="#fff" />
+                                ) : isSelected ? (
                                     <MaterialIcons name="check" size={24} color="#fff" />
                                 ) : (
                                     <FormIcons iconName={item.icon} color="#fff" />
@@ -158,17 +172,15 @@ export default function FormDataItem({
                                 <Text numberOfLines={1} style={[styles.bodyText, { fontWeight: '600' }]}>
                                     {item.title || 'Untitled Record'}
                                 </Text>
+                                {isSubmitting && (
+                                    <Text style={[styles.tiny, { color: theme.colors.primary }]}>
+                                        Sending...
+                                    </Text>
+                                )}
                             </View>
 
 
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-{/* 
-                                <View style={[styles.badge, { backgroundColor: theme.colors.primary, borderWidth: 1, borderColor: theme.colors.primary }]}>
-                                    <Text numberOfLines={1} style={[styles.badgeText,]}>
-                                        {item.form_title}
-                                    </Text>
-                                </View> */}
-
                                 <View style={[styles.badge, { backgroundColor: statusTheme.bg + '20', borderWidth: 1, borderColor: statusTheme.bg }]}>
                                     <Text style={[styles.tiny, { color: statusTheme.bg, fontWeight: '800' }]}>
                                         {statusTheme.label}
@@ -180,11 +192,13 @@ export default function FormDataItem({
                             </View>
                         </View>
 
-                        <MaterialIcons name="chevron-right" size={20} color={theme.colors.hint} style={{ alignSelf: 'center', marginLeft: 4 }} />
+                        {!isSubmitting && (
+                            <MaterialIcons name="chevron-right" size={20} color={theme.colors.hint} style={{ alignSelf: 'center', marginLeft: 4 }} />
+                        )}
                     </Pressable>
                 </Animated.View>
 
             </View>
-        </GestureDetector>
+        </GestureDetector >
     );
 }

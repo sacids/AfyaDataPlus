@@ -1,6 +1,8 @@
+// store/authStore.js
 import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { config } from '../constants/config';
 
 const secureStorage = {
     getItem: async (key) => {
@@ -19,14 +21,39 @@ const useAuthStore = create(
     persist(
         (set) => ({
             user: null,
-            setUser: (user) => set({ user }),
+            isLoading: true,
+            setUser: (user) => set({ user, isLoading: false }),
             logout: async () => {
-                await SecureStore.deleteItemAsync('accessToken');
-                await SecureStore.deleteItemAsync('refreshToken');
-                await SecureStore.deleteItemAsync('username');
-                await SecureStore.deleteItemAsync('password');
-                await SecureStore.deleteItemAsync('user');
-                set({ user: null });
+                await SecureStore.deleteItemAsync(config.TOKEN_KEY);
+                await SecureStore.deleteItemAsync('saved_username');
+                await SecureStore.deleteItemAsync('saved_password');
+                set({ user: null, isLoading: false });
+            },
+            checkSession1: async () => {
+                try {
+                    const tokenData = await SecureStore.getItemAsync(config.TOKEN_KEY);
+                    if (tokenData) {
+                        const { user } = JSON.parse(tokenData);
+                        set({ user, isLoading: false });
+                    } else {
+                        set({ user: null, isLoading: false });
+                    }
+                } catch (error) {
+                    console.error('Session check error:', error);
+                    set({ user: null, isLoading: false });
+                }
+            },
+            checkSession: async () => {
+                // Don't set loading state here to avoid re-renders
+                try {
+                    const tokenData = await SecureStore.getItemAsync(config.TOKEN_KEY);
+                    if (tokenData) {
+                        const { user } = JSON.parse(tokenData);
+                        set({ user });
+                    }
+                } catch (error) {
+                    console.error('Session check error:', error);
+                }
             },
         }),
         {

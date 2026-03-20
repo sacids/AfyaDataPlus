@@ -1,17 +1,18 @@
 // app/_layout.js
-import { Slot } from 'expo-router';
+import { Slot, useRouter, useSegments } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { ActivityIndicator, Image, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { AuthProvider } from '../context/AuthContext';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
 import LanguageManager from '../i18n/languageManager';
+import { useAuthStore } from '../store/authStore';
 import { createTables } from '../utils/database';
 
 const ThemedStatusBar = () => {
-  const { colors, isDark } = useTheme();
+  const { isDark } = useTheme();
   return (
     <StatusBar
       translucent
@@ -22,7 +23,8 @@ const ThemedStatusBar = () => {
 };
 
 const SplashScreen = () => {
-  const { colors } = useTheme();
+  const theme = useTheme();
+  const { colors } = theme;
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
       <ActivityIndicator size="large" color={colors.primary} />
@@ -40,42 +42,105 @@ const SplashScreen = () => {
   );
 };
 
+// Main layout component
 export default function RootLayout() {
-  const [isLoading, setIsLoading] = useState(true);
+  const [isReady, setIsReady] = useState(false);
   const [i18nInstance, setI18nInstance] = useState(null);
+  const { checkSession, user } = useAuthStore();
+  const initialized = useRef(false);
+  const navigationPerformed = useRef(false);
+  const router = useRouter();
+  const segments = useSegments();
 
+  // Initialize app resources
   useEffect(() => {
+    if (initialized.current) return;
+    
     async function initialize() {
       try {
-        // 1. Initialize database tables
+        initialized.current = true;
+        
+        // Initialize database tables
         await createTables();
 
-        // 2. Initialize language directories
+        // Initialize language directories
         await LanguageManager.initializeDirectories();
 
-        // 3. Verify languages were loaded
-        const availableLanguages = await LanguageManager.fetchDownloadedLanguages();
-        console.log(`Loaded ${availableLanguages.length} languages:`,
-          availableLanguages.map(l => l.code).join(', '));
+        // Load i18n
+        const { default: i18n } = await import('../i18n/index');
+        setI18nInstance(i18n);
+
+        // Check session silently
+        await checkSession();
 
       } catch (error) {
         console.error('Initialization error:', error);
-        // Log error but continue
+      } finally {
+        setIsReady(true);
       }
     }
 
-    // Load i18n independently (always happens)
-    async function loadI18n() {
-      const { default: i18n } = await import('../i18n/index');
-      setI18nInstance(i18n);
-      setIsLoading(false);
-    }
-
     initialize();
-    loadI18n();
   }, []);
 
-  if (isLoading || !i18nInstance) {
+  // Handle navigation after everything is initialized
+  useEffect(() => {
+    const performNavigation = async () => {
+      // Only proceed if resources are ready and navigation hasn't been performed
+      if (!isReady || !i18nInstance || navigationPerformed.current) return;
+      
+      try {
+        const onboardingCompleted = await SecureStore.getItemAsync('onboarding_completed');
+        //console.log('onboarding status:', onboardingCompleted);
+
+        const inAuthGroup = segments[0] === '(auth)';
+        const currentRoute = segments[1];
+
+        navigationPerformed.current = true;
+
+        // First install - no onboarding completed
+        if (!onboardingCompleted) {
+          if (!inAuthGroup || currentRoute !== 'index') {
+            console.log('Navigating to onboarding');
+            // Use setTimeout to ensure navigation happens after render
+            setTimeout(() => {
+              router.replace('/(auth)');
+            }, 0);
+          }
+        }
+        // User not logged in
+        else if (!user) {
+          if (!inAuthGroup) {
+            console.log('Navigating to login');
+            setTimeout(() => {
+              router.replace('/(auth)/login');
+            }, 0);
+          } else if (currentRoute === 'index') {
+            console.log('Navigating from index to login');
+            setTimeout(() => {
+              router.replace('/(auth)/login');
+            }, 0);
+          }
+        }
+        // User logged in
+        else {
+          if (inAuthGroup) {
+            console.log('Navigating to main app');
+            setTimeout(() => {
+              router.replace('/(app)/Main');
+            }, 0);
+          }
+        }
+      } catch (error) {
+        console.error('Navigation error:', error);
+      }
+    };
+
+    performNavigation();
+  }, [isReady, i18nInstance, user]); // Add dependencies
+
+  // Don't render anything until resources are ready
+  if (!isReady || !i18nInstance) {
     return (
       <ThemeProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
@@ -86,16 +151,15 @@ export default function RootLayout() {
     );
   }
 
+  // Once everything is ready, render the app
   return (
     <I18nextProvider i18n={i18nInstance}>
-      <AuthProvider>
-        <ThemeProvider>
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            <ThemedStatusBar />
-            <Slot />
-          </GestureHandlerRootView>
-        </ThemeProvider>
-      </AuthProvider>
+      <ThemeProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <ThemedStatusBar />
+          <Slot />
+        </GestureHandlerRootView>
+      </ThemeProvider>
     </I18nextProvider>
   );
 }

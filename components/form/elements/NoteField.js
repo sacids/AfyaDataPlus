@@ -2,19 +2,25 @@ import { Text, View } from 'react-native';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
 import { getLabel } from '../../../lib/form/utils';
+import React, { memo } from 'react';
 import {
   replaceVariables
 } from '../../../lib/form/validation';
 import { useFormStore } from '../../../store/FormStore';
-const NoteField = ({ element, value }) => {
-  const { language, formData, schema } = useFormStore();
+const NoteField = ({ element }) => {
+
+
+  const formData = useFormStore(state => state.formData);
+  const language = useFormStore(state => state.language);
+  const schemaLanguage = useFormStore(state => state.schema.language);
+
+
   const theme = useTheme();
   const styles = getStyles(theme);
 
-  const el_label = getLabel(element, 'label', language, schema.language)
-  const el_hint = getLabel(element, 'hint', language, schema.language)
+  const el_label = getLabel(element, 'label', language, schemaLanguage)
+  const el_hint = getLabel(element, 'hint', language, schemaLanguage)
 
-  //console.log("Note element", element.label, value);'
 
   let label = replaceVariables(el_label, formData);
   let hint = replaceVariables(el_hint, formData)
@@ -34,4 +40,4 @@ const NoteField = ({ element, value }) => {
   );
 };
 
-export default NoteField;
+export default memo(NoteField);

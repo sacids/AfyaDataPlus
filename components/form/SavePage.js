@@ -1,15 +1,19 @@
 import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
+import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { 
-  KeyboardAvoidingView, 
-  Platform, 
-  ScrollView, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  View,
-  Alert 
+import { useTranslation } from 'react-i18next';
+import {
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { ScreenWrapper } from '../../components/layout/ScreenWrapper';
 import { getStyles } from '../../constants/styles';
@@ -18,8 +22,6 @@ import { evaluateCustomFunctions, replaceVariables } from '../../lib/form/valida
 import { useAuthStore } from '../../store/authStore';
 import { useFormStore } from '../../store/FormStore';
 import { insert } from '../../utils/database';
-import * as Location from 'expo-location';
-import { useTranslation } from 'react-i18next';
 
 const SavePage = () => {
     const theme = useTheme();
@@ -39,12 +41,12 @@ const SavePage = () => {
     } = useFormStore();
 
     // Get current GPS location
-    const getCurrentLocation = async () => {
+    const getCurrentLocation1 = async () => {
         setIsGettingLocation(true);
         try {
             // Request permission
             let { status } = await Location.requestForegroundPermissionsAsync();
-            
+
             if (status !== 'granted') {
                 Alert.alert(
                     t('savePage:permissionDenied'),
@@ -58,11 +60,11 @@ const SavePage = () => {
             // Get current position
             let location = await Location.getCurrentPositionAsync({
                 accuracy: Location.Accuracy.Balanced,
-                timeout: 10000, // 10 seconds timeout
+                timeout: 3000, // 10 seconds timeout
             });
 
             const { latitude, longitude, altitude, accuracy } = location.coords;
-            
+
             setGpsLocation({
                 latitude,
                 longitude,
@@ -70,7 +72,7 @@ const SavePage = () => {
                 accuracy,
                 timestamp: new Date().toISOString(),
             });
-            
+
         } catch (error) {
             console.error('Error getting location:', error);
             Alert.alert(
@@ -83,12 +85,81 @@ const SavePage = () => {
         }
     };
 
+
+    const getCurrentLocation = async (forceHighAccuracy = false) => {
+        setIsGettingLocation(true);
+        try {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                setIsGettingLocation(false);
+                return;
+            }
+
+            // A. TRY LAST KNOWN LOCATION FIRST (Instant)
+            const lastKnown = await Location.getLastKnownPositionAsync();
+            
+            // If we have a recent last known location (within 5 minutes), use it!
+            if (lastKnown && (Date.now() - lastKnown.timestamp < 300000)) {
+                setGpsLocation({
+                    latitude: lastKnown.coords.latitude,
+                    longitude: lastKnown.coords.longitude,
+                    altitude: lastKnown.coords.altitude,
+                    accuracy: lastKnown.coords.accuracy,
+                    timestamp: new Date(lastKnown.timestamp).toISOString(),
+                });
+                setIsGettingLocation(false);
+                return;
+            }
+
+            // B. FAST CURRENT POSITION FETCH
+            // Using 'Balanced' with a shorter timeout or 'Low' accuracy
+            const location = await Location.getCurrentPositionAsync({
+                accuracy: forceHighAccuracy ? Location.Accuracy.High : Location.Accuracy.Balanced,
+                // If it takes more than 4 seconds, the user is likely indoors; 
+                timeout: 4000, 
+            });
+
+            setGpsLocation({
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude,
+                altitude: location.coords.altitude,
+                accuracy: location.coords.accuracy,
+                timestamp: new Date().toISOString(),
+            });
+
+        } catch (error) {
+            console.warn('Fast location failed, trying low accuracy...', error);
+            // C. FINAL FAILSAFE: Lowest accuracy (Wifi/Cell only - very fast)
+            try {
+                const coarseLocation = await Location.getCurrentPositionAsync({
+                    accuracy: Location.Accuracy.Low,
+                    timeout: 3000
+                });
+                setGpsLocation({
+                    latitude: coarseLocation.coords.latitude,
+                    longitude: coarseLocation.coords.longitude,
+                    accuracy: coarseLocation.coords.accuracy,
+                    timestamp: new Date().toISOString(),
+                });
+            } catch (innerError) {
+                console.error('All location attempts failed');
+            }
+        } finally {
+            setIsGettingLocation(false);
+        }
+    };
+
     const saveForm = async (status) => {
         try {
             // Try to get location if not already obtained
             if (!gpsLocation && status === 'finalized') {
                 await getCurrentLocation();
             }
+
+            const main_formData = { ...formData }
+            main_formData['app_version'] = Constants.expoConfig?.version;
+            main_formData['form_version'] = schema.version;
+
 
             await insert("form_data", {
                 form: schema.form,
@@ -104,7 +175,7 @@ const SavePage = () => {
                 status_date: new Date().toISOString(),
                 deleted: 0,
                 synced: 0,
-                form_data: JSON.stringify(formData),
+                form_data: JSON.stringify(main_formData),
                 gps: gpsLocation ? JSON.stringify(gpsLocation) : null,
             });
             router.dismissTo('/Main');
@@ -238,10 +309,15 @@ const SavePage = () => {
                     <View style={{ marginTop: 40, gap: 12 }}>
                         <TouchableOpacity
                             onPress={() => saveForm('finalized')}
-                            style={[styles.button, { backgroundColor: theme.colors.primary, height: 55 }]}
+                            style={[styles.button, { backgroundColor: isGettingLocation ? theme.colors.inputBorder : theme.colors.primary , height: 55 }]}
                             disabled={isGettingLocation}
                         >
-                            <MaterialIcons name="assignment-turned-in" size={20} color="white" />
+                            {
+                                isGettingLocation ?
+                                    (<ActivityIndicator size={20} color="white" />)
+                                    :
+                                    (<MaterialIcons name="assignment-turned-in" size={20} color="white" />)
+                            }
                             <Text style={styles.buttonText}>
                                 {isGettingLocation ? t('savePage:gettingLocation') : t('savePage:finalizeRecord')}
                             </Text>

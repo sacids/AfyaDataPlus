@@ -70,7 +70,17 @@
     "forgotPassword": "パスワードをお忘れですか？",
     "rememberMe": "ログイン状態を保持",
     "createAccount": "アカウント作成",
-    "syncAuth": "認証同期"
+    "syncAuth": "認証同期",
+    "loginAction": "ログイン",
+    "registerAction": "登録",
+    "phonePlaceholder": "電話番号",
+    "passwordPlaceholder": "パスワード",
+    "fullNamePlaceholder": "氏名",
+    "confirmPasswordPlaceholder": "パスワードの確認",
+    "fillAllFields": "すべての項目を入力してください",
+    "invalidCredentials": "電話番号またはパスワードが正しくありません",
+    "registrationFailed": "登録に失敗しました。もう一度お試しください。",
+    "logoutConfirm": "ログアウトしてもよろしいですか？"
   },
   
   "disease": {
@@ -95,7 +105,16 @@
     "syncing": "メッセージを同期中...",
     "failedSync": "メッセージは後で同期されます",
     "sending": "送信中...",
-    "messageSent": "メッセージを送信しました"
+    "messageSent": "メッセージを送信しました",
+    "emptyState": "メッセージはまだありません。会話を始めましょう！",
+    "placeholder": "メッセージを入力...",
+    "send": "送信",
+    "lockedTitle": "提出が必要です",
+    "lockedSubtitle": "サーバーに提出済みのレポートについてのみ、メッセージを送信できます。",
+    "submittingTitle": "データを提出中...",
+    "submittingSubtitle": "レポートをサーバーにアップロードしています。しばらくお待ちください。",
+    "submitNow": "今すぐ提出",
+    "goBack": "戻る"
   },
   
   "projects": {
@@ -379,5 +398,16 @@
     "monthsAgo_plural": "{{count}}か月前",
     "yearsAgo": "{{count}}年前",
     "yearsAgo_plural": "{{count}}年前"
+  },
+
+  "onBoarding": {
+    "welcomeTitle": "AfyaDataへようこそ",
+    "welcomeSubtitle": "参加型の健康監視を通じてコミュニティを強化します。",
+    "step2Title": "安全な報告",
+    "step2Subtitle": "データは暗号化され、公衆衛生の早期警戒システムを強化するために使用されます。",
+    "finalTitle": "始める",
+    "finalSubtitle": "サインインするか、新しいアカウントを作成して開始してください。",
+    "registerAction": "初めての方はこちら",
+    "loginAction": "アカウントをお持ちの方"
   }
 }

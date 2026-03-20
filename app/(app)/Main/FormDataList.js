@@ -22,10 +22,10 @@ import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
 
 import { useFocusEffect } from '@react-navigation/native';
-import { submitForms } from '../../../lib/form/submitForms';
+import { useAuthStore } from '../../../store/authStore';
 import { useFilterStore } from '../../../store/filterStore';
 import useProjectStore from '../../../store/projectStore';
-import { getForms } from '../../../utils/services';
+import { handleFormSubmission } from '../../../utils/services';
 
 export default function FormDataList() {
   const router = useRouter();
@@ -39,11 +39,14 @@ export default function FormDataList() {
   const [selectAll, setSelectAll] = useState(false);
   const [swipedItemId, setSwipedItemId] = useState(null);
   const [getFormStatus, setGetFormStatus] = useState(t('sync:readyToSync'));
+  const [submittingIds, setSubmittingIds] = useState([]);
   const [showFormStatus, setShowFormStatus] = useState(false);
   const resetSwipeRef = useRef(null);
   const selectedTag = useFilterStore((state) => state.filter);
   const { currentProject, setCurrentProject, setCurrentData, currentData } = useProjectStore();
   const insets = useSafeAreaInsets();
+  const { user } = useAuthStore()
+
 
   const theme = useTheme();
   const styles = getStyles(theme);
@@ -52,9 +55,9 @@ export default function FormDataList() {
     try {
       let results = []
       if (currentData) {
-        results = await getFormData(currentProject?.project, currentData.original_uuid);
+        results = await getFormData(user?.id, currentProject?.project, currentData.original_uuid);
       } else {
-        results = await getFormData(currentProject?.project, false);
+        results = await getFormData(user?.id, currentProject?.project, false);
       }
 
       setData(results);
@@ -153,11 +156,44 @@ export default function FormDataList() {
     setSwipedItemId(isSwiped ? id : null);
   };
 
+  // In FormDataList.js
   const doSubmit = async (data = []) => {
-    await submitForms([data]);
-    await fetchData();
-    clearSelections();
-  }
+    const itemsToSubmit = Array.isArray(data) ? data : [data];
+
+    // Pass a callback to handleFormSubmission
+    try {
+
+      Alert.alert(
+        'Confirm Submission',
+        `Are you sure you want to submit ${data.length} form(s)?`,
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => console.log('Submission cancelled')
+          },
+          {
+            text: 'Submit',
+            onPress: async () => {
+              await handleFormSubmission(itemsToSubmit, (id, loading) => {
+                setSubmittingIds(prev =>
+                  loading ? [...prev, id] : prev.filter(item => item !== id)
+                );
+              });
+            }
+          }
+        ],
+        { cancelable: false }
+      );
+
+
+      await fetchData();
+    } catch (error) {
+      console.error("Submission failed", error);
+    } finally {
+      clearSelections();
+    }
+  };
 
   const actOnData = (item) => {
     if (item.status.toLowerCase() === 'draft') {
@@ -171,36 +207,16 @@ export default function FormDataList() {
   const renderItem = ({ item }) => (
     <FormDataItem
       item={item}
+      isSubmitting={submittingIds.includes(item.id)}
       isSelected={selectedIds.includes(item.id)}
       toggleSelection={toggleSelection}
       onPress={() => actOnData(item)}
-      onLongPress={() => doSubmit(item)}
+      onLongPress={() => item.status !== 'sent' && doSubmit(item)}
       onAction={confirmAndHandleAction}
       onSwipeChange={(isSwiped) => handleSwipeChange(item.id, isSwiped)}
       setResetSwipe={(resetFn) => (resetSwipeRef.current = resetFn)}
     />
   );
-
-  const goToStack = (path) => {
-    setMenuVisible(false);
-    router.push(path);
-  };
-
-  const toggleMenu = () => {
-    setMenuVisible(prev => !prev);
-  };
-
-  const handleOutsidePress = () => {
-    if (menuVisible) {
-      setMenuVisible(false);
-    }
-  };
-
-  const syncSurveys = async () => {
-    setShowFormStatus(true);
-    setMenuVisible(false);
-    await getForms(currentProject?.project, setGetFormStatus);
-  };
 
   async function initialize() {
     try {
@@ -364,6 +380,7 @@ export default function FormDataList() {
           />
         )}
       </View>
+
 
       <TouchableOpacity
         style={[styles.fab, styles.fabContent, { backgroundColor: theme.colors.primary }]}

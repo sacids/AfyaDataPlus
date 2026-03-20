@@ -4,10 +4,8 @@ import Onboarding from 'react-native-onboarding-swiper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 
-
 const OnboardingScreen = () => {
   const { colors } = useTheme();
-
   const logo = require('../../assets/images/AfyaDataLogo.png');
   const insets = useSafeAreaInsets();
 
@@ -35,42 +33,61 @@ const OnboardingScreen = () => {
       height: 200,
       resizeMode: 'contain',
     },
-    button: {
-      backgroundColor: colors.buttonBackground,
-      paddingVertical: 12,
-      paddingHorizontal: 24,
-      borderRadius: 8,
-      alignSelf: 'center',
+    // New multi-button container for the last screen
+    buttonContainer: {
+      width: '100%',
+      paddingHorizontal: 40,
+      gap: 12,
       marginTop: 20,
     },
-    buttonText: {
+    primaryButton: {
+      backgroundColor: colors.buttonBackground,
+      paddingVertical: 14,
+      borderRadius: 8,
+      alignItems: 'center',
+    },
+    secondaryButton: {
+      backgroundColor: 'transparent',
+      paddingVertical: 14,
+      borderRadius: 8,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.buttonBackground,
+    },
+    primaryButtonText: {
       color: colors.buttonText,
+      fontSize: 16,
+      fontWeight: 'bold',
+    },
+    secondaryButtonText: {
+      color: colors.buttonBackground,
       fontSize: 16,
       fontWeight: 'bold',
     },
   });
 
-  const handleDone = () => {
-    router.replace('/register'); // Navigate to registration
-  };
+  const Footer = () => (
+    <View style={themedStyles.buttonContainer}>
+      <TouchableOpacity
+        style={themedStyles.primaryButton}
+        onPress={() => router.push('/(auth)/register')}
+      >
+        <Text style={themedStyles.primaryButtonText}>Im New Here</Text>
+      </TouchableOpacity>
 
-  const DotComponent = ({ selected }) => (
-    <View
-      style={{
-        width: 8,
-        height: 8,
-        marginHorizontal: 3,
-        backgroundColor: selected ? colors.primary : '#666',
-        borderRadius: 4,
-      }}
-    />
+      <TouchableOpacity
+        style={themedStyles.secondaryButton}
+        onPress={() => router.push('/(auth)/login')}
+      >
+        <Text style={themedStyles.secondaryButtonText}>I Have an Account</Text>
+      </TouchableOpacity>
+    </View>
   );
-
-  
 
   return (
     <Onboarding
-      DotComponent={DotComponent}
+      showNext={true}
+      showSkip={true}
       pages={[
         {
           backgroundColor: colors.background,
@@ -82,12 +99,7 @@ const OnboardingScreen = () => {
         },
         {
           backgroundColor: colors.background,
-          image: (
-            <Image
-              source={{ uri: 'https://via.placeholder.com/150' }} // Replace with relevant image
-              style={themedStyles.image}
-            />
-          ),
+          image: <Image source={{ uri: 'https://via.placeholder.com/150' }} style={themedStyles.image} />,
           title: 'Real-Time Data Collection',
           subtitle: 'Report health events promptly to enhance early warning systems.',
           titleStyles: themedStyles.title,
@@ -95,36 +107,25 @@ const OnboardingScreen = () => {
         },
         {
           backgroundColor: colors.background,
-          image: (
-            <Image
-              source={{ uri: 'https://via.placeholder.com/150' }} // Replace with relevant image
-              style={themedStyles.image}
-            />
-          ),
-          title: 'Stay Informed',
-          subtitle:
-            'Receive timely feedback and health information to support your community.',
+          //image: <Image source={{ uri: 'https://via.placeholder.com/150' }} style={themedStyles.image} />,
+          title: 'Get Started',
+          subtitle: 'Choose how you would like to proceed.',
           titleStyles: themedStyles.title,
           subTitleStyles: themedStyles.subtitle,
-          renderNext: () => (
-            <TouchableOpacity
-              style={themedStyles.button}
-              onPress={handleDone}
-            //activeOpacity={0.8}
-            >
-              <Text style={themedStyles.buttonText}>Get Started</Text>
-            </TouchableOpacity>
+          image: (
+            <View style={{ alignItems: 'center', width: '100%' }}>
+              <Image source={logo} style={themedStyles.logo} />
+              <Text style={themedStyles.title}>Join AfyaData</Text>
+              <Text style={themedStyles.subtitle}>Sign in to your account or create a new one to start reporting.</Text>
+              <Footer />
+            </View>
           ),
-          showSkip: true,
         },
       ]}
-
-      onSkip={handleDone}
-      onDone={handleDone}
-      nextLabel="Next"
-      skipLabel="Skip"
-      bottomBarHighlight={false}
-      containerStyles={{ paddingBottom: insets.bottom }}
+      // Disable default buttons on the last page so our custom ones take over
+      showPagination={true}
+      bottomBarHeight={80}
+      onDone={() => { }}
     />
   );
 };

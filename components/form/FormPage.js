@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, memo, useMemo, useRef } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
 import { getStyles } from '../../constants/styles';
 import { useTheme } from '../../context/ThemeContext';
@@ -18,7 +18,6 @@ import SelectOneField from './elements/SelectOne';
 import TextInputField from './elements/TextInput';
 import SavePage from './SavePage';
 
-
 const elementComponents = {
   text: TextInputField,
   decimal: DecimalInput,
@@ -35,160 +34,96 @@ const elementComponents = {
 };
 
 const FormPage = ({ pageIndex }) => {
-  const {
-    schema,
-    formData,
-    language,
-    updateFormData,
-    validateAndNavigate,
-    formDirection,
-  } = useFormStore();
+  const validateAndNavigate = useFormStore(state => state.validateAndNavigate);
+  const formDirection = useFormStore(state => state.formDirection);
+  const schema = useFormStore(state => state.schema);
+  const formData = useFormStore(state => state.formData);
+  const language = useFormStore(state => state.language);
+  const schemaLanguage = useFormStore(state => state.schema?.language);
+
+  const colors = useTheme();
+  const styles = getStyles(colors);
 
   const page = schema?.pages?.[pageIndex];
   const isLastPage = schema ? pageIndex === schema.pages.length : false;
 
-  const colors = useTheme();
-  const styles = getStyles(colors);
-  const label = getLabel(page, 'label', language, schema.language)
-  const hint = getLabel(page, 'hint', language, schema.language)
-
-  // Step 1: Calculate fields
-  useEffect(() => {
-    if (!page) return;
+  // 1. EVALUATE VISIBILITY (Re-run only when formData or page changes)
+  const visibleFields = useMemo(() => {
+    if (!page) return [];
+    
+    const visible = [];
     page.fields.forEach((fieldGroup) => {
-      Object.values(fieldGroup).forEach((field) => {
-        if (field.type === 'calculate' && field.calculation) {
-          try {
-            const calculatedValue = evaluateField('calculation', field, formData);
-
-            //console.log('FormPage calculated value', field.name, field.calculation, calculatedValue , JSON.stringify(formData, null, 4))
-            //updateFormData(field.name, calculatedValue);
-            if (calculatedValue !== formData[field.name]) {
-              updateFormData(field.name, calculatedValue);
-            }
-          } catch (error) {
-            console.error(`Error calculating ${field.name}:`, error);
-          }
+      Object.values(fieldGroup || {}).forEach((field) => {
+        if (!field || field.type === 'calculate') return;
+        
+        try {
+          const isRelevant = field.relevant 
+            ? evaluateField('relevant', field, formData || {}) 
+            : true;
+          
+          if (isRelevant) visible.push(field);
+        } catch (e) {
+          visible.push(field); // Default to visible on error
         }
       });
     });
-  }, [page, formData, updateFormData]);
-
-  // Step 2: Determine visible fields (always call useMemo, never conditionally)
-  const hasVisibleFields = useMemo(() => {
-    if (!page) return false;
-
-    return page.fields.some((fieldGroup) =>
-      Object.values(fieldGroup).some((field) => {
-        if (field.type === 'calculate') return false;
-        return field.relevant ? evaluateField('relevant', field, formData) : true;
-      })
-    );
+    return visible;
   }, [page, formData]);
 
-  // Step 3: If no visible fields, automatically skip forward/backward
+  const hasVisibleFields = visibleFields.length > 0;
+
+  // 2. AUTO-SKIP EMPTY PAGES
   useEffect(() => {
-    if (!page || hasVisibleFields) return;
+    if (!isLastPage && page && !hasVisibleFields) {
+      console.log(`⏭️ Page ${pageIndex} is empty, skipping...`);
+      // Use a small delay to ensure the store is ready for a transition
+      const timeout = setTimeout(() => {
+        validateAndNavigate(formDirection || 'next');
+      }, 50);
+      return () => clearTimeout(timeout);
+    }
+  }, [hasVisibleFields, pageIndex, isLastPage]);
 
-    const goToNextVisiblePage = () => {
-      const step = formDirection === 'prev' ? -1 : 1;
-      let nextPageIndex = pageIndex + step;
-
-      while (
-        nextPageIndex >= 0 &&
-        nextPageIndex < schema.pages.length
-      ) {
-        const nextPage = schema.pages[nextPageIndex];
-        const visible = nextPage.fields.some((fieldGroup) =>
-          Object.values(fieldGroup).some((field) => {
-            if (field.type === 'calculate') return false;
-            return field.relevant ? evaluateField('relevant', field, formData) : true;
-          })
-        );
-        if (visible) {
-          validateAndNavigate(formDirection); // Triggers the store to change page
-          break;
-        }
-        nextPageIndex += step;
-      }
-    };
-
-    goToNextVisiblePage();
-  }, [hasVisibleFields, page, schema, formDirection, pageIndex, formData, validateAndNavigate]);
-
-
-  if (isLastPage) {
-    return (
-      <View style={styles.pageContainer}>
-        <SavePage />
-      </View>
-    );
-  }
-
-  // If invalid schema or page
-  if (!page) {
-    return (
-      <View style={styles.pageContainer}>
-        <Text style={styles.errorText}>Invalid page</Text>
-      </View>
-    );
-  }
-
+  // 3. RENDER CONTENT
+  if (isLastPage) return <SavePage />;
+  if (!page) return <View style={styles.pageContainer}><Text>Invalid Page</Text></View>;
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={{ flex: 1 }}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 40}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
     >
-      <ScrollView contentContainerStyle={[styles.scrollContent]}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled" // Important for inputs
+      >
         {hasVisibleFields && (
-          <>
-            {label && <Text style={styles.pageTitle}>{label}</Text>}
-            {hint && <Text style={styles.hint}>{hint}</Text>}
-          </>
+          <View style={{ marginBottom: 20 }}>
+            {getLabel(page, 'label', language, schemaLanguage) && (
+              <Text style={styles.pageTitle}>{getLabel(page, 'label', language, schemaLanguage)}</Text>
+            )}
+            {getLabel(page, 'hint', language, schemaLanguage) && (
+              <Text style={styles.hint}>{getLabel(page, 'hint', language, schemaLanguage)}</Text>
+            )}
+          </View>
         )}
-        <View>
-          {page.fields.flatMap((fieldGroup, groupIndex) =>
-            Object.entries(fieldGroup).map(([colName, field]) => {
-              if (field.type === 'calculate') {
-                return null
-              };
 
-              //console.log(JSON.stringify(field, null,3))
+        {visibleFields.map((field) => {
+          const Component = elementComponents[field.type];
+          if (!Component) return <Text key={field.name}>Unsupported: {field.type}</Text>;
 
-              const Component = elementComponents[field.type];
-              if (!Component) {
-                return (
-                  <Text
-                    key={`unsupported-${groupIndex}-${colName}`}
-                    style={styles.errorText}
-                  >
-                    Unsupported element: {field.type}
-                  </Text>
-                );
-              }
-
-              const isRelevant = field.relevant
-                ? evaluateField('relevant', field, formData)
-                : true;
-
-              //if (field.relevant) console.log('field detail', field.name, field.type, field.relevant, isRelevant, JSON.stringify(formData, null, 4))
-              if (!isRelevant) return null;
-
-              return (
-                <Component
-                  key={field.name}
-                  element={field}
-                  value={formData[field.name] || null}
-                />
-              );
-            })
-          )}
-        </View>
+          return (
+            <Component
+              key={field.name}
+              element={field}
+              // No 'value' prop here! The component gets it from store.
+            />
+          );
+        })}
       </ScrollView>
     </KeyboardAvoidingView>
   );
 };
 
-export default FormPage;
+export default memo(FormPage);

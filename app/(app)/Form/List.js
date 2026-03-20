@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, FlatList, Text, TouchableOpacity, View } from 'react-native';
 import { AppHeader } from '../../../components/layout/AppHeader';
+import { FormIcons } from '../../../components/layout/FormIcons';
 import { ScreenWrapper } from '../../../components/layout/ScreenWrapper';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
@@ -45,7 +46,14 @@ const ListEmptyForms = () => {
         return (
             <TouchableOpacity onPress={() => router.push(`/Form/New?fdefn_id=${item.id}`)}>
                 <View style={[styles.card, { flexDirection: 'row', alignContent: 'center', alignItems: 'center' }]}>
-                    <View style={{ flex: 1, marginRight: 10 }}>
+
+                    <FormIcons
+                        iconName={item.icon}
+                        size={40}
+                        color={theme.colors.primary}
+                    />
+
+                    <View style={{ flex: 1, marginHorizontal: 10 }}>
                         <Text style={styles.title}>{item.title}</Text>
 
                         {item.description && (
