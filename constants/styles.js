@@ -409,12 +409,8 @@ export const getStyles = (theme) =>
     // ----- ERROR STATE -----
     inputError: {
       borderColor: theme.colors.error,
-      backgroundColor: theme.colors.error + '05', // Very light red tint
+      //backgroundColor: theme.colors.error + '05', // Very light red tint
     },
-
-
-
-
 
 
 

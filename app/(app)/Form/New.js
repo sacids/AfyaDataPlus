@@ -3,55 +3,66 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
-import FormBuilder from '../../../components/form/FormBuilder';
-import { parseSchema } from '../../../lib/form/schemaParser';
-import { insert, select } from '../../../utils/database';
-
-import { useFormStore } from '../../../store/FormStore';
-
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import FormPage from '../../../components/FormPage';
+import NavigationButtons from '../../../components/NavigationButtons';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
-import { evaluateCustomFunctions, replaceVariables } from '../../../lib/form/validation';
+import { evaluateODKExpression } from '../../../lib/form/odkEngine';
 import { useAuthStore } from '../../../store/authStore';
-import useProjectStore from '../../../store/projectStore';
+import { useFormStore } from '../../../store/useFormStore';
+import { insert, select } from '../../../utils/database';
 
-const New = () => {
+
+
+
+
+export default function NewForm() {
   const { fdefn_id, fdata_id, parent_uuid } = useLocalSearchParams();
-  const { t } = useTranslation();
-  const [loading, setLoading] = useState(true);
+
+  const initForm = useFormStore(state => state.initForm);
+  const currentPage = useFormStore(state => state.currentPage);
+  const schema = useFormStore(state => state.schema);
+  const formData = useFormStore(state => state.formData);
+  const formUUID = useFormStore(state => state.formUUID);
+  const parentUUID = useFormStore(state => state.parentUUID);
+  const language = useFormStore(state => state.language);
+  const setLanguage = useFormStore(state => state.setLanguage);
+
+
   const [menuVisible, setMenuVisible] = useState(false);
-  const { language, setLanguage, schema, setSchema, formData, setFormData, formUUID, setFormUUID, parentUUID, setParentUUID } = useFormStore();
-  const { currentProject, setCurrentProject, currentData, setCurrentData } = useProjectStore();
+  const [loading, setLoading] = useState(true);
+
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const theme = useTheme();
-
   const styles = getStyles(theme);
-
+  const { t } = useTranslation();
 
   const saveAsDraft = async () => {
-    const instance_name = schema.meta.instance_name;
-    const temp = replaceVariables(instance_name, formData);
-    const title = evaluateCustomFunctions(temp, formData);
+
+    const generatedTitle = evaluateODKExpression(schema.form_defn.meta.instance_name, formData);
+    const title = generatedTitle || schema.form_defn.title;
+
 
     try {
       await insert("form_data", {
-        form: schema.form,
+        form: fdefn_id,
         project: schema.project,
         uuid: formUUID,
         original_uuid: formUUID,
+        parent_uuid: parentUUID,
         title: title,
         created_by: user.id,
         created_by_name: user.fullName ?? user.id,
         created_on: new Date().toISOString(),
-        status: t('status:draft').toLowerCase(),
+        status: 'draft',
         status_date: new Date().toISOString(),
         deleted: 0,
         synced: 0,
         form_data: JSON.stringify(formData),
       });
-      router.dismissTo('/Main');
+      router.replace('/Main');
     } catch (e) {
       console.log(e);
       Alert.alert(
@@ -67,63 +78,44 @@ const New = () => {
     }
   };
 
-
-
   useEffect(() => {
-    async function loadForm() {
+    async function load() {
       try {
+        // 1. Fetch Schema from DB
+        const schemaData = await select('form_defn', 'id = ?', [fdefn_id]);
+        if (!schemaData || schemaData.length === 0) throw new Error("Schema not found");
+
+        const parsedSchema = {
+          ...schemaData[0],
+          form_defn: JSON.parse(schemaData[0].form_defn)
+        };
+
+        // 2. Fetch existing data if editing (fdata_id exists)
+        let existingData = null;
+        let existingUUID = null;
+
         if (fdata_id) {
-          const FormDataItem = await select('form_data', 'id = ?', fdata_id);
-          const FormDefn = await select('form_defn', 'form_id = ?', FormDataItem[0].form);
-
-          const FD = JSON.parse(FormDataItem[0].form_data);
-          const FUUID = FormDataItem[0].uuid;
-          setFormUUID(FUUID);
-          setFormData(FD);
-
-          const parsedSchema = parseSchema(FormDefn[0]);
-          setSchema(parsedSchema, FD, FUUID);
-
-          if (parsedSchema.meta.default_language) {
-            setLanguage('::' + parsedSchema.meta.default_language);
-          } else {
-            setLanguage('::' + t('forms:defaultLanguage'));
+          const dataRecord = await select('form_data', 'id = ?', [fdata_id]);
+          if (dataRecord.length > 0) {
+            existingData = JSON.parse(dataRecord[0].form_data);
+            existingUUID = dataRecord[0].uuid;
           }
-          return;
         }
-        if (fdefn_id) {
-          const FormDefn = await select('form_defn', 'id = ?', fdefn_id);
-          //console.log('form definition', JSON.stringify(FormDefn, null, 5))
-          const parsedSchema = parseSchema(FormDefn[0]);
 
-          setSchema(parsedSchema);
-
-          if (currentData) {
-            setParentUUID(currentData.uuid);
-          }
-          if (parsedSchema.meta.default_language) {
-            setLanguage('::' + parsedSchema.meta.default_language);
-          } else {
-            setLanguage('::' + t('forms:defaultLanguage'));
-          }
-          return;
-        }
+        // 3. Initialize the global store
+        initForm(parsedSchema, existingData, existingUUID, parent_uuid);
 
       } catch (error) {
-        console.error('Error loading form:', error);
-        Alert.alert(
-          t('errors:errorTitle'),
-          t('errors:failedLoad') + ': ' + error.message
-        );
+        console.error("Initialization Error:", error);
       } finally {
         setLoading(false);
       }
     }
 
-    loadForm();
-  }, [fdata_id, fdefn_id, t]);
+    load();
+  }, [fdefn_id, fdata_id, parent_uuid]);
 
-  if (loading) {
+  if (loading || !schema) {
     return (
       <View style={[styles.pageContainer, { marginBottom: insets.bottom }]}>
         <ActivityIndicator size="large" color={theme.colors.text} />
@@ -131,15 +123,6 @@ const New = () => {
     );
   }
 
-  if (!schema) {
-    return (
-      <View style={[styles.pageContainer, { paddingBottom: insets.bottom }]}>
-        <Text style={styles.errorText}>
-          {t('errors:errorTitle')}: {t('errors:schemaNotLoaded')}
-        </Text>
-      </View>
-    );
-  }
 
   return (
     <View style={[styles.pageContainer, { paddingBottom: insets.bottom, paddingTop: insets.top }]}>
@@ -176,7 +159,7 @@ const New = () => {
               <Text style={[styles.label, { paddingVertical: 8, fontSize: 14 }]}>
                 {t('forms:changeLanguage')}
               </Text>
-              {schema.language.map((lang, idx) => (
+              {schema.form_defn.languages.map((lang, idx) => (
                 <TouchableOpacity
                   key={idx}
                   onPress={() => {
@@ -198,17 +181,13 @@ const New = () => {
         </TouchableWithoutFeedback>
       )}
 
-      <FormBuilder
-        schema={schema}
-        formData={formData}
-        formUUID={formUUID}
-        parentUUID={parentUUID}
-      />
+      <FormPage pageIndex={currentPage} />
+      <NavigationButtons />
     </View>
   );
-};
+}
 
-export default New;
+
 
 const lstyles = StyleSheet.create({
   overlay: {

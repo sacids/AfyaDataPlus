@@ -1,124 +1,162 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { memo, useEffect, useRef, useState } from 'react';
+import React, { memo, useCallback, useMemo } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
-import {
-  deserializeMultiSelect,
-  getAvailableChoices,
-  toggleMultiSelect
-} from '../../../lib/form/engine';
 import { getLabel } from '../../../lib/form/utils';
-import { useFormStore } from '../../../store/FormStore';
+import { useFormStore } from '../../../store/useFormStore';
 
-const SelectMultiple = ({ element }) => {
-  // 1. GRANULAR SELECTORS
-  const updateFormData = useFormStore(state => state.updateFormData);
-  const globalValue = useFormStore(state => state.formData[element.name]);
-  const fieldError = useFormStore(state =>
-    (state.errors && state.errors[element.name]) ? state.errors[element.name] : null
+const SelectMultiple = ({ element, globalValue }) => {
+
+  console.log('in select multiple')
+  // 1. SELECTORS
+  //const formData = useFormStore(state => state.formData);
+
+  //const globalValue = useFormStore(state => state.formData[element.name]);
+  const updateField = useFormStore(state => state.updateField);
+  const language = useFormStore(state => state.language);
+  const fieldError = useFormStore(state => state.errors[element.name]);
+  const schemaLanguage = useFormStore(state => state.schema.form_defn.languages);
+
+  // Use the library's filtering logic to get valid options based on choice_filter
+  const getFilteredOptions = useFormStore(state => state.getFilteredOptions);
+  //const availableOptions = useMemo(() => getFilteredOptions(element), [element]);
+
+
+
+
+
+  // 1. Identify which fields this specific SelectOne cares about
+  const dependencyKeys = useMemo(() => {
+    if (!element.choice_filter) return [];
+    const matches = element.choice_filter.match(/\${(.*?)}/g) || [];
+    return matches.map(m => m.replace(/[${}]/g, ''));
+  }, [element.choice_filter]);
+
+  // 2. Subscribe to a serialized string of values
+  // This will only trigger a re-render if the actual values change!
+  const dependencyValuesString = useFormStore(
+    useCallback(
+      (state) => dependencyKeys.map(key => state.formData[key] || '').join('|'),
+      [dependencyKeys]
+    )
   );
 
-  // Necessary for logic-based choices (getAvailableChoices)
-  const formData = useFormStore(state => state.formData);
-  const language = useFormStore(state => state.language);
-  const schemaLanguage = useFormStore(state => state.schema?.language);
+  // 3. Recalculate options only when that string changes
+  const availableOptions = useMemo(() => {
+    return getFilteredOptions(element);
+  }, [element, dependencyValuesString, getFilteredOptions]);
+
+  
+
+
+
 
   const theme = useTheme();
   const styles = getStyles(theme);
 
-  const debounceTimer = useRef(null);
-
-  // 2. LOCAL STATE (Immediate UI Feedback)
-  // Deserialize the global string/array into a working array locally
-  const [localSelected, setLocalSelected] = useState(() => deserializeMultiSelect(globalValue));
-
-  // Sync local state if global data changes (e.g. form reset or external logic)
-  useEffect(() => {
-    setLocalSelected(deserializeMultiSelect(globalValue));
-  }, [globalValue]);
-
-  const availableOptions = getAvailableChoices(element, formData || {});
+  //console.log('select multiple element', element)
+  // ODK Multi-select values are stored as space-separated strings: "choice1 choice2"
+  const currentValue = globalValue || "";
+  const selectedArray = useMemo(() =>
+    currentValue ? currentValue.split(" ").filter(v => v !== "") : [],
+    [currentValue]
+  );
 
   const handleToggle = (optionName) => {
-    // Calculate new selection set locally
-    const nextValues = toggleMultiSelect(localSelected, optionName);
-
-    // Update UI instantly
-    setLocalSelected(nextValues);
-
-    if (debounceTimer.current) {
-      clearTimeout(debounceTimer.current);
+    let newSelected;
+    if (selectedArray.includes(optionName)) {
+      newSelected = selectedArray.filter(item => item !== optionName);
+    } else {
+      newSelected = [...selectedArray, optionName];
     }
-
-    debounceTimer.current = setTimeout(() => {
-      updateFormData(element.name, nextValues);
-    }, 300);
-
-    // 3. DEFERRED GLOBAL UPDATE
-    // This allows the checkbox animation to remain smooth even if the store is heavy
-    // requestAnimationFrame(() => {
-    //   updateFormData(element.name, nextValues);
-    // });
+    // Sync back to store as space-separated string
+    updateField(element.name, newSelected.join(" "));
   };
+
+  if (availableOptions.length === 0) return null;
+
 
   const label = getLabel(element, 'label', language, schemaLanguage);
   const hint = getLabel(element, 'hint', language, schemaLanguage);
 
-  useEffect(() => {
-    return () => {
-      if (debounceTimer.current) clearTimeout(debounceTimer.current);
-    };
-  }, []);
+  // --- RENDER HELPERS ---
+  const renderLabel = () => label && (
+    <View style={styles.labelContainer}>
+      {element.required && <Text style={styles.required}>*</Text>}
+      <Text style={styles.label}>{label}</Text>
+    </View>
+  );
+
+  const renderHint = () => hint && <Text style={styles.hint}>{hint}</Text>;
+
+
+  // eslint-disable-next-line react/display-name
+  const OptionItem = React.memo(({
+    option,
+    isSelected,
+    onToggle,
+    getLabel,
+    language,
+    schemaLanguage,
+    theme
+  }) => {
+    const handlePress = useCallback(() => {
+      onToggle(option.name);
+    }, [option.name, onToggle]);
+
+    return (
+      <TouchableOpacity
+        style={styles.checkboxContainer}
+        onPress={handlePress}
+        activeOpacity={0.7}
+      >
+        <MaterialIcons
+          name={isSelected ? 'check-box' : 'check-box-outline-blank'}
+          size={24}
+          color={isSelected ? theme.colors.primary : styles.inputBase.borderColor}
+        />
+        <Text style={styles.checkboxLabel}>
+          {getLabel(option, 'label', language, schemaLanguage)}
+        </Text>
+      </TouchableOpacity>
+    );
+  });
 
   return (
     <View style={styles.container}>
-      {label && (
-        <View style={styles.labelContainer}>
-          {element.required && <Text style={styles.required}>*</Text>}
-          <Text style={styles.label}>{label}</Text>
-        </View>
-      )}
+      {renderLabel()}
+      {renderHint()}
 
-      {hint && <Text style={styles.hint}>{hint}</Text>}
+      {/* Options List */}
 
-      <View style={[
-        styles.inputBase,
-        fieldError ? styles.inputError : null
-      ]}>
-        {availableOptions.length === 0 ? (
-          <Text style={styles.placeholderText}>No options available</Text>
-        ) : (
-          availableOptions.map((option) => {
-            if (!option) return null;
-            const isSelected = localSelected.includes(option.name);
+      <View
+        style={[
+          styles.inputBase,
+          styles.selectMultiple,
+          fieldError ? styles.inputError : null,
+        ]}
+      >
 
-            return (
-              <TouchableOpacity
-                key={option.name}
-                style={styles.checkboxContainer}
-                onPress={() => handleToggle(option.name)}
-              >
-                <MaterialIcons
-                  name={isSelected ? 'check-box' : 'check-box-outline-blank'}
-                  size={24}
-                  color={isSelected ? theme.colors.primary : styles.inputBase.borderColor}
-                />
-                <Text style={styles.checkboxLabel}>
-                  {getLabel(option, 'label', language, schemaLanguage)}
-                </Text>
-              </TouchableOpacity>
-            );
-          })
-        )}
+        {availableOptions.map((option) => (
+          <OptionItem
+            key={option.name}
+            option={option}
+            isSelected={selectedArray.includes(option.name)}
+            onToggle={handleToggle}
+            getLabel={getLabel}
+            language={language}
+            schemaLanguage={schemaLanguage}
+            theme={theme}
+            styles={styles}
+          />
+        ))}
       </View>
 
+      {/* Error Message */}
       {fieldError && <Text style={styles.errorText}>{fieldError}</Text>}
     </View>
   );
 };
 
-// 4. MEMOIZATION
-// No longer needs a custom comparator because we removed 'value' from props.
-// It will only re-render if the 'element' object reference changes.
 export default memo(SelectMultiple);

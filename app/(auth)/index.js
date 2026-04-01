@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Onboarding from 'react-native-onboarding-swiper';
@@ -11,18 +11,56 @@ import LanguageManager from '../../i18n/languageManager';
 
 const logo = require('../../assets/images/AfyaDataLogo.png');
 
+// FIX: Move styles outside to prevent the re-render loop seen in logs
+const createStyles = (colors, insets) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+    paddingTop: insets.top,
+    paddingHorizontal: 20
+  },
+  title: { fontSize: 24, fontWeight: 'bold', color: colors.text, textAlign: 'center', marginBottom: 10 },
+  subtitle: { fontSize: 16, color: colors.secText, textAlign: 'center', paddingHorizontal: 20 },
+  langCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+    backgroundColor: colors.inputBackground,
+    marginBottom: 10,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: colors.inputBorder,
+  },
+  // Flattened footer styles to reduce ShadowNode depth
+  footerContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    width: '100%',
+    gap: 12
+  },
+  primaryButton: { backgroundColor: colors.primary, paddingVertical: 14, borderRadius: 8, alignItems: 'center' },
+  secondaryButton: { paddingVertical: 14, borderRadius: 8, alignItems: 'center', borderWidth: 1, borderColor: colors.primary },
+  buttonText: { color: colors.buttonText, fontSize: 16, fontWeight: 'bold' },
+  secButtonText: { color: colors.primary, fontSize: 16, fontWeight: 'bold' },
+  dot: { width: 8, height: 8, marginHorizontal: 3, borderRadius: 4 }
+});
+
 const OnboardingScreen = () => {
-  console.log('in onboarding screen');
   const { t, i18n } = useTranslation();
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
 
   const [availableLanguages, setAvailableLanguages] = useState([]);
-  const [step, setStep] = useState('language'); // 'language' or 'walkthrough'
+  const [step, setStep] = useState('language');
   const mounted = useRef(true);
 
+  // Memoize styles to ensure object identity stays the same between renders
+  const themedStyles = useMemo(() => createStyles(colors, insets), [colors, insets]);
+
   useEffect(() => {
-    console.log('fetch languages');
     const fetchLanguages = async () => {
       const languages = await LanguageManager.fetchDownloadedLanguages();
       if (mounted.current) {
@@ -30,76 +68,32 @@ const OnboardingScreen = () => {
       }
     };
     fetchLanguages();
-
-    return () => {
-      mounted.current = false;
-    };
+    return () => { mounted.current = false; };
   }, []);
 
   const handleLanguageSelect = async (code) => {
     await i18n.changeLanguage(code);
-    console.log('setting onboarding completed')
     await SecureStore.setItemAsync('onboarding_completed', 'true');
-    if (mounted.current) {
-      setStep('walkthrough');
-    }
+    if (mounted.current) setStep('walkthrough');
   };
 
-  const handleSkip = () => {
-    // Handle skip - go directly to login/register
-    console.log('Skip pressed');
-    // You can either go to login or show the final screen
-    // For now, let's go to the final screen
-    if (mounted.current) {
-      setStep('walkthrough');
-    }
+  // Simplified navigation handlers to avoid deep nesting
+  const navigateToAuth = (path) => {
+    router.push(path);
   };
-
-  const handleDone = () => {
-    // This is called when user goes through all pages
-    console.log('Done pressed');
-    // Navigate to register or show options
-  };
-
-  const themedStyles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background },
-    title: { fontSize: 24, fontWeight: 'bold', color: colors.text, textAlign: 'center', marginBottom: 10 },
-    subtitle: { fontSize: 16, color: colors.secText, textAlign: 'center', paddingHorizontal: 20 },
-    langCard: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: 8,
-      paddingHorizontal: 18,
-      borderRadius: 12,
-      backgroundColor: colors.inputBackground,
-      marginBottom: 8,
-      width: '100%',
-      borderWidth: 1,
-      borderColor: colors.inputBorder,
-    },
-    buttonContainer: { width: '100%', paddingHorizontal: 40, gap: 12, marginTop: 20 },
-    primaryButton: { backgroundColor: colors.primary, paddingVertical: 14, borderRadius: 8, alignItems: 'center' },
-    secondaryButton: { paddingVertical: 14, borderRadius: 8, alignItems: 'center', borderWidth: 1, borderColor: colors.primary },
-    buttonText: { color: colors.buttonText, fontSize: 16, fontWeight: 'bold' },
-    secButtonText: { color: colors.primary, fontSize: 16, fontWeight: 'bold' }
-  });
 
   if (step === 'language') {
     return (
-      <View style={[themedStyles.container, { paddingTop: insets.top, paddingHorizontal: 20 }]}>
+      <View style={themedStyles.container}>
         <Image source={logo} style={{ width: 120, height: 120, alignSelf: 'center', marginTop: 60, marginBottom: 30, resizeMode: 'contain' }} />
-        <Text style={themedStyles.title}>Select Language</Text>
-        <Text style={[themedStyles.subtitle, { marginBottom: 30 }]}>Please choose your preferred language to proceed with the setup.</Text>
+        <Text style={themedStyles.title}>{t('common:selectLanguage') || "Select Language"}</Text>
+        <Text style={[themedStyles.subtitle, { marginBottom: 30 }]}>Please choose your preferred language to proceed.</Text>
 
         <FlatList
           data={availableLanguages}
           keyExtractor={(item) => item.code}
           renderItem={({ item }) => (
-            <TouchableOpacity
-              style={themedStyles.langCard}
-              onPress={() => handleLanguageSelect(item.code)}
-            >
+            <TouchableOpacity style={themedStyles.langCard} onPress={() => handleLanguageSelect(item.code)}>
               <View>
                 <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600' }}>{item.nativeName}</Text>
                 <Text style={{ color: colors.hint, fontSize: 12 }}>{item.name}</Text>
@@ -112,47 +106,20 @@ const OnboardingScreen = () => {
     );
   }
 
-  const Footer = () => (
-    <View style={themedStyles.buttonContainer}>
-      <TouchableOpacity style={themedStyles.primaryButton} onPress={() => router.push('/(auth)/register')}>
-        <Text style={themedStyles.buttonText}>{t('onBoarding:registerAction')}</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={themedStyles.secondaryButton} onPress={() => router.push('/(auth)/login')}>
-        <Text style={themedStyles.secButtonText}>{t('onBoarding:loginAction')}</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
+  // Extracted sub-components to keep the main tree shallow
   const DotComponent = ({ selected }) => (
-    <View
-      style={{
-        width: 8,
-        height: 8,
-        marginHorizontal: 3,
-        backgroundColor: selected ? colors.primary : colors.secText,
-        borderRadius: 4,
-      }}
-    />
+    <View style={[themedStyles.dot, { backgroundColor: selected ? colors.primary : colors.secText }]} />
   );
 
-  // Custom Skip Button
-  const SkipButton = ({ ...props }) => (
+  const SkipButton = (props) => (
     <TouchableOpacity {...props} style={{ marginHorizontal: 20 }}>
-      <Text style={{ color: colors.primary, fontSize: 16 }}>{t('common:skip') || "Skip"}</Text>
+      <Text style={{ color: colors.primary, fontSize: 16 }}>{t('common:skip')}</Text>
     </TouchableOpacity>
   );
 
-  // Custom Next Button
-  const NextButton = ({ ...props }) => (
-    <TouchableOpacity {...props} style={{ marginHorizontal: 20 }}>
-      <Text style={{ color: colors.primary, fontSize: 16 }}>{t('common:next') || "Next"}</Text>
-    </TouchableOpacity>
-  );
-
-  // Custom Done Button
-  const DoneButton = ({ ...props }) => (
-    <TouchableOpacity {...props} style={{ marginHorizontal: 20 }}>
-      <Text style={{ color: colors.primary, fontSize: 16, fontWeight: 'bold' }}>Get Started</Text>
+  const DoneButton = () => (
+    <TouchableOpacity onPress={() => navigateToAuth('/(auth)/login')} style={{ marginHorizontal: 20 }}>
+      <Text style={{ color: colors.primary, fontSize: 16, fontWeight: 'bold' }}>{t('common:done') || "Done"}</Text>
     </TouchableOpacity>
   );
 
@@ -160,18 +127,11 @@ const OnboardingScreen = () => {
     <Onboarding
       DotComponent={DotComponent}
       SkipButtonComponent={SkipButton}
-      NextButtonComponent={NextButton}
       DoneButtonComponent={DoneButton}
+      // Fixed: Pass insets to bottomBarHeight to avoid internal SafeAreaView issues
       bottomBarHeight={60 + insets.bottom}
-      showPagination={true}
-      bottomBarHighlight={false}
-      showSkip={true}
-      showNext={true}
-      showDone={true}
-      skipLabel={t('common:skip') || "Skip"}
-      nextLabel={t('common:next') || "Next"}
-      onSkip={handleSkip}
-      onDone={handleDone}
+      onSkip={() => setStep('walkthrough')}
+      onDone={() => navigateToAuth('/(auth)/login')}
       pages={[
         {
           backgroundColor: colors.background,
@@ -191,7 +151,7 @@ const OnboardingScreen = () => {
         },
         {
           backgroundColor: colors.background,
-          image: <MaterialCommunityIcons name="shield-check" size={100} color={colors.primary} />,
+          image: <MaterialCommunityIcons name="sync" size={100} color={colors.primary} />,
           title: t('onBoarding:step2Title'),
           subtitle: t('onBoarding:step2Subtitle'),
           titleStyles: themedStyles.title,
@@ -199,16 +159,21 @@ const OnboardingScreen = () => {
         },
         {
           backgroundColor: colors.background,
-          image: (
-            <View style={{ alignItems: 'center', width: '100%' }}>
-              <Image source={logo} style={{ width: 120, height: 120, resizeMode: 'contain', marginBottom: 20 }} />
-              <Text style={themedStyles.title}>{t('onBoarding:finalTitle')}</Text>
+          // FIX: Flattened this page. Removing the complex Footer from the 'image' prop
+          image: <Image source={logo} style={{ width: 100, height: 100, resizeMode: 'contain' }} />,
+          title: t('onBoarding:finalTitle'),
+          subtitle: (
+            <View style={themedStyles.footerContainer}>
               <Text style={themedStyles.subtitle}>{t('onBoarding:finalSubtitle')}</Text>
-              <Footer />
+              <TouchableOpacity style={themedStyles.primaryButton} onPress={() => navigateToAuth('/(auth)/register')}>
+                <Text style={themedStyles.buttonText}>{t('onBoarding:registerAction')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={themedStyles.secondaryButton} onPress={() => navigateToAuth('/(auth)/login')}>
+                <Text style={themedStyles.secButtonText}>{t('onBoarding:loginAction')}</Text>
+              </TouchableOpacity>
             </View>
           ),
-          title: '',
-          subtitle: '',
+          titleStyles: themedStyles.title,
         },
       ]}
       containerStyles={{ paddingBottom: insets.bottom }}

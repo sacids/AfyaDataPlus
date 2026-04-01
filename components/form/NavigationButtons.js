@@ -2,15 +2,17 @@ import { useTranslation } from 'react-i18next';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { getStyles } from '../../constants/styles';
 import { useTheme } from '../../context/ThemeContext';
-import { useFormStore } from '../../store/FormStore';
+import { useFormStore } from '../../store/FormStore-xx';
 
 const NavigationButtons = () => {
     const { currentPage, schema, validateAndNavigate } = useFormStore();
-    const isLastPage = schema ? currentPage === schema.pages.length : false;
+    const isLastPage = schema ? currentPage === schema.form_defn.pages.length : false;
     const { t } = useTranslation();
 
     const theme = useTheme();
     const styles = getStyles(theme);
+
+
 
     return (
         <View style={[styles.container, {

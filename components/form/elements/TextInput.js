@@ -3,17 +3,21 @@ import { Text, TextInput, View } from 'react-native';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
 import { getLabel } from '../../../lib/form/utils';
-import { useFormStore } from '../../../store/FormStore';
+import { useFormStore } from '../../../store/useFormStore';
 
-const TextInputField = ({ element }) => {
+const TextInputField = ({ element, globalValue }) => {
+
+  console.log('in text input')
   // 1. SELECTORS: Isolate this component from other form changes
-  const updateFormData = useFormStore(state => state.updateFormData);
-  const globalValue = useFormStore(state => state.formData[element.name]);
-  const fieldError = useFormStore(state =>
-    (state.errors && state.errors[element.name]) ? state.errors[element.name] : null
-  );
+  //const globalValue = useFormStore(state => state.formData[element.name]);
   const language = useFormStore(state => state.language);
-  const schemaLanguage = useFormStore(state => state.schema?.language);
+  const schemaLanguage = useFormStore(state => state.schema.form_defn.languages);
+
+
+  // 1. STORE SELECTORS
+  const updateField = useFormStore(state => state.updateField);
+  const fieldError = useFormStore(state => state.errors[element.name]);
+
 
   const theme = useTheme();
   const styles = getStyles(theme);
@@ -32,7 +36,7 @@ const TextInputField = ({ element }) => {
   // 3. SYNC FUNCTION: The "Final Source of Truth" update
   const syncWithStore = (value) => {
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
-    updateFormData(element.name, value);
+    updateField(element.name, value);
   };
 
   const handleChangeText = (text) => {

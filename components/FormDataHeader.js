@@ -5,7 +5,7 @@ import { useFilterStore } from '../store/filterStore';
 
 const AVAILABLE_TAGS = ['All', 'Sent', 'Finalized', 'Draft', 'Archived'];
 
-const FormDataHeader = ({ data }) => {  // Changed to properly destructure props
+const FormDataHeader = ({ data }) => {
     const selectedTag = useFilterStore((state) => state.filter);
     const setFilter = useFilterStore((state) => state.setFilter);
     const theme = useTheme();

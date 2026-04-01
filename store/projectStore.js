@@ -5,35 +5,103 @@ import { select } from '../utils/database';
 
 const useProjectStore = create(
     persist(
-        (set) => ({
+        (set, get) => ({
             currentProject: null,
             currentData: null,
-            currentForm: null,
-            setCurrentProject: (project) => set({ currentProject: project }),
-            //setCurrentData: (data) => set({ currentData: data }),
+            currentFormId: null,  // Store only the ID, not the full data
+            currentFormChildren: null,  // Store only the ID, not the full data
+            // Optional: cache for form definitions with LRU strategy
+            formDefCache: new Map(),
+
+            setCurrentProject: (project) => {
+                // Store minimal project data (only what's needed for display)
+                const minimalProject = project ? {
+                    id: project.id,
+                    project: project.project,
+                    title: project.title,
+                    code: project.code,
+                    description: project.description,
+                    tags: project.tags,
+                    // Exclude large fields
+                } : null;
+                set({ currentProject: minimalProject });
+            },
+
             setCurrentData: async (data) => {
                 try {
-                    // First set the currentData immediately
-                    set({ currentData: data });
+                    if (!data) {
+                        set({ currentData: null, currentFormId: null });
+                        return;
+                    }
+
+                    // Store minimal form data (only what's needed for navigation)
+                    const minimalData = {
+                        id: data.id,
+                        uuid: data.uuid,
+                        form: data.form,
+                        title: data.title,
+                        parent_uuid: data.parent_uuid,
+                        status: data.status,
+                        // Exclude form_data field (the actual JSON data)
+                    };
 
                     // Then fetch and set the form data
                     if (data?.form) {
                         const currentFormData = await select('form_defn', 'form_id = ?', [data.form]);
-                        //console.log('project store', currentFormData?.[0]);
-                        set({ currentForm: currentFormData?.[0] });
+                        set({ currentFormChildren: currentFormData?.[0].children });
                     } else {
-                        set({ currentForm: null });
+                        set({ currentFormChildren: null });
                     }
+
+                    set({
+                        currentData: minimalData,
+                        currentFormId: data.form
+                    });
+
+                    // Don't fetch form definition here - let the screen fetch it when needed
+                    // This prevents storing huge data in the store
                 } catch (error) {
                     console.error('Error in setCurrentData:', error);
-                    // Still set the data even if form fetch fails
-                    set({ currentData: data, currentForm: null });
+                    set({ currentData: null, currentFormId: null });
                 }
             },
+
+            // Optional: Add method to get form definition with caching
+            getCurrentFormDef: async () => {
+                const { currentFormId, formDefCache } = get();
+                if (!currentFormId) return null;
+
+                // Check cache first
+                if (formDefCache.has(currentFormId)) {
+                    return formDefCache.get(currentFormId);
+                }
+
+                // Fetch from database
+                const formData = await select('form_defn', 'form_id = ?', [currentFormId]);
+                const formDef = formData?.[0];
+
+                // Cache with size limit (LRU would be better, but simple limit for now)
+                if (formDef && formDefCache.size < 10) {
+                    formDefCache.set(currentFormId, formDef);
+                }
+
+                return formDef;
+            },
+
+            clearCache: () => {
+                set({ formDefCache: new Map() });
+            }
         }),
         {
             name: 'project-storage',
             storage: createJSONStorage(() => AsyncStorage),
+            partialize: (state) => ({
+                // Only persist what's necessary
+                currentProject: state.currentProject,
+                currentData: state.currentData,
+                currentFormId: state.currentFormId,
+                // Don't persist the cache
+            }),
         }
     )
 );

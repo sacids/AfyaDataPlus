@@ -18,10 +18,11 @@ import {
 import { ScreenWrapper } from '../../components/layout/ScreenWrapper';
 import { getStyles } from '../../constants/styles';
 import { useTheme } from '../../context/ThemeContext';
-import { evaluateCustomFunctions, replaceVariables } from '../../lib/form/validation';
+import { evaluateODKExpression } from '../../lib/form/odkEngine';
 import { useAuthStore } from '../../store/authStore';
-import { useFormStore } from '../../store/FormStore';
+import { useFormStore } from '../../store/useFormStore';
 import { insert } from '../../utils/database';
+
 
 const SavePage = () => {
     const theme = useTheme();
@@ -33,58 +34,10 @@ const SavePage = () => {
     const [isGettingLocation, setIsGettingLocation] = useState(false);
     const { user } = useAuthStore();
 
-    const {
-        schema,
-        formData,
-        formUUID,
-        parentUUID,
-    } = useFormStore();
-
-    // Get current GPS location
-    const getCurrentLocation1 = async () => {
-        setIsGettingLocation(true);
-        try {
-            // Request permission
-            let { status } = await Location.requestForegroundPermissionsAsync();
-
-            if (status !== 'granted') {
-                Alert.alert(
-                    t('savePage:permissionDenied'),
-                    t('savePage:locationPermissionDenied'),
-                    [{ text: t('common.ok') }]
-                );
-                setIsGettingLocation(false);
-                return;
-            }
-
-            // Get current position
-            let location = await Location.getCurrentPositionAsync({
-                accuracy: Location.Accuracy.Balanced,
-                timeout: 3000, // 10 seconds timeout
-            });
-
-            const { latitude, longitude, altitude, accuracy } = location.coords;
-
-            setGpsLocation({
-                latitude,
-                longitude,
-                altitude: altitude || null,
-                accuracy,
-                timestamp: new Date().toISOString(),
-            });
-
-        } catch (error) {
-            console.error('Error getting location:', error);
-            Alert.alert(
-                t('savePage:locationError'),
-                t('savePage:locationErrorDescription'),
-                [{ text: t('common.ok') }]
-            );
-        } finally {
-            setIsGettingLocation(false);
-        }
-    };
-
+    const formData = useFormStore(state => state.formData);
+    const schema = useFormStore(state => state.schema);
+    const formUUID = useFormStore(state => state.formUUID);
+    const parentUUID = useFormStore(state => state.parentUUID);
 
     const getCurrentLocation = async (forceHighAccuracy = false) => {
         setIsGettingLocation(true);
@@ -97,9 +50,10 @@ const SavePage = () => {
 
             // A. TRY LAST KNOWN LOCATION FIRST (Instant)
             const lastKnown = await Location.getLastKnownPositionAsync();
-            
+
             // If we have a recent last known location (within 5 minutes), use it!
             if (lastKnown && (Date.now() - lastKnown.timestamp < 300000)) {
+
                 setGpsLocation({
                     latitude: lastKnown.coords.latitude,
                     longitude: lastKnown.coords.longitude,
@@ -116,7 +70,7 @@ const SavePage = () => {
             const location = await Location.getCurrentPositionAsync({
                 accuracy: forceHighAccuracy ? Location.Accuracy.High : Location.Accuracy.Balanced,
                 // If it takes more than 4 seconds, the user is likely indoors; 
-                timeout: 4000, 
+                timeout: 4000,
             });
 
             setGpsLocation({
@@ -149,6 +103,21 @@ const SavePage = () => {
         }
     };
 
+
+    useEffect(() => {
+        if (schema?.form_defn?.meta?.instance_name) {
+            // Use the engine to evaluate the name template (e.g. concat(${name}, ' - ', ${date}))
+            try {
+                const generatedTitle = evaluateODKExpression(schema.form_defn.meta.instance_name, formData);
+                setTitle(generatedTitle || schema.title);
+            } catch (e) {
+                setTitle(schema.title);
+            }
+        } else {
+            setTitle(schema?.title || 'Untitled Record');
+        }
+    }, [schema, formData]);
+
     const saveForm = async (status) => {
         try {
             // Try to get location if not already obtained
@@ -156,13 +125,15 @@ const SavePage = () => {
                 await getCurrentLocation();
             }
 
+            console.log('gps', gpsLocation)
+
             const main_formData = { ...formData }
             main_formData['app_version'] = Constants.expoConfig?.version;
             main_formData['form_version'] = schema.version;
 
 
             await insert("form_data", {
-                form: schema.form,
+                form: schema.form_id,
                 project: schema.project,
                 uuid: formUUID,
                 parent_uuid: parentUUID,
@@ -178,25 +149,17 @@ const SavePage = () => {
                 form_data: JSON.stringify(main_formData),
                 gps: gpsLocation ? JSON.stringify(gpsLocation) : null,
             });
-            router.dismissTo('/Main');
+            router.replace('/Main');
         } catch (e) {
             console.error(e);
             Alert.alert(t('common.error'), t('savePage:saveFailed'));
         }
     };
 
-    useEffect(() => {
-        const instance_name = schema?.meta?.instance_name;
-        if (instance_name) {
-            const tt1 = replaceVariables(instance_name, formData);
-            const tt = evaluateCustomFunctions(tt1, formData);
-            setTitle(tt);
-        }
-        getCurrentLocation();
-    }, []);
+    console.log('in save page')
 
     return (
-        <ScreenWrapper withStepPadding={false}>
+        <ScreenWrapper withStepPadding={false} style={{ flex: 1 }}>
 
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -309,7 +272,7 @@ const SavePage = () => {
                     <View style={{ marginTop: 40, gap: 12 }}>
                         <TouchableOpacity
                             onPress={() => saveForm('finalized')}
-                            style={[styles.button, { backgroundColor: isGettingLocation ? theme.colors.inputBorder : theme.colors.primary , height: 55 }]}
+                            style={[styles.button, { backgroundColor: isGettingLocation ? theme.colors.inputBorder : theme.colors.primary, height: 55 }]}
                             disabled={isGettingLocation}
                         >
                             {

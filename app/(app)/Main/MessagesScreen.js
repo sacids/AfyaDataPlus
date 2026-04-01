@@ -1,5 +1,4 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { randomUUID } from 'expo-crypto';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +21,7 @@ import { useAuthStore } from '../../../store/authStore';
 import useProjectStore from '../../../store/projectStore';
 import { insert, select } from '../../../utils/database';
 import { handleFormSubmission, syncMessages } from '../../../utils/services';
+import { generateUUID } from '../../../lib/form.bak/validation';
 
 export default function MessagesScreen() {
   const theme = useTheme();
@@ -79,7 +79,7 @@ export default function MessagesScreen() {
     const text = input.trim();
     setInput('');
 
-    const localID = randomUUID()
+    const localID = generateUUID()
     const newMessage = {
       formDataUUID: currentData.original_uuid,
       text,

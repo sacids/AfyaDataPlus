@@ -1,15 +1,36 @@
 // app/_layout.js
+import * as Sentry from '@sentry/react-native';
 import { Slot, useRouter, useSegments } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { ActivityIndicator, Image, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import ErrorBoundary from '../components/ErrorBoundary';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
 import LanguageManager from '../i18n/languageManager';
 import { useAuthStore } from '../store/authStore';
 import { createTables } from '../utils/database';
+
+Sentry.init({
+  dsn: 'https://353d41653058700282e0748a68a61793@o4511093529575424.ingest.de.sentry.io/4511093544714320',
+
+  // Adds more context data to events (IP address, cookies, user, etc.)
+  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  sendDefaultPii: true,
+
+  // Enable Logs
+  enableLogs: true,
+
+  // Configure Session Replay
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1,
+  integrations: [Sentry.mobileReplayIntegration(), Sentry.feedbackIntegration()],
+
+  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
+  // spotlight: __DEV__,
+});
 
 const ThemedStatusBar = () => {
   const { isDark } = useTheme();
@@ -43,10 +64,10 @@ const SplashScreen = () => {
 };
 
 // Main layout component
-export default function RootLayout() {
+export default Sentry.wrap(function RootLayout() {
   const [isReady, setIsReady] = useState(false);
   const [i18nInstance, setI18nInstance] = useState(null);
-  const { checkSession, user } = useAuthStore();
+  const { checkSession, user, logout } = useAuthStore();
   const initialized = useRef(false);
   const navigationPerformed = useRef(false);
   const router = useRouter();
@@ -54,12 +75,15 @@ export default function RootLayout() {
 
   // Initialize app resources
   useEffect(() => {
+
+    //logout();
+
     if (initialized.current) return;
-    
+
     async function initialize() {
       try {
         initialized.current = true;
-        
+
         // Initialize database tables
         await createTables();
 
@@ -88,7 +112,7 @@ export default function RootLayout() {
     const performNavigation = async () => {
       // Only proceed if resources are ready and navigation hasn't been performed
       if (!isReady || !i18nInstance || navigationPerformed.current) return;
-      
+
       try {
         const onboardingCompleted = await SecureStore.getItemAsync('onboarding_completed');
         //console.log('onboarding status:', onboardingCompleted);
@@ -157,9 +181,11 @@ export default function RootLayout() {
       <ThemeProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <ThemedStatusBar />
-          <Slot />
+          <ErrorBoundary>
+            <Slot />
+          </ErrorBoundary>
         </GestureHandlerRootView>
       </ThemeProvider>
     </I18nextProvider>
   );
-}
+});

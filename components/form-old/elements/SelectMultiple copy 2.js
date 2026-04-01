@@ -1,0 +1,83 @@
+import { MaterialIcons } from '@expo/vector-icons';
+import { Text, TouchableOpacity, View } from 'react-native';
+import { getStyles } from '../../../constants/styles';
+import { useTheme } from '../../../context/ThemeContext';
+import {
+  deserializeMultiSelect,
+  toggleMultiSelect,
+  getAvailableChoices
+} from '../../../lib/form/engine';
+import { getLabel } from '../../../lib/form/utils';
+import { useFormStore } from '../../../store/FormStore';
+
+const SelectMultiple = ({ element, value }) => {
+  const { updateFormData, errors, language, schema, formData } = useFormStore();
+  const theme = useTheme();
+  const styles = getStyles(theme);
+
+  const label = getLabel(element, 'label', language, schema.language)
+  const hint = getLabel(element, 'hint', language, schema.language)
+
+  // Ensure value is an array; default to empty array if undefined
+  const selectedValues = deserializeMultiSelect(value);
+
+
+  const toggleOption = (optionValue) => {
+    const newValues = toggleMultiSelect(selectedValues, optionValue);
+    updateFormData(element.name, newValues);
+  };
+
+  const available_options = getAvailableChoices(element, formData);
+
+
+  return (
+    <View style={styles.container}>
+      {
+        label ? (<View style={styles.labelContainer}>
+          {(element.required) && <Text style={styles.required}>*</Text>}
+          <Text style={styles.label}>{label}</Text>
+        </View>) : null
+      }
+      {
+        hint && (<Text style={styles.hint}>{hint}</Text>)
+      }
+
+      <View
+        style={[
+          styles.inputBase,
+          errors[element.name] ? styles.inputError : null,
+        ]}
+      >
+        {available_options.map((option) => (
+          <TouchableOpacity
+            key={option.name}
+            style={styles.checkboxContainer}
+            onPress={() => toggleOption(option.name)}
+          >
+            <MaterialIcons
+              name={
+                selectedValues.includes(option.name)
+                  ? 'check-box'
+                  : 'check-box-outline-blank'
+              }
+              size={24}
+              color={
+                selectedValues.includes(option.name)
+                  ? theme.colors.primary
+                  : styles.inputBase.borderColor
+              }
+            />
+            <Text style={styles.checkboxLabel}>
+              {getLabel(option, 'label', language, schema.language)}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      {errors[element.name] && (
+        <Text style={styles.errorText}>{errors[element.name]}</Text>
+      )}
+    </View>
+  );
+};
+
+export default SelectMultiple;

@@ -242,6 +242,7 @@ export default function FormDataList() {
   useEffect(() => {
     initialize();
   }, []);
+  
 
   useEffect(() => {
     let tempData = [...data];

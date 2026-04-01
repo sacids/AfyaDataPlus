@@ -1,110 +1,105 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { memo, useMemo } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
 import { getLabel } from '../../../lib/form/utils';
-import { buildConstraint, evaluateExpression } from '../../../lib/form/validation';
-import { useFormStore } from '../../../store/FormStore';
+import { useFormStore } from '../../../store/useFormStore';
 
-const SelectMultiple = ({ element, value }) => {
-  const { updateFormData, errors, language, schema, formData } = useFormStore();
+const SelectMultiple = ({ element }) => {
+  // 1. SELECTORS
+  //const formData = useFormStore(state => state.formData);
+
+  const globalValue = useFormStore(state => state.formData[element.name]);
+  const updateField = useFormStore(state => state.updateField);
+  const language = useFormStore(state => state.language);
+  const fieldError = useFormStore(state => state.errors[element.name]);
+  const schemaLanguage = useFormStore(state => state.schema.form_defn.languages);
+
+  // Use the library's filtering logic to get valid options based on choice_filter
+  const getFilteredOptions = useFormStore(state => state.getFilteredOptions);
+  const availableOptions = useMemo(() => getFilteredOptions(element), [element]);
+
   const theme = useTheme();
   const styles = getStyles(theme);
 
-  const label = getLabel(element, 'label', language, schema.language)
-  const hint = getLabel(element, 'hint', language, schema.language)
+  //console.log('select multiple element', element)
+  // ODK Multi-select values are stored as space-separated strings: "choice1 choice2"
+  const currentValue = globalValue || "";
+  const selectedArray = useMemo(() =>
+    currentValue ? currentValue.split(" ").filter(v => v !== "") : [],
+    [currentValue]
+  );
 
-  // Ensure value is an array; default to empty array if undefined
-  const selectedValues = Array.isArray(value) ? value : [];
-
-  const toggleOption = (optionValue) => {
-    const newValues = selectedValues.includes(optionValue)
-      ? selectedValues.filter((val) => val !== optionValue)
-      : [...selectedValues, optionValue];
-    updateFormData(element.name, newValues);
+  const handleToggle = (optionName) => {
+    let newSelected;
+    if (selectedArray.includes(optionName)) {
+      newSelected = selectedArray.filter(item => item !== optionName);
+    } else {
+      newSelected = [...selectedArray, optionName];
+    }
+    // Sync back to store as space-separated string
+    updateField(element.name, newSelected.join(" "));
   };
 
-
-  const available_options = element.options.filter((option) => {
-
-
-    let passChoiceFilter = true
-    let passConstraint = true
-    let tmp_formData = {}
+  if (availableOptions.length === 0) return null;
 
 
-    //if (!element.constraint) return true
+  const label = getLabel(element, 'label', language, schemaLanguage);
+  const hint = getLabel(element, 'hint', language, schemaLanguage);
 
-    if (element.choice_filter) {
-      tmp_formData = { ...formData };
-      tmp_formData[element.name] = option.name;
-      const constraint = buildConstraint(option, element.choice_filter);
+  // --- RENDER HELPERS ---
+  const renderLabel = () => label && (
+    <View style={styles.labelContainer}>
+      {element.required && <Text style={styles.required}>*</Text>}
+      <Text style={styles.label}>{label}</Text>
+    </View>
+  );
 
-      //console.log('choice filter 2', option, constraint, passChoiceFilter)
-
-      passChoiceFilter = evaluateExpression(constraint, tmp_formData, element.name) !== false;
-      //console.log('choice filter 2', option.name, constraint, passChoiceFilter)
-    }
-
-    if (element.constraint) {
-      tmp_formData = { ...formData };
-      tmp_formData[element.name] = option.name;
-      passConstraint = evaluateExpression(element.constraint, tmp_formData, element.name) !== false;
-    }
-
-    return passChoiceFilter && passConstraint
-  });
-
+  const renderHint = () => hint && <Text style={styles.hint}>{hint}</Text>;
 
   return (
     <View style={styles.container}>
-      {
-        label ? (<View style={styles.labelContainer}>
-          {(element.required) && <Text style={styles.required}>*</Text>}
-          <Text style={styles.label}>{label}</Text>
-        </View>) : null
-      }
-      {
-        hint && (<Text style={styles.hint}>{hint}</Text>)
-      }
+      {renderLabel()}
+      {renderHint()}
+
+      {/* Options List */}
 
       <View
         style={[
           styles.inputBase,
           styles.selectMultiple,
-          errors[element.name] ? styles.inputError : null,
+          fieldError ? styles.inputError : null,
         ]}
       >
-        {available_options.map((option) => (
-          <TouchableOpacity
-            key={option.name}
-            style={styles.checkboxContainer}
-            onPress={() => toggleOption(option.name)}
-          >
-            <MaterialIcons
-              name={
-                selectedValues.includes(option.name)
-                  ? 'check-box'
-                  : 'check-box-outline-blank'
-              }
-              size={24}
-              color={
-                selectedValues.includes(option.name)
-                  ? theme.colors.primary
-                  : styles.inputBase.borderColor
-              }
-            />
-            <Text style={styles.checkboxLabel}>
-              {getLabel(option, 'label', language, schema.language)}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        {availableOptions.map((option) => {
+          const isSelected = selectedArray.includes(option.name);
+
+          return (
+            <TouchableOpacity
+              key={option.name}
+              style={styles.checkboxContainer}
+              onPress={() => handleToggle(option.name)}
+              activeOpacity={0.7}
+            >
+
+              <MaterialIcons
+                name={isSelected ? 'check-box' : 'check-box-outline-blank'}
+                size={24}
+                color={isSelected ? theme.colors.primary : styles.inputBase.borderColor}
+              />
+              <Text style={styles.checkboxLabel}>
+                {getLabel(option, 'label', language, schemaLanguage)}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
-      {errors[element.name] && (
-        <Text style={styles.errorText}>{errors[element.name]}</Text>
-      )}
+
+      {/* Error Message */}
+      {fieldError && <Text style={styles.errorText}>{fieldError}</Text>}
     </View>
   );
 };
 
-export default SelectMultiple;
+export default memo(SelectMultiple);

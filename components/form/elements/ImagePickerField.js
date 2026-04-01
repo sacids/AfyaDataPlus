@@ -5,19 +5,27 @@ import { memo, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Text, TouchableOpacity, View } from 'react-native';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
+import { getParam } from '../../../lib/form.bak/validation';
 import { getLabel } from '../../../lib/form/utils';
-import { getParam } from '../../../lib/form/validation';
-import { useFormStore } from '../../../store/FormStore';
 
-const ImagePickerField = ({ element }) => {
-  const updateFormData = useFormStore(state => state.updateFormData);
-  const globalValue = useFormStore(state => state.formData[element.name]);
+
+import { useFormStore } from '../../../store/useFormStore';
+
+const ImagePickerField = ({ element, globalValue  }) => {
+
+
+  const updateField = useFormStore(state => state.updateField);
+  //const globalValue = useFormStore(state => state.formData[element.name]);
   const formUUID = useFormStore(state => state.formUUID);
-  const { language, schema, errors } = useFormStore();
+  const language = useFormStore(state => state.language);
+  const errors = useFormStore(state => state.errors[element.name]);
+
+  const [isProcessing, setIsProcessing] = useState(false);
+
+
 
   const theme = useTheme();
   const styles = getStyles(theme);
-  const [isProcessing, setIsProcessing] = useState(false);
 
 
   const imageUri = useMemo(() => {
@@ -86,7 +94,7 @@ const ImagePickerField = ({ element }) => {
         sourceFile.copy(destFile);
 
         requestAnimationFrame(() => {
-          updateFormData(element.name, newFileName);
+          updateField(element.name, newFileName);
           setIsProcessing(false);
         });
 
@@ -98,7 +106,7 @@ const ImagePickerField = ({ element }) => {
     }
   };
 
-  const label = getLabel(element, 'label', language, schema?.language);
+  const label = getLabel(element, 'label', language);
 
   return (
     <View style={styles.container}>
