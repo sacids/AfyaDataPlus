@@ -2,7 +2,7 @@
   "expo": {
     "name": "AfyaDataPlus",
     "slug": "AfyaDataPlus",
-    "version": "2.3.3",
+    "version": "2.4.1",
     "orientation": "portrait",
     "icon": "./assets/images/AfyaDataLogoIcon.png",
     "scheme": "afyadataplus",
@@ -11,7 +11,6 @@
     "ios": {
       "supportsTablet": true
     },
-
     "assetBundlePatterns": [
       "assets/i18n/*.json"
     ],
@@ -47,7 +46,16 @@
       "expo-sqlite",
       "expo-secure-store",
       "expo-web-browser",
-      "expo-localization"
+      "expo-localization",
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "react-native",
+          "organization": "kamili-technologies-kx"
+        }
+      ],
+      "@sentry/react-native"
     ],
     "experiments": {
       "typedRoutes": true

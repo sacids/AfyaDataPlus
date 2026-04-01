@@ -2,18 +2,21 @@ import { Text, TextInput, View } from 'react-native';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
 import { getLabel } from '../../../lib/form/utils';
-import { useFormStore } from '../../../store/FormStore';
+import { useFormStore } from '../../../store/useFormStore';
 
 import { memo, useEffect, useState } from 'react';
 
 
-const DecimalInput = ({ element }) => {
+const DecimalInput = ({ element, globalValue  }) => {
 
-  const updateFormData = useFormStore(state => state.updateFormData);
-  const globalValue = useFormStore(state => state.formData[element.name]);
-  const error = useFormStore(state => state.errors ? state.errors[element.name] : null);
+  //const globalValue = useFormStore(state => state.formData[element.name]);
   const language = useFormStore(state => state.language);
-  const schemaLanguage = useFormStore(state => state.schema.language);
+  const schemaLanguage = useFormStore(state => state.schema.form_defn.languages);
+
+
+  // 1. STORE SELECTORS
+  const updateField = useFormStore(state => state.updateField);
+  const fieldError = useFormStore(state => state.errors[element.name]);
 
 
   const theme = useTheme();
@@ -31,7 +34,7 @@ const DecimalInput = ({ element }) => {
 
   const handleBlur = () => {
     if (localValue !== globalValue) {
-      updateFormData(element.name, localValue);
+      updateField(element.name, localValue);
     }
   };
 
@@ -51,7 +54,7 @@ const DecimalInput = ({ element }) => {
         style={[
           styles.inputBase,
           styles.textInput,
-          error ? styles.inputError : null,
+          fieldError ? styles.inputError : null,
         ]}
         value={localValue}
         onChangeText={(text) => setLocalValue(text)}
@@ -59,8 +62,8 @@ const DecimalInput = ({ element }) => {
         placeholder={element['label' + language]}
         placeholderTextColor="#999"
       />
-      {error && (
-        <Text style={styles.errorText}>{error}</Text>
+      {fieldError && (
+        <Text style={styles.errorText}>{fieldError}</Text>
       )}
     </View>
   );

@@ -6,12 +6,12 @@ import { Platform, Text, TextInput, TouchableOpacity, View } from 'react-native'
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
 import { getLabel } from '../../../lib/form/utils';
-import { useFormStore } from '../../../store/FormStore';
+import { useFormStore } from '../../../store/FormStore-xx';
 
-const DatePickerField = ({ element }) => {
+const DatePickerField = ({ element, globalValue  }) => {
   // 1. GRANULAR SELECTORS (Fetch own value, ignore others)
   const updateFormData = useFormStore(state => state.updateFormData);
-  const globalValue = useFormStore(state => state.formData[element.name]);
+  //const globalValue = useFormStore(state => state.formData[element.name]);
   const fieldError = useFormStore(state =>
     (state.errors && state.errors[element.name]) ? state.errors[element.name] : null
   );

@@ -99,6 +99,7 @@ export default function ProtectedLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Main" />
       <Stack.Screen name="Project" />
+      <Stack.Screen name="Form" />
     </Stack>
   );
 }
