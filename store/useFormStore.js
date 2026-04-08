@@ -2,6 +2,8 @@ import * as Crypto from 'expo-crypto';
 import { create } from 'zustand';
 import { evaluateODKExpression, filterOptions } from '../lib/form/odkEngine';
 
+
+
 export const useFormStore = create((set, get) => ({
     schema: null,
     formData: {},
@@ -11,10 +13,11 @@ export const useFormStore = create((set, get) => ({
     formUUID: null,
     parentUUID: null,
     _isUpdating: false,
+    filteredOptionsCache: new Map(),
 
     // Initialize the form state
     initForm: (schema, existingData = null, existingUUID = null, parentUUID = null) => {
-        const defaultLang = schema.meta?.default_language || schema.language?.[0] || 'English (en)';
+        const defaultLang = schema.form_defn?.meta?.default_language || schema.form_defn?.language?.[0] || 'English (en)';
         set({
             schema,
             formData: existingData || {},
@@ -29,7 +32,7 @@ export const useFormStore = create((set, get) => ({
     // Helper to get filtered options for a specific field
 
 
-    getFilteredOptions: (field) => {
+    getFilteredOptions1: (field) => {
         const state = get();
         const formData = state.formData;
 
@@ -38,6 +41,31 @@ export const useFormStore = create((set, get) => ({
 
         // Use the optimized filterOptions
         return filterOptions(field.options, field.choice_filter, formData);
+    },
+
+    getFilteredOptions: (field) => {
+        const state = get();
+        if (!field.options) return [];
+        if (!field.choice_filter) return field.options;
+
+        // Create a cache key from the fields the filter depends on
+        const depKeys = field.choice_filter.match(/\${(\w+)}/g)?.map(m => m.slice(2, -1)) || [];
+        const cacheKey = `${field.name}_${depKeys.map(k => state.formData[k] ?? 'null').join('|')}`;
+
+        if (state.filteredOptionsCache.has(cacheKey)) {
+            return state.filteredOptionsCache.get(cacheKey);
+        }
+
+        const filtered = filterOptions(field.options, field.choice_filter, state.formData);
+        state.filteredOptionsCache.set(cacheKey, filtered);
+
+        // Optional: limit cache size
+        if (state.filteredOptionsCache.size > 200) {
+            const firstKey = state.filteredOptionsCache.keys().next().value;
+            state.filteredOptionsCache.delete(firstKey);
+        }
+
+        return filtered;
     },
 
     calculatingFields: new Set(),

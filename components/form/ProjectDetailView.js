@@ -50,7 +50,7 @@ const ProjectDetailView = ({ project }) => {
                       SUM(CASE WHEN status = 'submitted' OR status = 'sent' THEN 1 ELSE 0 END) as sent,
                       SUM(CASE WHEN status = 'archived' THEN 1 ELSE 0 END) as archived`;
 
-      const result = await select('form_data', 'project = ? and created_by = ?', [project_uuid, user.id], select_str)
+      const result = await select('form_data', 'project = ? and created_by = ?', [project_uuid, user?.id], select_str)
 
       const stats = {
         total: result[0].total || 0,

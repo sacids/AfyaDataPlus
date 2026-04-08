@@ -61,7 +61,6 @@ const AuthScreen = ({ onAuthenticated }) => {
 }; // Fixed: Properly closing the component here
 
 export default function ProtectedLayout() {
-  const { user } = useAuthStore();
   const { colors } = useTheme();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isChecking, setIsChecking] = useState(true);

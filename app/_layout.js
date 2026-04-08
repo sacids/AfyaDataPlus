@@ -113,51 +113,58 @@ export default Sentry.wrap(function RootLayout() {
       // Only proceed if resources are ready and navigation hasn't been performed
       if (!isReady || !i18nInstance || navigationPerformed.current) return;
 
-      try {
-        const onboardingCompleted = await SecureStore.getItemAsync('onboarding_completed');
-        //console.log('onboarding status:', onboardingCompleted);
 
-        const inAuthGroup = segments[0] === '(auth)';
-        const currentRoute = segments[1];
+      console.log('go to main')
+      router.replace('/(app)/Main');
 
-        navigationPerformed.current = true;
+      // try {
+      //   const onboardingCompleted = await SecureStore.getItemAsync('onboarding_completed');
+      //   //console.log('onboarding status:', onboardingCompleted);
 
-        // First install - no onboarding completed
-        if (!onboardingCompleted) {
-          if (!inAuthGroup || currentRoute !== 'index') {
-            console.log('Navigating to onboarding');
-            // Use setTimeout to ensure navigation happens after render
-            setTimeout(() => {
-              router.replace('/(auth)');
-            }, 0);
-          }
-        }
-        // User not logged in
-        else if (!user) {
-          if (!inAuthGroup) {
-            console.log('Navigating to login');
-            setTimeout(() => {
-              router.replace('/(auth)/login');
-            }, 0);
-          } else if (currentRoute === 'index') {
-            console.log('Navigating from index to login');
-            setTimeout(() => {
-              router.replace('/(auth)/login');
-            }, 0);
-          }
-        }
-        // User logged in
-        else {
-          if (inAuthGroup) {
-            console.log('Navigating to main app');
-            setTimeout(() => {
-              router.replace('/(app)/Main');
-            }, 0);
-          }
-        }
-      } catch (error) {
-        console.error('Navigation error:', error);
-      }
+      //   const inAuthGroup = segments[0] === '(auth)';
+      //   const currentRoute = segments[1];
+
+      //   navigationPerformed.current = true;
+
+
+      //   // First install - no onboarding completed
+      //   if (!onboardingCompleted) {
+      //     if (!inAuthGroup || currentRoute !== 'index') {
+      //       console.log('Navigating to onboarding');
+      //       // Use setTimeout to ensure navigation happens after render
+      //       setTimeout(() => {
+      //         router.replace('/(auth)');
+      //       }, 0);
+      //     }
+      //   }
+
+
+      //   // User not logged in
+      //   else if (!user) {
+      //     if (!inAuthGroup) {
+      //       console.log('Navigating to login');
+      //       setTimeout(() => {
+      //         router.replace('/(auth)/login');
+      //       }, 0);
+      //     } else if (currentRoute === 'index') {
+      //       console.log('Navigating from index to login');
+      //       setTimeout(() => {
+      //         router.replace('/(auth)/login');
+      //       }, 0);
+      //     }
+      //   }
+      //   // User logged in
+      //   else {
+      //     if (inAuthGroup) {
+      //       console.log('Navigating to main app');
+      //       setTimeout(() => {
+      //         router.replace('/(app)/Main');
+      //       }, 0);
+      //     }
+      //   }
+      // } catch (error) {
+      //   console.error('Navigation error:', error);
+      // }
     };
 
     performNavigation();

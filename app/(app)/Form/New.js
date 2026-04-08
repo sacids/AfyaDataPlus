@@ -90,6 +90,8 @@ export default function NewForm() {
           form_defn: JSON.parse(schemaData[0].form_defn)
         };
 
+        //console.log('schema', JSON.stringify(parsedSchema, null, 5))
+
         // 2. Fetch existing data if editing (fdata_id exists)
         let existingData = null;
         let existingUUID = null;

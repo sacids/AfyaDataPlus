@@ -23,8 +23,6 @@ const FormPage = ({ pageIndex }) => {
 
   const isLastPage = schema ? pageIndex === schema.form_defn.pages.length : false;
 
-  console.log('is last page', isLastPage, pageIndex, schema.form_defn.pages.length)
-
   // Simply flatten the fields. Do NOT filter them here.
   const allFieldsOnPage = useMemo(() => {
     if (!page?.fields) return [];

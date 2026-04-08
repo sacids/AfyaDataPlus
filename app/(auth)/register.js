@@ -75,13 +75,10 @@ const RegisterScreen = () => {
       await SecureStore.setItemAsync('saved_username', phoneNumber);
       await SecureStore.setItemAsync('saved_password', password);
 
+      await SecureStore.setItemAsync('onboarding_completed', 'true');
+
       // 4. Update Zustand and Auth Context
       setUser(user);
-      setAuthState({
-        isLoading: false,
-        isSignout: false,
-        userToken: access
-      });
 
       // 5. Navigate to Main App
       router.replace('/(app)/Main');
@@ -106,7 +103,7 @@ const RegisterScreen = () => {
     }
   };
 
-  
+
 
   const styles = StyleSheet.create({
     container: { flexGrow: 1, backgroundColor: theme.colors.background, padding: 20, justifyContent: 'center', alignItems: 'center' },

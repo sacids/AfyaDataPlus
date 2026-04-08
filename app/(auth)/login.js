@@ -116,6 +116,8 @@ const LoginScreen = () => {
             await SecureStore.setItemAsync('saved_username', phoneNumber);
             await SecureStore.setItemAsync('saved_password', password);
 
+            await SecureStore.setItemAsync('onboarding_completed', 'true');
+
             setLoading(false);
 
             // Start the project/form sync

@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useMemo } from 'react';
+import { memo, useCallback, useMemo } from 'react';
 import { View } from 'react-native';
 import { useFormStore } from '../store/useFormStore';
 
@@ -65,18 +65,15 @@ const RelevanceWrapper = ({ field }) => {
   const Component = elementComponents[field.type];
   if (!Component || field.type === 'calculate') return null;
 
+  if (!shouldShow) {
+    return null;
+  }
+
   return (
-    <View
-      style={{
-        display: shouldShow ? 'flex' : 'none',
-        height: shouldShow ? 'auto' : 0,
-        overflow: 'hidden'
-      }}
-      pointerEvents={shouldShow ? 'auto' : 'none'}
-    >
-      <Component 
-        element={field} 
-        globalValue={globalValue} 
+    <View style={{ flex: 1 }}>
+      <Component
+        element={field}
+        globalValue={globalValue}
       />
     </View>
   );
