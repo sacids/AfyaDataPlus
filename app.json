@@ -1,0 +1,71 @@
+{
+  "expo": {
+    "name": "AfyaDataPlus",
+    "slug": "AfyaDataPlus",
+    "version": "2.5.3",
+    "orientation": "portrait",
+    "icon": "./assets/images/AfyaDataLogoIcon.png",
+    "scheme": "afyadataplus",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mchizani.AfyaDataPlus"
+    },
+    "assetBundlePatterns": [
+      "assets/i18n/*.json"
+    ],
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/AfyaDataLogoIcon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyA4EErQHgvFvFPtfqXiOHXdA0UU3XXn1U0"
+        }
+      },
+      "package": "com.mchizani.AfyaDataPlus"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/AfyaDataLogoIcon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ],
+      "expo-sqlite",
+      "expo-secure-store",
+      "expo-web-browser",
+      "expo-localization",
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "react-native",
+          "organization": "kamili-technologies-kx"
+        }
+      ],
+      "@sentry/react-native"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "4652aaf8-8dce-43d1-8840-6f21d984d2c7"
+      }
+    }
+  }
+}
