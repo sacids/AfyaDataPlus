@@ -10,7 +10,7 @@ import { useFormStore } from '../../../store/useFormStore';
 
 const SelectOne = ({ element, globalValue }) => {
 
-    console.log('in select one')
+    //console.log('in select one')
     // 1. STORE SELECTORS
     const updateField = useFormStore(state => state.updateField);
     //const globalValue = useFormStore(state => state.formData[element.name]);

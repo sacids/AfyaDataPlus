@@ -7,7 +7,7 @@ import { useFormStore } from '../../../store/useFormStore';
 
 const TextInputField = ({ element, globalValue }) => {
 
-  console.log('in text input')
+  //console.log('in text input')
   // 1. SELECTORS: Isolate this component from other form changes
   //const globalValue = useFormStore(state => state.formData[element.name]);
   const language = useFormStore(state => state.language);

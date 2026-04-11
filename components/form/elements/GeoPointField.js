@@ -1,5 +1,5 @@
 import * as Location from 'expo-location';
-import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, Text, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker, PROVIDER_DEFAULT, PROVIDER_GOOGLE } from 'react-native-maps';
 import { getStyles } from '../../../constants/styles';
@@ -54,7 +54,7 @@ const GeoPointField = ({ element, globalValue }) => {
     try {
       setIsLoading(true);
       const { status } = await Location.requestForegroundPermissionsAsync();
-      
+
       if (status !== 'granted') {
         Alert.alert('Permission Denied', 'Allow location access to use this feature.');
         return;
@@ -66,7 +66,7 @@ const GeoPointField = ({ element, globalValue }) => {
 
       const { latitude, longitude, altitude, accuracy } = location.coords;
       const geoString = `${latitude} ${longitude} ${altitude || 0} ${accuracy || 0}`;
-      
+
       // Update store (which triggers the useEffect above via globalValue prop)
       updateField(element.name, geoString);
     } catch (error) {
@@ -115,6 +115,9 @@ const GeoPointField = ({ element, globalValue }) => {
             latitudeDelta: 10,
             longitudeDelta: 10,
           }}
+          scrollEnabled={false}      
+          rotateEnabled={false}      
+          pitchEnabled={false}       
         >
           {currentGeo && (
             <Marker

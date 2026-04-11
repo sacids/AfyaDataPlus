@@ -1,8 +1,8 @@
+// In useFormStore.js - Production version with minimal logging
+
 import * as Crypto from 'expo-crypto';
 import { create } from 'zustand';
 import { evaluateODKExpression, filterOptions } from '../lib/form/odkEngine';
-
-
 
 export const useFormStore = create((set, get) => ({
     schema: null,
@@ -14,10 +14,36 @@ export const useFormStore = create((set, get) => ({
     parentUUID: null,
     _isUpdating: false,
     filteredOptionsCache: new Map(),
+    _fieldDependencies: new Map(),
 
-    // Initialize the form state
+
+
     initForm: (schema, existingData = null, existingUUID = null, parentUUID = null) => {
         const defaultLang = schema.form_defn?.meta?.default_language || schema.form_defn?.language?.[0] || 'English (en)';
+
+        // Pre-compute field dependencies
+        const fieldDependencies = new Map();
+        if (schema?.form_defn?.pages) {
+            for (const page of schema.form_defn.pages) {
+                for (const fieldGroup of page.fields) {
+                    const fields = Object.values(fieldGroup);
+                    fields.forEach(field => {
+                        if (field.choice_filter) {
+                            const deps = [...field.choice_filter.matchAll(/\${(\w+)}/g)]
+                                .map(m => m[1]);
+                            // Remove duplicates
+                            const uniqueDeps = [...new Set(deps)];
+                            fieldDependencies.set(field.name, {
+                                filter: field.choice_filter,
+                                dependencies: uniqueDeps,
+                                options: field.options || []
+                            });
+                        }
+                    });
+                }
+            }
+        }
+
         set({
             schema,
             formData: existingData || {},
@@ -25,88 +51,162 @@ export const useFormStore = create((set, get) => ({
             parentUUID: parentUUID || null,
             currentPage: 0,
             errors: {},
-            language: defaultLang
+            language: defaultLang,
+            _fieldDependencies: fieldDependencies,
+            filteredOptionsCache: new Map(),
         });
     },
 
-    // Helper to get filtered options for a specific field
-
-
-    getFilteredOptions1: (field) => {
+    invalidateCacheForField: (changedFieldName) => {
         const state = get();
-        const formData = state.formData;
+        const toInvalidate = new Set();
 
-        if (!field.options) return [];
-        if (!field.choice_filter) return field.options;
+        // Find all fields that depend on the changed field
+        for (const [fieldName, deps] of state._fieldDependencies.entries()) {
+            if (deps.dependencies.includes(changedFieldName)) {
+                toInvalidate.add(fieldName);
+            }
+        }
 
-        // Use the optimized filterOptions
-        return filterOptions(field.options, field.choice_filter, formData);
+        // Clear cache for affected fields
+        if (toInvalidate.size > 0) {
+            const newCache = new Map(state.filteredOptionsCache);
+            for (const fieldName of toInvalidate) {
+                // Remove all cache entries for this field
+                for (const [key] of newCache) {
+                    if (key.startsWith(`${fieldName}|`)) {
+                        newCache.delete(key);
+                    }
+                }
+            }
+            set({ filteredOptionsCache: newCache });
+        }
     },
 
     getFilteredOptions: (field) => {
         const state = get();
-        if (!field.options) return [];
+
+        if (!field?.options?.length) return [];
         if (!field.choice_filter) return field.options;
 
-        // Create a cache key from the fields the filter depends on
-        const depKeys = field.choice_filter.match(/\${(\w+)}/g)?.map(m => m.slice(2, -1)) || [];
-        const cacheKey = `${field.name}_${depKeys.map(k => state.formData[k] ?? 'null').join('|')}`;
+        // Get or compute field dependencies
+        let fieldInfo = state._fieldDependencies.get(field.name);
+        if (!fieldInfo) {
+            const deps = [...field.choice_filter.matchAll(/\${(\w+)}/g)]
+                .map(m => m[1]);
+            fieldInfo = {
+                filter: field.choice_filter,
+                dependencies: [...new Set(deps)], // Remove duplicates
+                options: field.options
+            };
+            state._fieldDependencies.set(field.name, fieldInfo);
+        }
 
+        // Build cache key efficiently
+        let cacheKey = field.name;
+        for (const dep of fieldInfo.dependencies) {
+            const value = state.formData[dep];
+            //cacheKey += `|${dep}:${value === undefined ? 'u' : value === null ? 'n' : value}`;
+            cacheKey += `|${dep}:${value === undefined ? 'u' : value === null ? 'n' : String(value)}`;
+        }
+
+        // Check cache
         if (state.filteredOptionsCache.has(cacheKey)) {
             return state.filteredOptionsCache.get(cacheKey);
         }
 
+        // Compute filtered options
         const filtered = filterOptions(field.options, field.choice_filter, state.formData);
-        state.filteredOptionsCache.set(cacheKey, filtered);
 
-        // Optional: limit cache size
-        if (state.filteredOptionsCache.size > 200) {
+        // Store in cache with size limit
+        if (state.filteredOptionsCache.size >= 100) {
             const firstKey = state.filteredOptionsCache.keys().next().value;
             state.filteredOptionsCache.delete(firstKey);
         }
 
+        state.filteredOptionsCache.set(cacheKey, filtered);
         return filtered;
     },
 
-    calculatingFields: new Set(),
+    updateField: (name, value) => {
+        const currentValue = get().formData[name];
 
+        // Skip if unchanged
+        if (currentValue === value) return;
+
+        // Update form data
+        set((state) => ({
+            formData: { ...state.formData, [name]: value },
+            errors: { ...state.errors, [name]: null }
+        }));
+
+        // Invalidate dependent caches
+        get().invalidateCacheForField(name);
+    },
+
+    // In useFormStore.js - Add this to prevent rapid updates
+
+    updateField2: (name, value) => {
+        const currentValue = get().formData[name];
+
+        // Skip if unchanged
+        if (currentValue === value) return;
+
+        // THROTTLE: Prevent more than 10 updates per second
+        const now = Date.now();
+        const state = get();
+        if (state._lastUpdateTime && (now - state._lastUpdateTime) < 100) {
+            console.warn(`⏸️ THROTTLED update for ${name}`);
+            // Queue the update for later
+            if (!state._pendingUpdates) {
+                state._pendingUpdates = {};
+                setTimeout(() => {
+                    const pending = get()._pendingUpdates;
+                    if (pending && Object.keys(pending).length > 0) {
+                        console.log(`📦 BATCH UPDATING:`, Object.keys(pending));
+                        set(state => ({
+                            formData: { ...state.formData, ...pending },
+                            _pendingUpdates: {}
+                        }));
+                    }
+                }, 100);
+            }
+            state._pendingUpdates[name] = value;
+            return;
+        }
+
+        set((state) => ({
+            formData: { ...state.formData, [name]: value },
+            errors: { ...state.errors, [name]: null },
+            _lastUpdateTime: now
+        }));
+
+        // Invalidate dependent caches
+        get().invalidateCacheForField(name);
+    },
 
     batchUpdateFields: (updates) => {
-        if (get()._isUpdating) return;
+        const changedFields = Object.keys(updates);
+        if (changedFields.length === 0) return;
 
         set((state) => {
-            const hasChanges = Object.keys(updates).some(key => state.formData[key] !== updates[key]);
+            const hasChanges = changedFields.some(key => state.formData[key] !== updates[key]);
             if (!hasChanges) return state;
 
             return {
                 formData: { ...state.formData, ...updates }
             };
         });
+
+        // Invalidate caches for all changed fields
+        const uniqueChangedFields = [...new Set(changedFields)];
+        for (const field of uniqueChangedFields) {
+            get().invalidateCacheForField(field);
+        }
     },
-
-
 
     setFormData: (data) => set({ formData: data }),
 
-
-    updateField: (name, value) => {
-        // Prevent updates if we're already updating to avoid loops
-        if (get()._isUpdating) return;
-
-        set((state) => {
-            // Skip update if value hasn't changed
-            if (state.formData[name] === value) return state;
-
-            console.log('updateField', name, value)
-
-            return {
-                formData: { ...state.formData, [name]: value },
-                errors: { ...state.errors, [name]: null }
-            };
-        });
-    },
-
-    // Skip Logic check
     isRelevant: (element) => {
         if (!element.relevant || element.relevant === 'null') return true;
         try {
@@ -117,33 +217,26 @@ export const useFormStore = create((set, get) => ({
         }
     },
 
-
     validatePage: (pageIndex) => {
-        const { schema, formData, isRelevant } = get();
+        const { schema, formData, isRelevant, language } = get();
         const page = schema.form_defn.pages[pageIndex];
         const newErrors = {};
         let isValid = true;
 
-
-
         page.fields.forEach(group => {
             Object.values(group).forEach(field => {
-                console.log('isrelevant', field.name)
                 if (!isRelevant(field)) return;
-                console.log(field.name, ' is relevant')
 
                 const val = formData[field.name];
 
-                // 1. Required Validation
                 if (field.required === 'yes' && (!val || val === '')) {
-                    newErrors[field.name] = field[`required_message::${get().language}`] || "Required";
+                    newErrors[field.name] = field[`required_message::${language}`] || "Required";
                     isValid = false;
                 }
 
-                // 2. Constraint Validation
                 if (field.constraint && val) {
-                    if (!evaluateODKExpression(field.constraint, formData)) {
-                        newErrors[field.name] = field[`constraint_message::${get().language}`] || "Invalid";
+                    if (!evaluateODKExpression(field.constraint, formData, val)) {
+                        newErrors[field.name] = field[`constraint_message::${language}`] || "Invalid";
                         isValid = false;
                     }
                 }
@@ -156,14 +249,12 @@ export const useFormStore = create((set, get) => ({
 
     nextPage: () => {
         const { currentPage, validatePage, schema } = get();
-
-        console.log('current page', currentPage)
+        get().clearExpiredCaches();
 
         if (validatePage(currentPage)) {
             if (currentPage < schema.form_defn.pages.length) {
                 set({ currentPage: currentPage + 1 });
             } else {
-                // Logic to navigate to SavePage can go here or in NavigationButtons
                 return true;
             }
         }
@@ -177,6 +268,26 @@ export const useFormStore = create((set, get) => ({
 
     setLanguage: (language) => set({ language }),
 
-    reset: () => set({ schema: null, formData: {}, errors: {}, currentPage: 0, formUUID: null })
+    clearExpiredCaches: () => {
+        const cache = get().filteredOptionsCache;
+        if (cache.size > 50) {
+            const newCache = new Map();
+            let count = 0;
+            for (const [key, value] of cache) {
+                if (count < 50) newCache.set(key, value);
+                count++;
+            }
+            set({ filteredOptionsCache: newCache });
+        }
+    },
 
+    reset: () => set({
+        schema: null,
+        formData: {},
+        errors: {},
+        currentPage: 0,
+        formUUID: null,
+        filteredOptionsCache: new Map(),
+        _fieldDependencies: new Map()
+    })
 }));

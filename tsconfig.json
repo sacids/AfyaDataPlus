@@ -16,6 +16,8 @@
     "app/Project/_layout.js",
     "store/FormStore-xx.js",
     "app/Data/_layout.js",
-    "app/Data/index.js"
+    "app/Data/index.js",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
   ]
 }
