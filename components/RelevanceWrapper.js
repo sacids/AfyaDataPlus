@@ -59,8 +59,13 @@ const RelevanceWrapper = ({ field }) => {
   const shouldShow = useMemo(() => {
     const expression = field.relevant || field.relevance;
     if (!expression || expression === 'null') return true;
-    return isRelevant(field);
-  }, [field, dependencyValues, isRelevant]);
+    try {
+      return isRelevant(field);
+    } catch (e) {
+      console.warn('Relevance eval failed', field.name, e);
+      return false;
+    }
+  }, [field.name]);
 
   const Component = elementComponents[field.type];
   if (!Component || field.type === 'calculate') return null;
