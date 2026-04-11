@@ -7,7 +7,7 @@
     "icon": "./assets/images/AfyaDataLogoIcon.png",
     "scheme": "afyadataplus",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.mchizani.AfyaDataPlus"
@@ -36,6 +36,14 @@
     "plugins": [
       "expo-router",
       [
+        "expo-build-properties",
+        {
+          "android": {
+            "allowNativeHeapPointerTagging": false
+          }
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/images/AfyaDataLogoIcon.png",
@@ -56,10 +64,13 @@
           "organization": "kamili-technologies-kx"
         }
       ],
-      "@sentry/react-native"
+      "@sentry/react-native",
+      "expo-build-properties"
     ],
     "experiments": {
-      "typedRoutes": true
+      "typedRoutes": true,
+      "tsconfigPaths": true,
+      "fabric": false
     },
     "extra": {
       "router": {},
