@@ -23,9 +23,6 @@ export default function NewForm() {
   const initForm = useFormStore(state => state.initForm);
   const currentPage = useFormStore(state => state.currentPage);
   const schema = useFormStore(state => state.schema);
-  const formData = useFormStore(state => state.formData);
-  const formUUID = useFormStore(state => state.formUUID);
-  const parentUUID = useFormStore(state => state.parentUUID);
   const language = useFormStore(state => state.language);
   const setLanguage = useFormStore(state => state.setLanguage);
 
@@ -40,6 +37,11 @@ export default function NewForm() {
   const { t } = useTranslation();
 
   const saveAsDraft = async () => {
+
+
+    const formData = useFormStore.getState().formData;
+    const formUUID = useFormStore.getState().formUUID;
+    const parentUUID = useFormStore.getState().parentUUID;
 
     const generatedTitle = evaluateODKExpression(schema.form_defn.meta.instance_name, formData);
     const title = generatedTitle || schema.form_defn.title;

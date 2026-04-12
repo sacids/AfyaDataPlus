@@ -51,7 +51,7 @@ const SelectOne = ({ element, globalValue }) => {
     }, [element, dependencyValuesString, getFilteredOptions]);
 
 
-    
+
 
 
 
@@ -61,7 +61,7 @@ const SelectOne = ({ element, globalValue }) => {
 
     const handleSelect = (optionValue) => {
         // If the same option is selected, allow deselecting (set to null)
-        console.log('local value changed')
+        //console.log('local value changed')
         const newValue = selectedValue === optionValue ? null : optionValue;
 
         // 3. DEFERRED UPDATE: Let animations/pickers finish before heavy logic runs

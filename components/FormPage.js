@@ -1,14 +1,14 @@
-import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Text, View } from 'react-native';
 import { getStyles } from '../constants/styles';
 import { useTheme } from '../context/ThemeContext';
 import { useFormStore } from '../store/useFormStore';
 
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import RelevanceWrapper from './RelevanceWrapper'; // New component below
 import SavePage from './form/SavePage';
 
 
-
+import { FlashList } from "@shopify/flash-list";
 
 
 
@@ -29,6 +29,12 @@ const FormPage = ({ pageIndex }) => {
     return page.fields.flatMap((fieldGroup) => Object.values(fieldGroup));
   }, [page]);
 
+
+  const renderItem = useCallback(({ item }) => {
+    return <RelevanceWrapper field={item} />;
+  }, []);
+
+
   if (isLastPage) {
     return (
       <View style={styles.pageContainer}>
@@ -45,18 +51,18 @@ const FormPage = ({ pageIndex }) => {
     );
   }
 
+
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-      <ScrollView
+
+      <FlashList
+        data={allFieldsOnPage}
+        renderItem={renderItem}
         contentContainerStyle={styles.scrollContent}
-        removeClippedSubviews={Platform.OS === 'android'}
-      >
-        <View>
-          {allFieldsOnPage.map((field) => (
-            <RelevanceWrapper key={field.name} field={field} />
-          ))}
-        </View>
-      </ScrollView>
+        estimatedItemSize={120} 
+        keyExtractor={(item) => item.name}
+        removeClippedSubviews={true}
+      />
     </KeyboardAvoidingView>
   );
 };

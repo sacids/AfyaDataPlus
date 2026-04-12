@@ -4,7 +4,7 @@ import { Slot, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import { I18nextProvider } from 'react-i18next';
-import { ActivityIndicator, Image, LogBox, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
@@ -14,36 +14,9 @@ import { createTables } from '../utils/database';
 
 
 
-
-// Ignore specific warnings if needed
-LogBox.ignoreLogs(['Warning: ...']);
-
-// Global error handler
-if (typeof ErrorUtils !== 'undefined') {
-  const defaultHandler = ErrorUtils.getGlobalHandler();
-  ErrorUtils.setGlobalHandler((error, isFatal) => {
-    console.log('🚨 GLOBAL CRASH:', {
-      message: error?.message,
-      stack: error?.stack,
-      isFatal
-    });
-    defaultHandler(error, isFatal);
-  });
-}
-
-// Unhandled promise rejections
-if (typeof ErrorUtils !== 'undefined') {
-  const originalHandler = ErrorUtils.getGlobalHandler();
-  ErrorUtils.setGlobalHandler((error, isFatal) => {
-    console.error('🔥 FATAL ERROR:', error);
-    originalHandler(error, isFatal);
-  });
-}
-
-
 Sentry.init({
   dsn: 'https://353d41653058700282e0748a68a61793@o4511093529575424.ingest.de.sentry.io/4511093544714320',
-  debug: true,
+  //debug: true,
   // Adds more context data to events (IP address, cookies, user, etc.)
   // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
   sendDefaultPii: true,
@@ -52,16 +25,16 @@ Sentry.init({
   enableLogs: true,
 
 
-  beforeSend(event, hint) {
-    if (__DEV__) {
-      console.log('--- SENTRY CRASH REPORT ---');
-      console.log('Message:', event.message || hint.originalException?.message);
-      console.log('Level:', event.level);
-      console.log('Stacktrace:', hint.originalException?.stack);
-      console.log('---------------------------');
-    }
-    return event;
-  },
+  // beforeSend(event, hint) {
+  //   if (__DEV__) {
+  //     console.log('--- SENTRY CRASH REPORT ---');
+  //     console.log('Message:', event.message || hint.originalException?.message);
+  //     console.log('Level:', event.level);
+  //     console.log('Stacktrace:', hint.originalException?.stack);
+  //     console.log('---------------------------');
+  //   }
+  //   return event;
+  // },
 
   // Configure Session Replay
   replaysSessionSampleRate: 0.1,

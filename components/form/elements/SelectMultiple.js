@@ -1,12 +1,40 @@
-import { MaterialIcons } from '@expo/vector-icons';
-import React, { useCallback, useMemo, useRef, useEffect, useState } from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
 import { getLabel } from '../../../lib/form/utils';
 import { useFormStore } from '../../../store/useFormStore';
 
-const SelectMultiple = ({ element, globalValue: initialGlobalValue }) => {
+
+
+// 1. Memoized Pressable Item
+// eslint-disable-next-line react/display-name
+const SelectOptionItem = React.memo(({ option, isSelected, onToggle, theme, styles, language, schemaLanguage }) => {
+  return (
+    <Pressable
+      // HitSlop increases touch area without changing layout
+      hitSlop={10}
+      style={({ pressed }) => [
+        styles.checkboxContainer,
+        { opacity: pressed ? 0.7 : 1.0 } // Manual light animation
+      ]}
+      onPress={() => onToggle(option.name)}
+    >
+      <MaterialCommunityIcons
+        name={isSelected ? 'checkbox-marked-outline' : 'checkbox-blank-outline'}
+        size={24}
+        color={isSelected ? theme.colors.primary : styles.inputBase.borderColor}
+      />
+
+      <Text style={styles.checkboxLabel}>
+        {getLabel(option, 'label', language, schemaLanguage)}
+      </Text>
+    </Pressable>
+  );
+});
+
+const SelectMultiple = ({ element, globalValue }) => {
   const updateField = useFormStore(state => state.updateField);
   const language = useFormStore(state => state.language);
   const fieldError = useFormStore(state => state.errors[element.name]);
@@ -14,7 +42,7 @@ const SelectMultiple = ({ element, globalValue: initialGlobalValue }) => {
   const getFilteredOptions = useFormStore(state => state.getFilteredOptions);
 
   const theme = useTheme();
-  const styles = getStyles(theme);
+  const styles = useMemo(() => getStyles(theme), [theme]);
 
   // Filtering
   const dependencyKeys = useMemo(() => {
@@ -23,73 +51,77 @@ const SelectMultiple = ({ element, globalValue: initialGlobalValue }) => {
     return matches.map(m => m.replace(/[${}]/g, ''));
   }, [element.choice_filter]);
 
+
   const dependencyValuesString = useFormStore(
     useCallback((state) =>
       dependencyKeys.map(key => state.formData[key] || '').join('|'),
       [dependencyKeys]
-    )
+    ),
+    (oldVal, newVal) => oldVal === newVal // CRITICAL: Only re-render if the string actually changes
   );
 
   const availableOptions = useMemo(() => {
+
     return getFilteredOptions(element);
   }, [element, dependencyValuesString, getFilteredOptions]);
 
-  // Local state - starts with the initial global value
-  const [localSelected, setLocalSelected] = useState(() => {
-    const val = initialGlobalValue || "";
-    return new Set(val ? val.split(" ").filter(Boolean) : []);
-  });
+  //const availableOptions = element.options
 
-  // Track the last committed value to avoid unnecessary resets
-  const lastCommittedRef = useRef(initialGlobalValue || "");
+  // 1. LOCAL STATE: The source of truth for the UI
+  const [localSelected, setLocalSelected] = useState(new Set(
+    Array.isArray(globalValue) ? globalValue : []
+  ));
 
-  const timeoutRef = useRef(null);
+  // 2. REFS: For tracking changes without re-renders
+  const lastCommittedValue = useRef(JSON.stringify(Array.from(localSelected)));
+  const timerRef = useRef(null);
 
-  const commitToStore = useCallback(() => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
+  // Sync local state if globalValue changes EXTERNALLY (e.g. form reset)
+  useEffect(() => {
+    const globalStr = JSON.stringify(globalValue || []);
+    if (globalStr !== lastCommittedValue.current) {
+      setLocalSelected(new Set(Array.isArray(globalValue) ? globalValue : []));
+      lastCommittedValue.current = globalStr;
     }
+  }, [globalValue]);
 
-    const newValue = Array.from(localSelected).sort().join(" ");
+  // 3. THE SYNC LOGIC: Debounced update to the global store
+  const syncToStore = useCallback((currentSet) => {
+    const arrayValue = Array.from(currentSet);
+    const newValueStr = JSON.stringify(arrayValue);
 
-    if (newValue !== lastCommittedRef.current) {
-      updateField(element.name, newValue);
-      lastCommittedRef.current = newValue;
+    if (newValueStr !== lastCommittedValue.current) {
+      lastCommittedValue.current = newValueStr;
+      updateField(element.name, arrayValue);
     }
-  }, [localSelected, element.name, updateField]);
+  }, [element.name, updateField]);
 
   const handleToggle = useCallback((optionName) => {
+    // A. Update UI immediately
     setLocalSelected((prev) => {
-      const newSet = new Set(prev);
-      newSet.has(optionName) ? newSet.delete(optionName) : newSet.add(optionName);
-      return newSet;
+      const next = new Set(prev);
+      if (next.has(optionName)) next.delete(optionName);
+      else next.add(optionName);
+
+      // B. Clear existing timer and start a new one (Debounce)
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        syncToStore(next);
+      }, 750); // 250ms is usually the sweet spot for rapid taps
+
+      return next;
     });
+  }, [syncToStore]);
 
-    // Debounce the store update
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(commitToStore, 180);
-  }, [commitToStore]);
-
-  // Final commit when leaving the field
+  // Cleanup on unmount: Ensure last changes are saved
   useEffect(() => {
     return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        commitToStore();
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        // Optional: Force a final sync here if needed
       }
     };
-  }, [commitToStore]);
-
-  // Optional: Sync if global value changes externally (e.g. from another field or reset)
-  useEffect(() => {
-    const currentGlobal = initialGlobalValue || "";
-    if (currentGlobal !== lastCommittedRef.current) {
-      const newSet = new Set(currentGlobal ? currentGlobal.split(" ").filter(Boolean) : []);
-      setLocalSelected(newSet);
-      lastCommittedRef.current = currentGlobal;
-    }
-  }, [initialGlobalValue]);
+  }, []);
 
   if (availableOptions.length === 0) return null;
 
@@ -97,7 +129,7 @@ const SelectMultiple = ({ element, globalValue: initialGlobalValue }) => {
   const hint = getLabel(element, 'hint', language, schemaLanguage);
 
   return (
-    <View>
+    <>
       {label && (
         <View style={styles.labelContainer}>
           {element.required && <Text style={styles.required}>*</Text>}
@@ -107,31 +139,22 @@ const SelectMultiple = ({ element, globalValue: initialGlobalValue }) => {
       {hint && <Text style={styles.hint}>{hint}</Text>}
 
       <View style={[styles.inputBase, styles.selectMultiple, fieldError ? styles.inputError : null]}>
-        {availableOptions.map((option) => {
-          const isSelected = localSelected.has(option.name);
-
-          return (
-            <TouchableOpacity
-              key={option.name}
-              style={styles.checkboxContainer}
-              onPress={() => handleToggle(option.name)}
-              activeOpacity={0.7}
-            >
-              <MaterialIcons
-                name={isSelected ? 'check-box' : 'check-box-outline-blank'}
-                size={24}
-                color={isSelected ? theme.colors.primary : styles.inputBase.borderColor}
-              />
-              <Text style={styles.checkboxLabel}>
-                {getLabel(option, 'label', language, schemaLanguage)}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+        {availableOptions.map((option) => (
+          <SelectOptionItem
+            key={option.name}
+            option={option}
+            isSelected={localSelected.has(option.name)}
+            onToggle={handleToggle}
+            theme={theme}
+            styles={styles}
+            language={language}
+            schemaLanguage={schemaLanguage}
+          />
+        ))}
       </View>
 
       {fieldError && <Text style={styles.errorText}>{fieldError}</Text>}
-    </View>
+    </>
   );
 };
 

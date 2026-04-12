@@ -1,5 +1,4 @@
 import { memo, useCallback, useMemo } from 'react';
-import { View } from 'react-native';
 import { useFormStore } from '../store/useFormStore';
 
 // Elements
@@ -31,6 +30,8 @@ const elementComponents = {
 };
 
 const RelevanceWrapper = ({ field }) => {
+
+
   // 1. EXTRACT DEPENDENCIES
   // Since the field definition never changes, this regex runs once.
   const relDependencies = useMemo(() => {
@@ -41,13 +42,9 @@ const RelevanceWrapper = ({ field }) => {
   }, [field.relevant, field.relevance]);
 
   // 2. SCOPED DATA SUBSCRIPTION
-  // This is the most critical part for performance.
-  // The wrapper ONLY re-renders if a field it actually cares about changes.
   const dependencyValues = useFormStore(
-    useCallback(
-      (state) => relDependencies.map(dep => state.formData[dep] || '').join('|'),
-      [relDependencies]
-    )
+    useCallback((state) => relDependencies.map(dep => state.formData[dep] || '').join('|'), [relDependencies]),
+    (old, next) => old === next // This stops the wrapper from pulsing on every click
   );
 
   // 3. INDIVIDUAL VALUE SUBSCRIPTION
@@ -65,22 +62,21 @@ const RelevanceWrapper = ({ field }) => {
       console.warn('Relevance eval failed', field.name, e);
       return false;
     }
-  }, [field.name]);
+  }, [field.name, dependencyValues]);
 
+  if (field.type === 'calculate') return null;
   const Component = elementComponents[field.type];
-  if (!Component || field.type === 'calculate') return null;
+  if (!Component) return null;
 
   if (!shouldShow) {
     return null;
   }
 
   return (
-    <View style={{ flex: 1 }}>
-      <Component
-        element={field}
-        globalValue={globalValue}
-      />
-    </View>
+    <Component
+      element={field}
+      globalValue={globalValue}
+    />
   );
 };
 

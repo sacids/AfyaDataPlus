@@ -128,12 +128,10 @@ export const useFormStore = create((set, get) => ({
         return filtered;
     },
 
-    updateField: (name, value) => {
+    updateField1: (name, value) => {
         const currentValue = get().formData[name];
-
-        // Skip if unchanged
         if (currentValue === value) return;
-
+        console.log('updating field')
         // Update form data
         set((state) => ({
             formData: { ...state.formData, [name]: value },
@@ -144,44 +142,21 @@ export const useFormStore = create((set, get) => ({
         get().invalidateCacheForField(name);
     },
 
-    // In useFormStore.js - Add this to prevent rapid updates
-
-    updateField2: (name, value) => {
-        const currentValue = get().formData[name];
-
-        // Skip if unchanged
-        if (currentValue === value) return;
-
-        // THROTTLE: Prevent more than 10 updates per second
-        const now = Date.now();
+    updateField: (name, value) => {
         const state = get();
-        if (state._lastUpdateTime && (now - state._lastUpdateTime) < 100) {
-            console.warn(`⏸️ THROTTLED update for ${name}`);
-            // Queue the update for later
-            if (!state._pendingUpdates) {
-                state._pendingUpdates = {};
-                setTimeout(() => {
-                    const pending = get()._pendingUpdates;
-                    if (pending && Object.keys(pending).length > 0) {
-                        console.log(`📦 BATCH UPDATING:`, Object.keys(pending));
-                        set(state => ({
-                            formData: { ...state.formData, ...pending },
-                            _pendingUpdates: {}
-                        }));
-                    }
-                }, 100);
-            }
-            state._pendingUpdates[name] = value;
+        const current = state.formData[name];
+
+        // Faster comparison for arrays/strings
+        if (Array.isArray(value) && Array.isArray(current)) {
+            if (value.length === current.length && value.every((v, i) => v === current[i])) return;
+        } else if (current === value) {
             return;
         }
 
-        set((state) => ({
-            formData: { ...state.formData, [name]: value },
-            errors: { ...state.errors, [name]: null },
-            _lastUpdateTime: now
-        }));
+        //console.log('updating field')
+        set({ formData: { ...state.formData, [name]: value } });
 
-        // Invalidate dependent caches
+
         get().invalidateCacheForField(name);
     },
 
