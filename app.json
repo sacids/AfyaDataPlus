@@ -2,7 +2,7 @@
   "expo": {
     "name": "AfyaDataPlus",
     "slug": "AfyaDataPlus",
-    "version": "2.6.2",
+    "version": "2.6.3",
     "orientation": "portrait",
     "icon": "./assets/images/AfyaDataLogoIcon.png",
     "scheme": "afyadataplus",
@@ -52,7 +52,6 @@
       ],
       "expo-sqlite",
       "expo-secure-store",
-      "expo-web-browser",
       "expo-localization",
       [
         "@sentry/react-native/expo",

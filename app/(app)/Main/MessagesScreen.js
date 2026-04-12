@@ -15,7 +15,6 @@ import { AppHeader } from '../../../components/layout/AppHeader';
 import { ScreenWrapper } from '../../../components/layout/ScreenWrapper';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
-import { generateUUID } from '../../../lib/form.bak/validation';
 import { useAuthStore } from '../../../store/authStore';
 import useProjectStore from '../../../store/projectStore';
 import { insert, select } from '../../../utils/database';
@@ -84,7 +83,7 @@ export default function MessagesScreen() {
     const messageText = input.trim();
     setInput(''); // Clear immediately for UX
 
-    const localId = generateUUID();
+    const localId = `local_${Date.now()}`;
     const newMessage = {
       local_id: localId,
       formDataUUID: currentData.uuid,
