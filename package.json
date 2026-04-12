@@ -55,7 +55,6 @@
     "expo-system-ui": "~55.0.15",
     "expo-web-browser": "~55.0.14",
     "i18next": "^25.8.4",
-    "mathjs": "^14.4.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-i18next": "^16.5.4",
