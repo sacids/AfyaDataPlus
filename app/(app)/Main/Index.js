@@ -2,10 +2,6 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useReducer } from 'react';
 import { ActivityIndicator } from 'react-native';
 
-
-
-
-
 import FormDataView from '../../../components/form/FormDataView';
 import { select } from '../../../utils/database';
 

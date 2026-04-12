@@ -43,7 +43,7 @@ export default function FormDataList() {
   const [showFormStatus, setShowFormStatus] = useState(false);
   const resetSwipeRef = useRef(null);
   const selectedTag = useFilterStore((state) => state.filter);
-  const { currentProject, setCurrentProject, setCurrentData, currentData } = useProjectStore();
+  const { currentProject, setCurrentData, currentData } = useProjectStore();
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore()
 
@@ -159,7 +159,7 @@ export default function FormDataList() {
   // In FormDataList.js
   const doSubmit = async (data = []) => {
     const itemsToSubmit = Array.isArray(data) ? data : [data];
-
+    //console.log('do submit', itemsToSubmit)
     // Pass a callback to handleFormSubmission
     try {
 
@@ -242,7 +242,7 @@ export default function FormDataList() {
   useEffect(() => {
     initialize();
   }, []);
-  
+
 
   useEffect(() => {
     let tempData = [...data];

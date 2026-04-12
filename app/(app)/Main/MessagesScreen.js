@@ -1,5 +1,3 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -17,11 +15,11 @@ import { AppHeader } from '../../../components/layout/AppHeader';
 import { ScreenWrapper } from '../../../components/layout/ScreenWrapper';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
+import { generateUUID } from '../../../lib/form.bak/validation';
 import { useAuthStore } from '../../../store/authStore';
 import useProjectStore from '../../../store/projectStore';
 import { insert, select } from '../../../utils/database';
-import { handleFormSubmission, syncMessages } from '../../../utils/services';
-import { generateUUID } from '../../../lib/form.bak/validation';
+import { handleFormSubmission, submitSingleForm, syncMessages } from '../../../utils/services';
 
 export default function MessagesScreen() {
   const theme = useTheme();
@@ -37,23 +35,26 @@ export default function MessagesScreen() {
   const { user } = useAuthStore()
   const { t } = useTranslation();
 
+  //console.log('current data', currentData)
   const isDataSent = currentData?.status === 'sent';
 
 
   useEffect(() => {
 
-    if (!isDataSent) return;
+
     let mounted = true;
 
     (async () => {
       try {
         setIsSyncing(true);
+        await loadLocalMessages();
 
-        const convId = await syncMessages(currentData);
+        if (isDataSent) {
+          const convId = await syncMessages(currentData);
+          setConversationId(convId);
+        }
         if (!mounted) return;
 
-        setConversationId(convId);
-        await loadLocalMessages();
       } catch (e) {
         console.error('Failed to sync messages', e);
       } finally {
@@ -68,12 +69,13 @@ export default function MessagesScreen() {
 
 
   const loadLocalMessages = async () => {
-    console.log('loading local messages')
-    const data = await select('messages', 'formDataUUID = ?', [currentData.original_uuid]);
+    //console.log('loading local messages')
+    const data = await select('messages', 'formDataUUID = ?', [currentData?.original_uuid]);
+    //console.log('message data', currentData.original_uuid, data)
     setMessages(data);
   };
 
-  const handleSend = async () => {
+  const handleSend1 = async () => {
     if (!input.trim() || !user) return;
 
     const text = input.trim();
@@ -109,6 +111,65 @@ export default function MessagesScreen() {
     }
   };
 
+
+  const handleSend = async () => {
+    //console.log('current data', JSON.stringify(currentData, null, 5))
+    if (!input.trim() || !currentData) return;
+
+    const messageText = input.trim();
+    setInput(''); // Clear immediately for UX
+
+    const localId = generateUUID();
+    const newMessage = {
+      local_id: localId,
+      formDataUUID: currentData.uuid,
+      text: messageText,
+      sender_id: user.id, // Or 'user'
+      sender_name: user.name || 'Me',
+      sync_status: 'pending',
+      created_at: new Date().toISOString()
+    };
+
+    // 1. Always save to local DB first
+    await insert('messages', newMessage);
+
+    // Update local UI state immediately
+    setMessages(prev => [...prev, { ...newMessage, id: localId }]);
+    setTimeout(() => flatListRef.current?.scrollToEnd(), 100);
+
+    // 2. Check if Data needs to be submitted
+    if (currentData.status === 'finalized') {
+
+      try {
+        setIsSubmitting(true);
+        // Attempt to submit the form data first
+        //console.log('attempting to submit currentData', currentData)
+        //await handleFormSubmission([currentData]);
+        await submitSingleForm(currentData)
+        const updatedData = {
+          ...currentData,
+          status: 'sent',
+          status_date: new Date().toISOString()
+        };
+
+        useProjectStore.getState().setCurrentData(updatedData);
+
+
+        await syncMessages(currentData);
+        loadLocalMessages(); // Refresh to get server IDs/status
+
+      } catch (error) {
+        console.error("Submission from messages failed:", error);
+      } finally {
+        setIsSubmitting(false);
+      }
+
+
+    }
+
+
+  };
+
   const handleDirectSubmit = async () => {
     try {
       setIsSubmitting(true);
@@ -131,11 +192,27 @@ export default function MessagesScreen() {
   };
 
 
-
   const renderItem = ({ item }) => {
-    const isMe = parseInt(item.sender_id) === parseInt(user.id)
-    //console.log('items', item.sender_id, user.id, isMe)
+    const isMe = parseInt(item.sender_id) === parseInt(user.id);
+    const isSystem = item.sender_id === '0' || item.sender_id === 'system';
 
+    //console.log('items', item.sender_id, user.id, isMe)
+    if (isSystem) {
+      return (
+        <View style={[styles.messageBubbleThem, {
+          backgroundColor: theme.colors.primary + '15',
+          borderColor: theme.colors.primary + '30',
+          marginHorizontal: 16,
+        }]}>
+          <Text style={[styles.messageTextThem, {
+            color: theme.colors.primary,
+            fontStyle: 'italic',
+          }]}>
+            {item.text}
+          </Text>
+        </View>
+      );
+    }
     return (
       <View
         style={[
@@ -158,49 +235,6 @@ export default function MessagesScreen() {
     );
   };
 
-  if (!isDataSent) {
-    return (
-      <ScreenWrapper>
-        <AppHeader title={currentData?.title || t('messages:title')} />
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 }}>
-          <MaterialCommunityIcons
-            name={isSubmitting ? "cloud-upload" : "lock-outline"}
-            size={80}
-            color={theme.colors.primary}
-          />
-          <Text style={[styles.title, { textAlign: 'center', marginTop: 20 }]}>
-            {isSubmitting ? t('messages:submittingTitle') : t('messages:lockedTitle')}
-          </Text>
-          <Text style={[styles.bodyText, { textAlign: 'center', color: theme.colors.hint, marginTop: 10 }]}>
-            {isSubmitting ? t('messages:submittingSubtitle') : t('messages:lockedSubtitle')}
-          </Text>
-
-          {!isSubmitting && (
-            <>
-              <TouchableOpacity
-                style={[styles.button, { marginTop: 30, width: '100%' }]}
-                onPress={handleDirectSubmit}
-              >
-                <Text style={styles.buttonText}>{t('messages:submitNow')}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.button, { marginTop: 20, width: '100%', backgroundColor: theme.colors.backgroundColor, borderColor: theme.colors.primary, borderWidth: 1 }]}
-                onPress={() => router.back()}
-              >
-                <Text style={{ color: theme.colors.hint }}>{t('messages:goBack')}</Text>
-              </TouchableOpacity>
-            </>
-          )}
-
-          {isSubmitting && (
-            <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 20 }} />
-          )}
-        </View>
-      </ScreenWrapper>
-    );
-  }
-
   return (
 
     <ScreenWrapper>
@@ -218,30 +252,23 @@ export default function MessagesScreen() {
 
 
         {/* Messages List */}
-        {isSyncing ? (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <ActivityIndicator size="large" color={theme.colors.primary} />
-            <Text style={{ marginTop: 12, color: theme.colors.hint }}>
-              {t('messages:syncing')}
-            </Text>
-          </View>
-        ) : (
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            renderItem={renderItem}
-            keyExtractor={(item) => item.id?.toString()}
-            contentContainerStyle={{ paddingVertical: 16 }}
-            style={{ flex: 1 }}
-            ListEmptyComponent={
-              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 100, paddingHorizontal: 30 }}>
-                <Text style={[styles.bodyText, { color: theme.colors.hint, textAlign: 'center' }]}>
-                  {t('messages:noMessages')}
-                </Text>
-              </View>
-            }
-          />
-        )}
+
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id?.toString()}
+          contentContainerStyle={{ paddingVertical: 16 }}
+          style={{ flex: 1 }}
+          ListEmptyComponent={
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 100, paddingHorizontal: 30 }}>
+              <Text style={[styles.bodyText, { color: theme.colors.hint, textAlign: 'center' }]}>
+                {t('messages:noMessages')}
+              </Text>
+            </View>
+          }
+        />
+
 
 
         {/* Input Area */}
@@ -259,11 +286,21 @@ export default function MessagesScreen() {
             onPress={handleSend}
             style={[
               styles.chatSendButton,
-              !input.trim() && styles.chatSendButtonDisabled
+              (!input.trim() && !isSyncing) && styles.chatSendButtonDisabled
             ]}
-            disabled={!input.trim()}
+            disabled={!input.trim() || isSyncing}
           >
-            <Text style={styles.buttonText}>{t('messages:send')}</Text>
+            {isSyncing ? (
+              <ActivityIndicator
+                key="loading-indicator" // Add a unique key
+                size="small"
+                color="white"
+              />
+            ) : (
+              <Text key="send-text" style={styles.buttonText}>
+                {t('messages:send')}
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
 

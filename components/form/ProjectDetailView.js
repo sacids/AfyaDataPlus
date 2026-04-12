@@ -10,7 +10,7 @@ import { useAuthStore } from '../../store/authStore'
 import { useFilterStore } from '../../store/filterStore'
 import useProjectStore from '../../store/projectStore'
 import { select, update } from '../../utils/database'
-import { getProjfectForms } from '../../utils/services'
+import { getProjfectForms, submitProjectData, syncProjectReactions } from '../../utils/services'
 import { AppHeader } from '../layout/AppHeader'
 import { FormIcons } from '../layout/FormIcons'
 const ProjectDetailView = ({ project }) => {
@@ -113,12 +113,17 @@ const ProjectDetailView = ({ project }) => {
     try {
       setLoading(true);
       // 1. Perform the sync (API -> SQLite)
+      //console.log('nadle get project forms')
       await getProjfectForms(currentProject.project, setFormSyncStatus)
+
+      //console.log('syncing project reactions')
+      //await syncProjectReactions(currentProject.project, setFormSyncStatus)
 
       // 2. CRITICAL: Re-fetch from SQLite to update local state
       //getProjectFormDefinitions(currentProject.project);
 
       Alert.alert(t('alerts:success'), t('projects:syncComplete'));
+
     } catch (error) {
       Alert.alert(t('alerts:error'), t('projects:syncFailed'));
     } finally {
@@ -195,7 +200,7 @@ const ProjectDetailView = ({ project }) => {
             {t('projects:projectData')}
           </Text>
           <TouchableOpacity
-            onPress={() => handleSyncProjectForms()}>
+            onPress={() => submitProjectData(currentProject?.project)}>
             <MaterialIcons name="send" size={26} color={theme.colors.primary} />
           </TouchableOpacity>
         </View>
@@ -255,7 +260,10 @@ const ProjectDetailView = ({ project }) => {
             {t('projects:projectForms')}
           </Text>
           <TouchableOpacity
-            onPress={() => getProjfectForms(currentProject.project, setFormSyncStatus)}>
+            onPress={async () => {
+              await getProjfectForms(currentProject.project, setFormSyncStatus);
+              await syncProjectReactions(currentProject.project, setFormSyncStatus);
+            }}>
             <MaterialIcons name="refresh" size={30} color={theme.colors.primary} />
           </TouchableOpacity>
         </View>
@@ -325,7 +333,7 @@ const ProjectDetailView = ({ project }) => {
             {t('projects:unsubscribe')}
           </Text>
         </TouchableOpacity>
-      </ScrollView>
+      </ScrollView >
 
       <TouchableOpacity
         style={[styles.fab]}

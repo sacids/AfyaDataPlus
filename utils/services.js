@@ -1,6 +1,6 @@
 import { Alert } from "react-native";
 import api from "../api/axiosInstance";
-import { insert, insert_into_messages, select, update } from "./database";
+import { insert, insert_into_messages, remove, select, update } from "./database";
 
 
 import { Directory, Paths } from "expo-file-system";
@@ -175,6 +175,75 @@ export const getProjfectForms = async (project_id, setStatus) => {
     }
 };
 
+
+
+export const syncProjectReactions = async (project_id, setStatus) => {
+    try {
+        // Initialize status if empty
+        setStatus('Starting sync...');
+
+        // Retrieve local forms
+        setStatus('Retrieving local forms...');
+        const sql = await select('form_defn', 'project = ?', [project_id], 'form_id');
+        for (const form of sql) {
+            await syncFormReactions(form.form_id, setStatus)
+        }
+        setStatus('Form Reactions sync complete')
+
+    } catch (error) {
+        setStatus('Sync failed - ' + error);
+        console.error('Error getting forms:', error);
+    } finally {
+        // Clear activity indicator
+        clearInterval(activityInterval);
+    }
+}
+
+/**
+ * Syncs form reactions for a specific form from the server to local storage.
+ * * @param {string} formId - The UUID of the form to sync rules for.
+ * @param {function} setStatus - State setter for UI feedback.
+ */
+export const syncFormReactions = async (formId, setStatus) => {
+    try {
+        updateStatus(setStatus, `Fetching decision rules for form ${formId}...`);
+
+        // 1. Fetch from Django API using your axios instance
+        const response = await api.get(`api/v1/form-reactions/${formId}`);
+        const reactions = response.data;
+
+        if (reactions && Array.isArray(reactions)) {
+            updateStatus(setStatus, `Processing ${reactions.length} logic rules...`);
+
+            // 2. Clear existing rules for this specific form to prevent duplicates
+            // Uses the 'remove' helper from your database.js
+            await remove('form_reactions', 'form = ?', [formId]);
+
+            // 3. Insert new rules
+            for (const reaction of reactions) {
+                await insert('form_reactions', {
+                    form: reaction.form,
+                    reaction_id: reaction.id,
+                    priority: reaction.priority,
+                    condition: reaction.condition,
+                    actions_json: JSON.stringify(reaction.actions)
+                });
+            }
+
+            updateStatus(setStatus, `Successfully updated ${reactions.length} reactions.`);
+            return { success: true, count: reactions.length };
+        } else {
+            updateStatus(setStatus, `No specific reactions found for this form.`);
+            return { success: true, count: 0 };
+        }
+
+    } catch (error) {
+        console.error("Failed to sync form reactions:", error);
+        updateStatus(setStatus, `Error syncing reactions: ${error.message}`);
+        return { success: false, error: error.message };
+    }
+};
+
 export const submitProjectData = async (project_id, setStatus) => {
 
 
@@ -209,6 +278,7 @@ export const submitProjectData = async (project_id, setStatus) => {
 export const syncMessages = async (formData, participants = []) => {
     try {
 
+
         // 1. Ensure Conversation exists on Backend
         // console.log('api chat', {
         //     title: formData.title || `Chat for ${formData.uuid}`,
@@ -227,7 +297,7 @@ export const syncMessages = async (formData, participants = []) => {
         //console.log('conv', convResponse)
         const conversation = convResponse.data.data;
 
-        console.log(`api/v1/chat/conversations/${conversation.id}/messages`)
+        //console.log(`api/v1/chat/conversations/${conversation.id}/messages`)
         // 2. Fetch remote messages
         const msgResponse = await api.get(`api/v1/chat/conversations/${conversation.id}/messages`);
 
@@ -342,34 +412,8 @@ const handleFormSubmission = async (data, onProgress) => { // Added onProgress
     }
 };
 
-const handleFormSubmission1 = async (data) => {
-    const successForms = [];
-    const failedForms = [];
-
-    try {
-        for (const formItem of data) {
-            try {
-                const submissionResult = await submitSingleForm(formItem);
-
-                if (submissionResult.success) {
-                    successForms.push(formItem.form);
-                } else {
-                    failedForms.push({ form: formItem.form, error: submissionResult.error });
-                }
-            } catch (error) {
-                console.error(`Submission error for form ${formItem.form}:`, error);
-                failedForms.push({ form: formItem.form, error: error.message });
-            }
-        }
-
-        showSubmissionResults(successForms, failedForms, data.length);
-    } catch (error) {
-        console.error('Form submission process failed:', error);
-        Alert.alert('Error', 'Form submission process failed');
-    }
-};
-
-const submitSingleForm = async (formItem) => {
+export const submitSingleForm = async (formItem) => {
+    //console.log('formdata', JSON.stringify(formItem, null, 5))
     const formData = new FormData();
 
     // Process images from directory
@@ -385,6 +429,7 @@ const submitSingleForm = async (formItem) => {
     // Submit form data with better error handling
     let result;
     try {
+        //console.log('form-data', JSON.stringify(formData, null, 5))
         result = await postData('form-data', formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         });
@@ -413,7 +458,7 @@ const processFormImages = async (formItem, formData) => {
     const formDirectory = new Directory(Paths.document, formItem.original_uuid);
 
     if (!formDirectory.exists) {
-        console.log(`Directory does not exist for form: ${formItem.form}`);
+        //console.log(`Directory does not exist for form: ${formItem.form}`);
         return;
     }
 

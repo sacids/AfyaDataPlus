@@ -19,9 +19,10 @@ import { ScreenWrapper } from '../../components/layout/ScreenWrapper';
 import { getStyles } from '../../constants/styles';
 import { useTheme } from '../../context/ThemeContext';
 import { evaluateODKExpression } from '../../lib/form/odkEngine';
+import { processFormRules } from '../../lib/form/ruleProcessor';
 import { useAuthStore } from '../../store/authStore';
 import { useFormStore } from '../../store/useFormStore';
-import { insert } from '../../utils/database';
+import { insert, select } from '../../utils/database';
 
 const SavePage = () => {
     const theme = useTheme();
@@ -130,7 +131,7 @@ const SavePage = () => {
                 finalGps = await getCurrentLocation();
             }
 
-            console.log('Final GPS before save:', finalGps);
+            //console.log('Final GPS before save:', finalGps);
 
             const main_formData = {
                 ...formData,
@@ -155,6 +156,35 @@ const SavePage = () => {
                 form_data: JSON.stringify(main_formData),
                 gps: finalGps ? JSON.stringify(finalGps) : null,
             });
+
+            if (status === 'finalized') {
+                // Fetch rules for this specific ODK form_id
+                const rules = await select('form_reactions', 'form = ?', [schema.form_id]);
+
+                if (rules && rules.length > 0) {
+                    const actions = processFormRules(main_formData, rules);
+                    //console.log('actions', actions)
+                    for (const action of actions) {
+                        if (action.action_type === 'chat_response') {
+                            // Insert into messages table for the chat view
+                            await insert('messages', {
+                                local_id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                                formDataUUID: formUUID,
+                                text: action.message,
+                                sender_id: '0',
+                                sender_name: 'AfyaData Assistant',
+                                sync_status: 'pending' // System messages can be marked as pending or local
+                            });
+                        }
+
+                        // Handle other types like 'navigation' if necessary
+                        if (action.action_type === 'navigation') {
+                            console.log("Rule triggered navigation to:", action.metadata.screen);
+                        }
+                    }
+                }
+            }
+
 
             router.replace('/Main');
         } catch (e) {

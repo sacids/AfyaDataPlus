@@ -3,7 +3,7 @@ import { Text, TouchableOpacity, View } from 'react-native';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
 import { getLabel } from '../../../lib/form/utils';
-import { useFormStore } from '../../../store/FormStore-xx';
+import { useFormStore } from '../../../store/useFormStore';
 
 const SelectMultipleFromFileField = ({ element, value }) => {
   const { updateFormData, errors, language, schema } = useFormStore();

@@ -38,6 +38,7 @@ const useProjectStore = create(
                     const minimalData = {
                         id: data.id,
                         uuid: data.uuid,
+                        original_uuid: data.original_uuid,
                         form: data.form,
                         title: data.title,
                         parent_uuid: data.parent_uuid,

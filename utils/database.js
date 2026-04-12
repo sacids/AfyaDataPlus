@@ -128,36 +128,14 @@ WHERE deleted = 0;
 `;
 
 
-const FIRST_AID_ACTIONS_SQL = `CREATE TABLE IF NOT EXISTS first_aid_actions (
-    id TEXT PRIMARY KEY,
-    code TEXT UNIQUE,
-    title TEXT,
-    description TEXT,
-    priority INTEGER DEFAULT 1,
-    category TEXT
+const FORM_REACTIONS_SQL = `CREATE TABLE IF NOT EXISTS form_reactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    reaction_id INTEGER UNIQUE,
+    form TEXT,        
+    priority INTEGER,
+    condition TEXT,       
+    actions_json TEXT     
 );`;
-
-const FIRST_AID_RULES_SQL = `CREATE TABLE IF NOT EXISTS first_aid_rules (
-    id TEXT PRIMARY KEY,
-    name TEXT,
-    min_age_months INTEGER,
-    max_age_months INTEGER,
-    active INTEGER DEFAULT 1
-);`;
-
-const RULE_CLINICAL_SIGNS_SQL = `CREATE TABLE IF NOT EXISTS rule_clinical_signs (
-    rule_id TEXT,
-    sign_id TEXT,
-    FOREIGN KEY (rule_id) REFERENCES first_aid_rules(id) ON DELETE CASCADE
-);`;
-
-const RULE_ACTIONS_SQL = `CREATE TABLE IF NOT EXISTS rule_actions (
-    rule_id TEXT,
-    action_id TEXT,
-    FOREIGN KEY (rule_id) REFERENCES first_aid_rules(id) ON DELETE CASCADE,
-    FOREIGN KEY (action_id) REFERENCES first_aid_actions(id) ON DELETE CASCADE
-);`;
-
 
 
 // Create tables with soft delete cascade
@@ -170,11 +148,7 @@ export const createTables = async () => {
         await db.execAsync(PROJECT_SQL);
 
         // New First Aid Tables
-        await db.execAsync(FIRST_AID_ACTIONS_SQL);
-        await db.execAsync(FIRST_AID_RULES_SQL);
-        await db.execAsync(RULE_CLINICAL_SIGNS_SQL);
-        await db.execAsync(RULE_ACTIONS_SQL);
-
+        await db.execAsync(FORM_REACTIONS_SQL);
         // Create soft delete cascade trigger
         await db.execAsync(SOFT_DELETE_CASCADE_TRIGGER_SQL);
 
@@ -195,91 +169,6 @@ export const createTables = async () => {
 };
 
 
-/**
- * FIRST AID LOGIC FUNCTIONS
- */
-
-// Function to get consolidated advice based on multiple signs
-export const getConsolidatedFirstAid = async (selectedSignIds) => {
-    if (!selectedSignIds || selectedSignIds.length === 0) return [];
-
-    try {
-        const placeholders = selectedSignIds.map(() => '?').join(',');
-        const query = `
-            SELECT DISTINCT 
-                a.id, 
-                a.title, 
-                a.description, 
-                a.priority, 
-                a.category 
-            FROM first_aid_actions a
-            JOIN rule_actions ra ON a.id = ra.action_id
-            JOIN rule_clinical_signs rs ON ra.rule_id = rs.rule_id
-            JOIN first_aid_rules r ON ra.rule_id = r.id
-            WHERE rs.sign_id IN (${placeholders})
-            AND r.active = 1
-            ORDER BY a.priority DESC;
-        `;
-
-        const result = await db.getAllAsync(query, selectedSignIds);
-        return result;
-    } catch (error) {
-        console.error('Error fetching consolidated first aid:', error);
-        return [];
-    }
-};
-
-// Syncing Helper: Specifically for bulk inserting First Aid Data from Django
-export const syncFirstAidData = async (payload) => {
-    try {
-        await db.execAsync('BEGIN TRANSACTION;');
-
-        // 1. Wipe current logic (Full refresh)
-        await db.runAsync('DELETE FROM rule_actions');
-        await db.runAsync('DELETE FROM rule_clinical_signs');
-        await db.runAsync('DELETE FROM first_aid_rules');
-        await db.runAsync('DELETE FROM first_aid_actions');
-
-        // 2. Insert Actions
-        for (const action of payload.actions) {
-            await db.runAsync(
-                `INSERT INTO first_aid_actions (id, code, title, description, priority, category) 
-                 VALUES (?, ?, ?, ?, ?, ?)`,
-                [action.id, action.code, action.title, action.description, action.priority, action.category]
-            );
-        }
-
-        // 3. Insert Rules and M2M Links
-        for (const rule of payload.rules) {
-            await db.runAsync(
-                `INSERT INTO first_aid_rules (id, name, min_age_months, max_age_months, active) 
-                 VALUES (?, ?, ?, ?, ?)`,
-                [rule.id, rule.name, rule.min_age_months, rule.max_age_months, rule.active ? 1 : 0]
-            );
-
-            // Link Signs (M2M)
-            if (rule.clinical_sign_ids) {
-                for (const signId of rule.clinical_sign_ids) {
-                    await db.runAsync('INSERT INTO rule_clinical_signs (rule_id, sign_id) VALUES (?, ?)', [rule.id, signId]);
-                }
-            }
-
-            // Link Actions (M2M)
-            if (rule.action_ids) {
-                for (const actionId of rule.action_ids) {
-                    await db.runAsync('INSERT INTO rule_actions (rule_id, action_id) VALUES (?, ?)', [rule.id, actionId]);
-                }
-            }
-        }
-
-        await db.execAsync('COMMIT;');
-        return true;
-    } catch (error) {
-        await db.execAsync('ROLLBACK;');
-        console.error('Failed to sync First Aid data:', error);
-        throw error;
-    }
-};
 
 // Soft Delete Functions
 export const softDeleteFormData = async (uuid) => {
@@ -592,7 +481,8 @@ export const getFormData = async (user_id, project_id, currentData_uuid = false)
                      WHERE fd.deleted = ?
                      AND fd.project = ?
                      AND fd.created_by = ?
-                     AND parent_uuid = ?`;
+                     AND parent_uuid = ?
+                     ORDER BY id DESC`;
         } else {
             query = `SELECT fd.*, is_root, fdef.title AS form_title, fdef.icon 
                      FROM form_data fd 
@@ -600,7 +490,8 @@ export const getFormData = async (user_id, project_id, currentData_uuid = false)
                      WHERE fd.deleted = ?
                      AND fd.project = ?
                      AND fd.created_by = ?
-                     AND fdef.is_root = 1`;
+                     AND fdef.is_root = 1
+                     ORDER BY id DESC`;
             //console.log('query', query)
         }
         //console.log('query', query, params)
@@ -733,6 +624,8 @@ export const insert = async (tableName, data) => {
             if (key === 'id') {
                 if (columns.includes('form_id')) {
                     dbKey = 'form_id';
+                } if (columns.includes('reaction_id')) {
+                    dbKey = 'reaction_id';
                 } if (tableName === 'projects') {
                     dbKey = 'project';
                 } else {
@@ -756,54 +649,12 @@ export const insert = async (tableName, data) => {
         const values = filteredKeys.map((key) => filteredData[key]);
 
         const sql = `INSERT OR REPLACE INTO ${tableName} (${filteredKeys.join(', ')}) VALUES (${placeholders});`;
+        //console.log('sql')
+        //console.log('Inserting sql:', sql, values);
         const result = await db.runAsync(sql, values);
-        //console.log('Inserting sql:', result);
         return result;
     } catch (error) {
         console.error('Error inserting data:', error);
-        return null;
-    }
-};
-
-
-export const insert_into_messages1 = async (message) => {
-    const sql = `
-    INSERT INTO messages (
-      remote_id,
-      local_id,
-      formDataUUID,
-      conversation_id,
-      text,
-      sender_id,
-      sender_name,
-      created_at,
-      sync_status
-    )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(remote_id) DO UPDATE SET
-      text = excluded.text,
-      created_at = excluded.created_at,
-      sync_status = 'synced',
-      local_id = COALESCE(messages.local_id, excluded.local_id);
-  `;
-
-    const params = [
-        message.remote_id || null,
-        message.local_id,
-        message.formDataUUID,
-        message.conversation_id,
-        message.text,
-        message.sender_id,
-        message.sender_name,
-        message.created_at,
-        message.sync_status || 'synced'
-    ];
-
-    try {
-        const result = await db.runAsync(sql, params);
-        return result;
-    } catch (error) {
-        console.error('Error inserting sync messages:', error);
         return null;
     }
 };
@@ -876,15 +727,12 @@ export const insert_into_messages = async (message) => {
 
 export const dropTables = async () => {
     const TABLES_TO_DROP = [
-        'first_aid_actions',
-        'first_aid_rules',
-        'rule_clinical_signs',
-        'rule_actions',
         'form_defn',
         'form_data',
         'projects',
         'messages',
-        'migration'
+        'migration',
+        'form_reactions'
     ];
 
     try {

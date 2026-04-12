@@ -4,7 +4,7 @@ import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
 import { getLabel } from '../../../lib/form/utils';
-import { useFormStore } from '../../../store/FormStore-xx';
+import { useFormStore } from '../../../store/useFormStore';
 
 const BarcodeField = ({ element, globalValue }) => {
     // 1. GRANULAR SELECTORS: Only listen to THIS field's data
