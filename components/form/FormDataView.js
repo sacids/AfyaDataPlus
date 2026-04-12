@@ -8,7 +8,7 @@ import { ActivityIndicator, LayoutAnimation, ScrollView, StyleSheet, Text, Touch
 import MapView, { Marker, Polygon, PROVIDER_GOOGLE } from 'react-native-maps';
 import { getStyles } from '../../constants/styles';
 import { useTheme } from '../../context/ThemeContext';
-import { calculatePolygonArea, evaluateField } from '../../lib/form.bak/validation';
+import { calculatePolygonArea, evaluateField } from '../../lib/form/validation';
 import { getLabel } from '../../lib/form/utils';
 import useProjectStore from '../../store/projectStore';
 import { useFormStore } from '../../store/useFormStore';

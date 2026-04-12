@@ -5,7 +5,7 @@ import { memo, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Text, TouchableOpacity, View } from 'react-native';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
-import { getParam } from '../../../lib/form.bak/validation';
+import { getParam } from '../../../lib/form/validation';
 import { getLabel } from '../../../lib/form/utils';
 
 
