@@ -8,7 +8,6 @@ import { ActivityIndicator, LayoutAnimation, ScrollView, StyleSheet, Text, Touch
 import MapView, { Marker, Polygon, PROVIDER_GOOGLE } from 'react-native-maps';
 import { getStyles } from '../../constants/styles';
 import { useTheme } from '../../context/ThemeContext';
-import { calculatePolygonArea, evaluateField } from '../../lib/form/validation';
 import { getLabel } from '../../lib/form/utils';
 import useProjectStore from '../../store/projectStore';
 import { useFormStore } from '../../store/useFormStore';
@@ -214,7 +213,7 @@ const FormDataView = ({ formData }) => {
             // --- LOOP 3: FIELDS ---
             for (const [colName, field] of Object.entries(fieldGroup)) {
                 if (field.type === 'calculate') continue;
-                if (field.relevant && !evaluateField('relevant', field, parsedFormData)) continue;
+                if (!isRelevant(field)) continue
 
                 const value = parsedFormData[field.name];
 
@@ -282,7 +281,6 @@ const FormDataView = ({ formData }) => {
                         bounds.longitudeDelta = (Math.max(...longitudes) - Math.min(...longitudes)) * 1.5;
                     }
 
-                    const area = calculatePolygonArea(polygonCoords)
                     inputContent = (
                         <View style={[styles.mapContainer]}>
                             <MapView
@@ -305,9 +303,6 @@ const FormDataView = ({ formData }) => {
                                     fillColor="rgba(255,0,0,0.2)"
                                 />
                             </MapView>
-                            <Text style={styles.item_text}>
-                                Area: {area.toLocaleString()} m² ({Math.round(area / 10000 * 100) / 100} hectares)
-                            </Text>
                         </View>
                     )
 
