@@ -120,6 +120,11 @@ const SavePage = () => {
         } else {
             setTitle(schema?.title || 'Untitled Record');
         }
+
+
+        return () => {
+            // Optional cleanup when the screen loses focus
+        };
     }, [schema, formData]);
 
     const saveForm = async (status) => {

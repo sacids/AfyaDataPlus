@@ -47,6 +47,10 @@ const Settings = () => {
 
     useEffect(() => {
         loadInitialData();
+
+        return () => {
+            // Optional cleanup when the screen loses focus
+        };
     }, []);
 
     const loadInitialData = async () => {

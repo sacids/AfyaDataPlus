@@ -42,6 +42,10 @@ export default function FormDataItem({
 
     React.useEffect(() => {
         setResetSwipe(() => resetSwipe);
+
+        return () => {
+            // Optional cleanup when the screen loses focus
+        };
     }, [setResetSwipe]);
 
     const panGesture = Gesture.Pan()

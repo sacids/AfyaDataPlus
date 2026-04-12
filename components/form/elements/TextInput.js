@@ -31,6 +31,10 @@ const TextInputField = ({ element, globalValue }) => {
     if (globalValue !== localValue) {
       setLocalValue(globalValue || '');
     }
+
+    return () => {
+      // Optional cleanup when the screen loses focus
+    };
   }, [globalValue]);
 
   // 3. SYNC FUNCTION: The "Final Source of Truth" update

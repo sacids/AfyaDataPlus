@@ -48,6 +48,10 @@ const GeoPointField = ({ element, globalValue }) => {
         longitudeDelta: 0.005,
       }, 1000);
     }
+
+    return () => {
+      // Optional cleanup when the screen loses focus
+    };
   }, [globalValue]);
 
   const setCurrentLocation = async () => {
@@ -115,9 +119,9 @@ const GeoPointField = ({ element, globalValue }) => {
             latitudeDelta: 10,
             longitudeDelta: 10,
           }}
-          scrollEnabled={false}      
-          rotateEnabled={false}      
-          pitchEnabled={false}       
+          scrollEnabled={false}
+          rotateEnabled={false}
+          pitchEnabled={false}
         >
           {currentGeo && (
             <Marker

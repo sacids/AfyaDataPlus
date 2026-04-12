@@ -5,7 +5,7 @@ import { useTheme } from '../../../context/ThemeContext';
 import { getLabel } from '../../../lib/form/utils';
 import { useFormStore } from '../../../store/useFormStore';
 
-const NumberInputField = ({ element, globalValue  }) => {
+const NumberInputField = ({ element, globalValue }) => {
   // 1. SELECTORS: Isolate state to prevent global re-render crashes
   //const globalValue = useFormStore(state => state.formData[element.name]);
   const language = useFormStore(state => state.language);
@@ -28,6 +28,10 @@ const NumberInputField = ({ element, globalValue  }) => {
     if (globalValue !== localValue) {
       setLocalValue(globalValue || '');
     }
+
+    return () => {
+      // Optional cleanup when the screen loses focus
+    };
   }, [globalValue]);
 
   // 3. SYNC FUNCTION
@@ -62,6 +66,7 @@ const NumberInputField = ({ element, globalValue  }) => {
     return () => {
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
     };
+
   }, []);
 
   const label = getLabel(element, 'label', language, schemaLanguage);

@@ -82,6 +82,10 @@ const ListEmptyForms = () => {
 
     useEffect(() => {
         fetchData();
+
+        return () => {
+            // Optional cleanup when the screen loses focus
+        };
     }, []);
 
     return (

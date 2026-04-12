@@ -57,6 +57,10 @@ const JoinProjectScreen = () => {
 
   useEffect(() => {
     fetchProjects();
+
+    return () => {
+      // Optional cleanup when the screen loses focus
+    };
   }, []);
 
   const onRefresh = useCallback(() => {

@@ -121,6 +121,10 @@ export default Sentry.wrap(function RootLayout() {
     }
 
     initialize();
+
+    return () => {
+      // Optional cleanup when the screen loses focus
+    };
   }, []);
 
   // Handle navigation after everything is initialized
@@ -184,6 +188,10 @@ export default Sentry.wrap(function RootLayout() {
     };
 
     performNavigation();
+
+    return () => {
+      // Optional cleanup when the screen loses focus
+    };
   }, [isReady, i18nInstance, user]); // Add dependencies
 
   // Don't render anything until resources are ready

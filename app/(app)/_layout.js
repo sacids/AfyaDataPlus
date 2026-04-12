@@ -41,6 +41,10 @@ const AuthScreen = ({ onAuthenticated }) => {
   // Auto-trigger biometric prompt on mount
   useEffect(() => {
     handleDeviceAuth();
+
+    return () => {
+      // Optional cleanup when the screen loses focus
+    };
   }, [handleDeviceAuth]);
 
   return (
@@ -80,6 +84,10 @@ export default function ProtectedLayout() {
       }
     }
     checkDeviceSecurity();
+
+    return () => {
+      // Optional cleanup when the screen loses focus
+    };
   }, []);
 
   if (isChecking) {

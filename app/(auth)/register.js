@@ -47,6 +47,10 @@ const RegisterScreen = () => {
       password.length >= 6 &&
       password === confirmPassword;
     setIsFormValid(isValid);
+
+    return () => {
+      // Optional cleanup when the screen loses focus
+    };
   }, [fullName, phoneNumber, password, confirmPassword]);
   const handleRegister = async () => {
     try {

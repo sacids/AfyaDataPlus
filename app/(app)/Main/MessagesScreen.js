@@ -65,6 +65,7 @@ export default function MessagesScreen() {
     return () => {
       mounted = false;
     };
+
   }, [currentData, isDataSent]);
 
 
@@ -73,42 +74,6 @@ export default function MessagesScreen() {
     const data = await select('messages', 'formDataUUID = ?', [currentData?.original_uuid]);
     //console.log('message data', currentData.original_uuid, data)
     setMessages(data);
-  };
-
-  const handleSend1 = async () => {
-    if (!input.trim() || !user) return;
-
-    const text = input.trim();
-    setInput('');
-
-    const localID = generateUUID()
-    const newMessage = {
-      formDataUUID: currentData.original_uuid,
-      text,
-      local_id: localID,
-      sender_name: user.first_name,
-      sender_id: user.id,
-      sync_status: 'pending'
-    };
-
-    // 1. Optimistic Update (Local DB)
-    await insert('messages', newMessage);
-    setInput('');
-    await loadLocalMessages();
-
-    // 2. Sync to Backend
-    if (conversationId) {
-
-      try {
-        await api.post(`api/v1/chat/conversations/${conversationId}/messages`, {
-          text: newMessage.text,
-          external_id: localID // Matches your DRF update_or_create logic
-        });
-        // Update local status to 'synced' if desired
-      } catch (e) {
-        console.error("Message will sync later", e);
-      }
-    }
   };
 
 

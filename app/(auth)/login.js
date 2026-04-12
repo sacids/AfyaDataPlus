@@ -58,6 +58,10 @@ const LoginScreen = () => {
         };
 
         checkExistingSession();
+
+        return () => {
+            // Optional cleanup when the screen loses focus
+        };
     }, []);
 
     const startDataSync = async () => {
@@ -146,6 +150,10 @@ const LoginScreen = () => {
     useEffect(() => {
         const isValid = phoneNumber.trim().length >= 10 && password.length >= 6;
         setIsFormValid(isValid);
+
+        return () => {
+            // Optional cleanup when the screen loses focus
+        };
     }, [phoneNumber, password]);
 
     if (checkingSession) {

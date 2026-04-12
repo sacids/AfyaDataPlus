@@ -159,6 +159,10 @@ const FormDataView = ({ formData }) => {
         if (formData) {
             load();
         }
+
+        return () => {
+            // Optional cleanup when the screen loses focus
+        };
     }, [formData]); // Re-run if a different record is selected
 
     if (!ready) return <ActivityIndicator style={{ flex: 1 }} />;

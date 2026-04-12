@@ -7,7 +7,7 @@ import { useFormStore } from '../../../store/useFormStore';
 import { memo, useEffect, useState } from 'react';
 
 
-const DecimalInput = ({ element, globalValue  }) => {
+const DecimalInput = ({ element, globalValue }) => {
 
   //const globalValue = useFormStore(state => state.formData[element.name]);
   const language = useFormStore(state => state.language);
@@ -29,7 +29,15 @@ const DecimalInput = ({ element, globalValue  }) => {
   useEffect(() => {
     if (globalValue !== localValue) {
       setLocalValue(globalValue || '');
+
+      return () => {
+        // Optional cleanup when the screen loses focus
+      };
     }
+
+    return () => {
+      // Optional cleanup when the screen loses focus
+    };
   }, [globalValue]);
 
   const handleBlur = () => {

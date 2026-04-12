@@ -2,12 +2,11 @@
   "expo": {
     "name": "AfyaDataPlus",
     "slug": "AfyaDataPlus",
-    "version": "2.6.1",
+    "version": "2.6.2",
     "orientation": "portrait",
     "icon": "./assets/images/AfyaDataLogoIcon.png",
     "scheme": "afyadataplus",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.mchizani.AfyaDataPlus"
@@ -20,7 +19,6 @@
         "foregroundImage": "./assets/images/AfyaDataLogoIcon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyA4EErQHgvFvFPtfqXiOHXdA0UU3XXn1U0"
@@ -65,7 +63,10 @@
         }
       ],
       "@sentry/react-native",
-      "expo-build-properties"
+      "expo-build-properties",
+      "@react-native-community/datetimepicker",
+      "expo-font",
+      "expo-image"
     ],
     "experiments": {
       "typedRoutes": true,

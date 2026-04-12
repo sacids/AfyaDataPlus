@@ -154,6 +154,10 @@ const ProjectDetailView = ({ project }) => {
     if (project) {
       load();
     }
+
+    return () => {
+      // Optional cleanup when the screen loses focus
+    };
   }, [project]); // Re-run if a different record is selected
 
 

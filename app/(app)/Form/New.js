@@ -117,6 +117,10 @@ export default function NewForm() {
     }
 
     load();
+
+    return () => {
+      // Optional cleanup when the screen loses focus
+    };
   }, [fdefn_id, fdata_id, parent_uuid]);
 
   if (loading || !schema) {

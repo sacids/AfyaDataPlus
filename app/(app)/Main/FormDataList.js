@@ -241,6 +241,9 @@ export default function FormDataList() {
 
   useEffect(() => {
     initialize();
+    return () => {
+      // Optional cleanup when the screen loses focus
+    };
   }, []);
 
 
@@ -270,6 +273,10 @@ export default function FormDataList() {
     }
 
     setFilteredData(tempData);
+
+    return () => {
+      // Optional cleanup when the screen loses focus
+    };
   }, [data, searchQuery, selectedTag]);
 
   return (

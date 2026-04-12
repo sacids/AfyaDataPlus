@@ -111,6 +111,11 @@ const SelectMultiple = ({ element, globalValue }) => {
 
       return next;
     });
+
+
+    return () => {
+      // Optional cleanup when the screen loses focus
+    };
   }, [syncToStore]);
 
   // Cleanup on unmount: Ensure last changes are saved
