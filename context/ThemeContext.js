@@ -25,7 +25,7 @@ export const ThemeProvider = ({ children }) => {
         buttonText: isDark ? '#ffffff' : '#111111',
         navButtonText: isDark ? '#bbb' : '#a72626',
         error: isDark ? '#FF6B6B' : '#ff0000',
-        primary: isDark ? '#a72626' : '#a72626',
+        primary: isDark ? '#FF6B6B' : '#C92A2A',
         checkbox: isDark ? '#bb86fc' : '#a72626',
         tabBarActiveTintColor: isDark ? '#a72626' : '#a72626',
         tabBarInactiveTintColor: isDark ? '#999999' : '#666666',

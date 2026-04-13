@@ -12,10 +12,10 @@ import useProjectStore from '../../store/projectStore'
 import { select, update } from '../../utils/database'
 import { getProjfectForms, submitProjectData, syncProjectReactions } from '../../utils/services'
 import { AppHeader } from '../layout/AppHeader'
-
+import { FormIcons } from '../layout/FormIcons'
 const ProjectDetailView = ({ project }) => {
 
-  const { currentProject, setCurrentProject, setCurrentData } = useProjectStore();
+  const { currentProject, setCurrentProject, currentData, setCurrentData } = useProjectStore();
 
   const setTag = useFilterStore((state) => state.setFilter);
   const { t, i18n } = useTranslation();
@@ -23,9 +23,6 @@ const ProjectDetailView = ({ project }) => {
   const styles = getStyles(theme);
 
   const { user } = useAuthStore()
-
-  const [showFullDescription, setShowFullDescription] = useState(false);
-  const description = currentProject?.description || "";
 
 
   const [dataSyncStatus, setDataSyncStatus] = useState('');
@@ -35,7 +32,7 @@ const ProjectDetailView = ({ project }) => {
   const [formDefns, setFormDefns] = useState([]);
   const [curProjectStats, setCurrentProjetStats] = useState({});
 
-  //console.log('current project', JSON.stringify(currentProject, null, 4))
+
   const goToSettings = useMemo(() => [
     {
       icon: 'settings',
@@ -87,18 +84,19 @@ const ProjectDetailView = ({ project }) => {
 
 
   const handleUnsubscribe = async (project) => {
-    //console.log(project)
+    console.log(project)
     const response = await api.post('/api/v1/project/unsubscribe', {
       "code": project.code
     });
-    //console.log(JSON.stringify(response.data, null, 2))
+    console.log(JSON.stringify(response.data, null, 2))
     const status = response.data;
     if (status.error) {
       // failed to unsubscribe
       update('projects', { active: 0 }, 'id = ?', [project.id])
-      setCurrentData(null);
-      setCurrentProject(null);
+      setCurrentData(null)
+      setCurrentProject(null)
       //loadProjectsWithStats();
+
     } else {
       // unsubscribed succesfully
       update('projects', { active: 0 }, 'id = ?', [project.id])
@@ -108,9 +106,6 @@ const ProjectDetailView = ({ project }) => {
     }
     alert(status.message)
   };
-
-
-
 
 
   useEffect(() => {
@@ -162,27 +157,15 @@ const ProjectDetailView = ({ project }) => {
             {currentProject?.code}
           </Text>
 
-          <View>
-            <Text
-              style={[styles.bodyText, { marginTop: 12, opacity: 0.7 }]}
-              numberOfLines={showFullDescription ? undefined : 3}
-              ellipsizeMode="tail"
-            >
-              {description}
+          {currentProject?.description && (
+            <Text style={[styles.bodyText, { marginTop: 12, opacity: 0.7 }]}>
+              {currentProject?.description}
             </Text>
+          )}
 
-            {description.length > 100 && ( // Simple check, or use onTextLayout for precision
-              <TouchableOpacity onPress={() => setShowFullDescription(!showFullDescription)}>
-                <Text style={{ color: theme.colors.primary, marginTop: 4, fontWeight: 'bold' }}>
-                  {showFullDescription ? "Show Less" : "Read More"}
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {Array.isArray(currentProject?.tags) && (
+          {currentProject?.tags && (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 15 }}>
-              {currentProject?.tags.map((tag, i) => (
+              {currentProject?.tags.split(',').map((tag, i) => (
                 <View key={i} style={{ backgroundColor: theme.colors.inputBorder, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 }}>
                   <Text style={[styles.tiny, { fontSize: 10 }]}>{tag.trim().toUpperCase()}</Text>
                 </View>
@@ -192,84 +175,127 @@ const ProjectDetailView = ({ project }) => {
         </View>
 
         {/* 2. STATS GRID (EVENLY SPACED) */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text style={[styles.sectionTitle, { fontSize: 13, marginBottom: 2, marginTop: 10, opacity: 0.6 }]}>
+            {t('projects:projectData')}
+          </Text>
+          <TouchableOpacity
+            onPress={() => submitProjectData(currentProject?.project)}>
+            <MaterialIcons name="send" size={26} color={theme.colors.primary} />
+          </TouchableOpacity>
+        </View>
         <Text style={[styles.hint, { marginBottom: 10 }]}>
-          {dataSyncStatus || formSyncStatus || t('sync:currentProjectStats')}
+          {dataSyncStatus || t('sync:currentProjectStats')}
         </Text>
 
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+          {[
+            {
+              label: t('common:sent'),
+              val: curProjectStats.sent || 0,
+              color: '#2ecc71',
+              icon: 'cloud-done',
+              tag: 'Sent'
+            },
+            {
+              label: t('common:final'),
+              val: curProjectStats.finalized || 0,
+              color: theme.colors.primary,
+              icon: 'check-circle',
+              tag: 'Finalized'
+            },
+            {
+              label: t('common:draft'),
+              val: curProjectStats.draft || 0,
+              color: '#f1c40f',
+              icon: 'edit',
+              tag: 'Draft'
+            },
+            {
+              label: t('common:archive'),
+              val: curProjectStats.archived || 0,
+              color: '#95a5a6',
+              icon: 'archive',
+              tag: 'Archived'
+            }
+          ].map((stat, idx) => (
+            <TouchableOpacity
+              onPress={() => {
+                setTag(stat.tag);
+                router.push('(app)/Main/FormDataList')
+              }}
+              key={idx}
+              style={[styles.card, { width: '48%', flexDirection: 'column', alignItems: 'center', paddingVertical: 15 }]}
+            >
+              <MaterialIcons name={stat.icon} size={20} color={stat.color} />
+              <Text style={[styles.pageTitle, { fontSize: 20, marginVertical: 4 }]}>{stat.val}</Text>
+              <Text style={styles.tiny}>{stat.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
-          <TouchableOpacity
-            onPress={() => {
-              setTag('Sent');
-              router.push('(app)/Main/FormDataList')
-            }}
-            style={[styles.card, { width: '48%', flexDirection: 'column', alignItems: 'center', paddingVertical: 10 }]}
-          >
-            <Text style={[styles.pageTitle, { fontSize: 18, marginVertical: 4 }]}>{curProjectStats.sent || 0}</Text>
-            <Text style={styles.tiny}>{t('common:sent')}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => {
-              setTag('Finalized');
-              router.push('(app)/Main/FormDataList')
-            }}
-            style={[styles.card, { width: '48%', flexDirection: 'column', alignItems: 'center', paddingVertical: 10 }]}
-          >
-            {/* <MaterialIcons name={stat.icon} size={20} color={stat.color} /> */}
-            <Text style={[styles.pageTitle, { fontSize: 18, marginVertical: 4 }]}>{curProjectStats.finalized || 0}</Text>
-            <Text style={styles.tiny}>{t('common:final')}</Text>
-          </TouchableOpacity>
-
-
-          <TouchableOpacity
-            onPress={() => {
-              setTag('Draft');
-              router.push('(app)/Main/FormDataList')
-            }}
-            style={[styles.card, { width: '48%', flexDirection: 'column', alignItems: 'center', paddingVertical: 10 }]}
-          >
-            {/* <MaterialIcons name={stat.icon} size={20} color={stat.color} /> */}
-            <Text style={[styles.pageTitle, { fontSize: 18, marginVertical: 4 }]}>{curProjectStats.draft || 0}</Text>
-            <Text style={styles.tiny}>{t('common:draft')}</Text>
-          </TouchableOpacity>
-
-
-          <TouchableOpacity
-            onPress={() => router.push('/Form/ProjectForms')}
-            style={[styles.card, { width: '48%', flexDirection: 'column', alignItems: 'center', paddingVertical: 10 }]}
-          >
-            <Text style={[styles.pageTitle, { fontSize: 18, marginVertical: 4 }]}>{formDefns.length || 0}</Text>
-            <Text style={styles.tiny}>{t('common:forms')}</Text>
-          </TouchableOpacity>
-
-
-          <TouchableOpacity
-            onPress={() => submitProjectData(currentProject?.project)}
-            style={[styles.card, { width: '48%', flexDirection: 'column', alignItems: 'center', paddingVertical: 10 }]}
-          >
-            <MaterialIcons name="send" size={26} color={theme.colors.pageTitle} />
-            <Text style={styles.tiny}>{t('data:bulkSubmit')}</Text>
-          </TouchableOpacity>
-
-
+        {/* 3. AVAILABLE FORMS LIST */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text style={[styles.sectionTitle, { fontSize: 13, marginBottom: 2, marginTop: 10, opacity: 0.6 }]}>
+            {t('projects:projectForms')}
+          </Text>
           <TouchableOpacity
             onPress={async () => {
               await getProjfectForms(currentProject.project, setFormSyncStatus);
               await syncProjectReactions(currentProject.project, setFormSyncStatus);
-            }}
-            style={[styles.card, { width: '48%', flexDirection: 'column', alignItems: 'center', paddingVertical: 10 }]}
-          >
-            <MaterialIcons name="refresh" size={30} color={theme.colors.pageTitle} />
-            <Text style={styles.tiny}>{t('projects:syncForms')}</Text>
+            }}>
+            <MaterialIcons name="refresh" size={30} color={theme.colors.primary} />
           </TouchableOpacity>
-
         </View>
+        <Text style={[styles.hint, { marginBottom: 10 }]}>
+          {formSyncStatus || t('sync:currentAvailableForms')}
+        </Text>
+
+        {/* SAFE MAPPING with Optional Chaining and Empty State Check */}
+        {formDefns && formDefns.length > 0 ? (
+          formDefns.map((form) => (
+            <TouchableOpacity
+              key={form.id}
+              style={[styles.card, { paddingVertical: 15 }]}
+              onPress={() => {
+                if (form.is_root) {
+                  router.push(`/Form/New?fdefn_id=${form.id}`)
+                }
+              }}
+            >
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                <FormIcons
+                  iconName={form.icon}
+                  size={24}
+                  color={theme.colors.primary}
+                />
+                <View style={{ marginLeft: 12, flex: 1 }}>
+                  <Text style={styles.bodyText}>{form.title}</Text>
+                  <Text style={styles.tiny}>
+                    {t('forms:version')}: {form.version}
+                  </Text>
+                </View>
+                {form.is_root ? (
+                  <MaterialIcons
+                    name="add"
+                    size={24}
+                    color={theme.colors.hint}
+                  />
+                ) : null}
+              </View>
+            </TouchableOpacity>
+          ))
+        ) : (
+          <View style={[styles.card, { padding: 30, alignItems: 'center', borderStyle: 'dashed' }]}>
+            <Text style={styles.hint}>{t('projects:noFormsAvailable')}</Text>
+          </View>
+        )}
 
         {/* 4. UNSUBSCRIBE ACTION */}
         <TouchableOpacity
           style={{
-            marginTop: 10,
+            marginTop: 20,
             marginBottom: 50,
             padding: 16,
             backgroundColor: theme.colors.error + '15',
@@ -280,24 +306,8 @@ const ProjectDetailView = ({ project }) => {
             borderWidth: 1,
             borderColor: theme.colors.error + '30'
           }}
-          onPress={() => {
-            Alert.alert(
-              t('projects:unsubscribe'),
-              t('projects:unsubscribeConfirmation', 'Do you want to stop participaing in this project?'),
-              [
-                {
-                  text: t('common:no', 'No'),
-                  style: 'cancel'
-                },
-                {
-                  text: t('common:yes', 'Yes'),
-                  style: 'destructive',
-                  onPress: () => handleUnsubscribe(currentProject)
-                }
-              ]
-            );
-          }}
-        > 
+          onPress={() => handleUnsubscribe(currentProject)}
+        >
           <MaterialIcons name="notifications-off" size={20} color={theme.colors.error} />
           <Text style={[styles.label, { color: theme.colors.error, marginLeft: 8, marginBottom: 0 }]}>
             {t('projects:unsubscribe')}

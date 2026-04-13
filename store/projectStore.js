@@ -15,14 +15,34 @@ const useProjectStore = create(
 
             setCurrentProject: (project) => {
                 // Store minimal project data (only what's needed for display)
+
+                let parsedTags = [];
+
+                if (project?.tags) {
+                    try {
+                        // 1. Clean the string: remove potential double-escaping or stray backslashes
+                        // This handles "[ \"Tag\" ]" and makes it "[ "Tag" ]"
+                        const cleanString = project.tags.replace(/\\"/g, '"').trim();
+
+                        // 2. Parse the cleaned string
+                        const parsed = JSON.parse(cleanString);
+
+                        // 3. Ensure we have an array of strings
+                        parsedTags = Array.isArray(parsed) ? parsed.map(t => t.trim()) : [];
+                    } catch (e) {
+                        console.warn("Failed to parse project tags for AfyaDataPlus project:", e);
+                        parsedTags = [];
+                    }
+                }
+
+                //console.log('parsed tags', parsedTags)
                 const minimalProject = project ? {
                     id: project.id,
                     project: project.project,
                     title: project.title,
                     code: project.code,
                     description: project.description,
-                    tags: project.tags,
-                    // Exclude large fields
+                    tags: parsedTags,
                 } : null;
                 set({ currentProject: minimalProject });
             },

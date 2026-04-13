@@ -10,7 +10,6 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import api from '../../../api/axiosInstance';
 import { AppHeader } from '../../../components/layout/AppHeader';
 import { ScreenWrapper } from '../../../components/layout/ScreenWrapper';
 import { getStyles } from '../../../constants/styles';
@@ -76,7 +75,7 @@ export default function MessagesScreen() {
   };
 
 
-  const handleSend = async () => {
+  const handleSend1 = async () => {
     //console.log('current data', JSON.stringify(currentData, null, 5))
     if (!input.trim() || !currentData) return;
 
@@ -132,6 +131,65 @@ export default function MessagesScreen() {
     }
 
 
+  };
+
+  const handleSend = async () => {
+    if (!input.trim() || !currentData) return;
+
+    const messageText = input.trim();
+    setInput('');
+
+    const localId = `local_${Date.now()}`;
+    const fUUID = currentData.original_uuid || currentData.uuid;
+
+    const newMessage = {
+      local_id: localId,
+      formDataUUID: fUUID,
+      conversation_id: conversationId, // May be null if offline/first message
+      text: messageText,
+      sender_id: user.id,
+      sender_name: user.name || 'Me',
+      sync_status: 'pending',
+      created_at: new Date().toISOString()
+    };
+
+    // 1. Save to local SQLite immediately
+    try {
+      await insert('messages', newMessage);
+      setMessages(prev => [...prev, { ...newMessage, id: localId }]);
+      setTimeout(() => flatListRef.current?.scrollToEnd(), 100);
+    } catch (e) {
+      console.error("Local database save failed", e);
+    }
+
+    // 2. Process Syncing
+    try {
+      // If form isn't sent yet, submit it
+      if (currentData.status === 'finalized') {
+        setIsSubmitting(true);
+        const submission = await submitSingleForm(currentData);
+        if (submission.success) {
+          const updatedData = { ...currentData, status: 'sent', status_date: new Date().toISOString() };
+          useProjectStore.getState().setCurrentData(updatedData);
+        }
+      }
+
+      // 3. Ensure Conversation exists and sync pending messages
+      // syncMessages now handles updating conversation_id for all matched formDataUUIDs
+      const activeConvId = await syncMessages(currentData);
+
+      if (activeConvId) {
+        setConversationId(activeConvId);
+
+        // Load messages again to refresh the UI with correct sync_status and IDs
+        await loadLocalMessages();
+      }
+
+    } catch (error) {
+      console.error("Workflow failed, message remains pending locally:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleDirectSubmit = async () => {

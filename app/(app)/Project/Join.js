@@ -38,6 +38,7 @@ const JoinProjectScreen = () => {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
   const insets = useSafeAreaInsets();
 
   const { setCurrentProject, setCurrentData } = useProjectStore();
@@ -69,12 +70,18 @@ const JoinProjectScreen = () => {
   }, []);
 
   const handleJoin = async (project) => {
+
+
+    if (isJoining) return;
+    setIsJoining(true);
+
     try {
       const result = await joinProject(project.code);
       if (!result.error) {
-        await insert('projects', project);
+        await insert('projects', { ...project, ['tags']: JSON.stringify(project.tags) });
         const joinedProject = await select('projects', 'project = ?', [project.id])[0];
         setCurrentData(null)
+        //console.log('joined project', joinedProject)
         setCurrentProject(joinedProject);
         Alert.alert(
           t('projects:joinedSuccessfully'),
@@ -93,6 +100,8 @@ const JoinProjectScreen = () => {
         t('errors:errorTitle'),
         t('errors:unknown')
       );
+    } finally {
+      setIsJoining(false);
     }
   };
 
@@ -150,8 +159,14 @@ const JoinProjectScreen = () => {
           </View>
         )}
       </View>
-      <TouchableOpacity style={styles.button} onPress={() => handleJoin(item)}>
-        <Text style={styles.buttonText}>{t('projects:requestJoin')}</Text>
+      <TouchableOpacity
+        style={[styles.button, isJoining && styles.buttonDisabled]}
+        onPress={() => handleJoin(item)}
+        disabled={isJoining}
+      >
+        <Text style={styles.buttonText}>
+          {isJoining ? t('common:joining', 'Joining...') : t('projects:requestJoin')}
+        </Text>
       </TouchableOpacity>
     </View>
   );

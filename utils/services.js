@@ -272,10 +272,92 @@ export const submitProjectData = async (project_id, setStatus) => {
     }
 
 }
+/**
+ * Sends a single message to the Django conversation endpoint
+ */
+export const sendMessageToServer = async (conversationId, messageData) => {
+    try {
+        const response = await api.post(`api/v1/chat/conversations/${conversationId}/messages`, {
+            text: messageData.text,
+            external_id: messageData.local_id,
+        });
+        
+        // Update local status to synced and save the remote_id
+        await update('messages', 
+            { sync_status: 'synced', remote_id: response.data.id }, 
+            'local_id = ?', 
+            [messageData.local_id]
+        );
+        
+        return response.data;
+    } catch (error) {
+        console.error("Failed to send message to server:", error);
+        throw error;
+    }
+};
 
-
-
+/**
+ * Syncs messages and ensures all local messages for this form 
+ * are linked to the newly created/retrieved conversation_id.
+ */
 export const syncMessages = async (formData, participants = []) => {
+    try {
+        const convResponse = await api.post('api/v1/chat/conversations', {
+            title: formData.title || `Chat for ${formData.uuid}`,
+            form: formData.form, 
+            instance: formData.original_uuid,
+            participants: participants
+        });
+
+        const conversation = convResponse.data.data;
+        const convId = conversation.id;
+
+        // 1. Update all local messages that belong to this form but lack a conversation_id
+        await update('messages', 
+            { conversation_id: convId }, 
+            'formDataUUID = ? AND (conversation_id IS NULL OR conversation_id = "")', 
+            [formData.original_uuid]
+        );
+
+        // 2. Fetch remote messages and insert them
+        const msgResponse = await api.get(`api/v1/chat/conversations/${convId}/messages`);
+
+        for (const msg of msgResponse.data) {
+            await insert_into_messages({
+                remote_id: msg.id,
+                local_id: msg.external_id,
+                conversation_id: convId,
+                formDataUUID: formData.original_uuid,
+                text: msg.text,
+                sender_id: msg.sender.id,
+                sender_name: msg.sender.username,
+                sync_status: 'synced',
+                created_at: msg.created_at
+            });
+        }
+
+        // 3. Automatically push any messages that are still 'pending' for this conversation
+        const pendingMessages = await select('messages', 
+            'conversation_id = ? AND sync_status = ?', 
+            [convId, 'pending']
+        );
+
+        for (const localMsg of pendingMessages) {
+            try {
+                await sendMessageToServer(convId, localMsg);
+            } catch (err) {
+                console.warn("Failed to push pending message during sync", localMsg.local_id);
+            }
+        }
+
+        return convId;
+    } catch (error) {
+        console.error("Sync failed, using offline mode", error);
+        return null;
+    }
+};
+
+export const syncMessages1 = async (formData, participants = []) => {
     try {
 
 
@@ -289,15 +371,15 @@ export const syncMessages = async (formData, participants = []) => {
 
         const convResponse = await api.post('api/v1/chat/conversations', {
             title: formData.title || `Chat for ${formData.uuid}`,
-            form: formData.form, // ensure this matches backend expected ID
+            form: formData.form, 
             instance: formData.original_uuid,
             participants: participants
         });
 
-        //console.log('conv', convResponse)
+        console.log('conv', convResponse)
         const conversation = convResponse.data.data;
 
-        //console.log(`api/v1/chat/conversations/${conversation.id}/messages`)
+        console.log(`api/v1/chat/conversations/${conversation.id}/messages`)
         // 2. Fetch remote messages
         const msgResponse = await api.get(`api/v1/chat/conversations/${conversation.id}/messages`);
 

@@ -49,8 +49,18 @@ const RelevanceWrapper = ({ field }) => {
 
   // 3. INDIVIDUAL VALUE SUBSCRIPTION
   // Subscribe specifically to this field's value to pass to the Component
-  const globalValue = useFormStore(state => state.formData[field.name]);
+  const globalValue = useFormStore(state => {
+    const value = state.formData[field.name];
+
+    // ODK logic: if value is null, undefined, or an empty string, use default
+    if (value === undefined || value === null || value === '') {
+      return field.default !== undefined ? field.default : value;
+    }
+    return value;
+  });
+
   const isRelevant = useFormStore(state => state.isRelevant);
+
 
   // 4. CALCULATE VISIBILITY
   const shouldShow = useMemo(() => {
