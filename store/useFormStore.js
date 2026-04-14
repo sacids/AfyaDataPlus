@@ -128,19 +128,6 @@ export const useFormStore = create((set, get) => ({
         return filtered;
     },
 
-    updateField1: (name, value) => {
-        const currentValue = get().formData[name];
-        if (currentValue === value) return;
-        console.log('updating field')
-        // Update form data
-        set((state) => ({
-            formData: { ...state.formData, [name]: value },
-            errors: { ...state.errors, [name]: null }
-        }));
-
-        // Invalidate dependent caches
-        get().invalidateCacheForField(name);
-    },
 
     updateField: (name, value) => {
         const state = get();

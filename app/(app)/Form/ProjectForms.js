@@ -20,15 +20,13 @@ const ListEmptyForms = () => {
     const theme = useTheme();
     const styles = getStyles(theme);
 
-    console.log('current project', currentProject)
-
     const fetchData = async () => {
         try {
             const results = await select('form_defn', 'project = ?', [currentProject.project],
                 'id, form_id, title, version, icon, is_root, short_title',
                 " is_root DESC ");
 
-            console.log('fetch data results', results)
+            //console.log('fetch data results', results)
             setData(results);
             setFilteredData(results);
         } catch (error) {
@@ -77,7 +75,6 @@ const ListEmptyForms = () => {
         //     </TouchableOpacity>
         // );
         const form = item;
-        console.log(form)
 
         return (
             <TouchableOpacity
@@ -91,11 +88,18 @@ const ListEmptyForms = () => {
             >
 
                 <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                    <FormIcons
-                        iconName={form?.icon}
-                        size={24}
-                        color={theme.colors.primary}
-                    />
+
+
+                    <View style={[
+                        styles.avatar,
+                        { backgroundColor: theme.colors.primary },
+                        { width: 44, height: 44, borderRadius: 22 }
+                    ]}>
+                        <FormIcons
+                            iconName={form?.icon}
+                            color="#fff"
+                        />
+                    </View>
                     <View style={{ marginLeft: 12, flex: 1 }}>
                         <Text style={styles.bodyText}>{form.title}</Text>
                         {form.description && (

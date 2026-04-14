@@ -5,13 +5,13 @@ import { memo, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Text, TouchableOpacity, View } from 'react-native';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
-import { getParam } from '../../../lib/form/validation';
 import { getLabel } from '../../../lib/form/utils';
+import { getParam } from '../../../lib/form/validation';
 
 
 import { useFormStore } from '../../../store/useFormStore';
 
-const ImagePickerField = ({ element, globalValue  }) => {
+const ImagePickerField = ({ element, globalValue }) => {
 
 
   const updateField = useFormStore(state => state.updateField);
@@ -118,13 +118,13 @@ const ImagePickerField = ({ element, globalValue  }) => {
       )}
 
 
-      <View style={[styles.mapContainer, { height: 200, backgroundColor: '#f0f0f0', borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: errors?.[element.name] ? 'red' : '#ccc' }]}>
+      <View style={[styles.mapContainer, styles.inputBase, { height: 200, borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: errors?.[element.name] ? 'red' : theme.colors.inputBorder }]}>
         {isProcessing ? (
           <ActivityIndicator size="large" color={theme.colors.primary} />
         ) : imageUri ? (
           <Image source={{ uri: imageUri }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
         ) : (
-          <View style={[styles.map, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#f0f0f0' }]}>
+          <View style={[styles.map, { justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.inputBorder }]}>
             <Text style={{ color: '#999' }}>No image selected</Text>
           </View>
 

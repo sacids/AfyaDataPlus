@@ -32,6 +32,8 @@ export const ThemeProvider = ({ children }) => {
         tagBackground: isDark ? '#1e1e1e' : '#f2f2f2',
         tagText: isDark ? '#d4d4d4' : '#999999',
         required: isDark ? '#FF6B6B' : '#ff0000',
+        chipBackground: isDark ? '#555555' : '#cccccc',
+        chipText: isDark ? '#d4d4d4' : '#000',
         //tabBarActiveTintColor: isDark ? '#ab0836' : '#007bff',
       },
     };

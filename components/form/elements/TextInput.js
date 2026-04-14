@@ -51,7 +51,7 @@ const TextInputField = ({ element, globalValue }) => {
 
     debounceTimer.current = setTimeout(() => {
       syncWithStore(text);
-    }, 1500); // Longer timeout for stability
+    }, 800); // Longer timeout for stability
   };
 
   const handleBlur = () => {

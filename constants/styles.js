@@ -549,5 +549,98 @@ export const getStyles = (theme) =>
       zIndex: 1000,
     },
 
-    // ... rest of existing styles ...
+
+
+
+
+
+
+
+
+    // Add to your styles object
+    selectedChipsContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginBottom: 12,
+      minHeight: 40,
+    },
+    selectedChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.colors.chipBackground,
+      borderRadius: 10,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      gap: 4,
+      maxWidth: '100%',
+    },
+    selectedChipText: {
+      fontSize: 12,
+      color: theme.colors.chipText,
+      flexShrink: 1, // Allow text to shrink if needed
+      flexWrap: 'wrap', // Allow text to wrap
+    },
+    minimalSelectButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      backgroundColor: theme.colors.inputBorder,
+    },
+    minimalSelectButtonText: {
+      fontSize: 14,
+      color: theme.colors.text,
+      fontWeight: '500',
+    },
+    modalContainer: {
+      width: '96%',
+      maxHeight: '80%',
+      backgroundColor: theme.colors.inputBackground,
+      borderColor: theme.colors.inputBorder,
+      borderRadius: 12,
+      overflow: 'hidden',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+      elevation: 5,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.inputBorder,
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: theme.colors.text,
+    },
+    modalScrollView: {
+      maxHeight: '100%',
+    },
+    modalFooter: {
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.inputBorder,
+    },
+    modalDoneButton: {
+      backgroundColor: theme.colors.primary,
+      borderRadius: 8,
+      paddingVertical: 10,
+      alignItems: 'center',
+    },
+    modalDoneButtonText: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: '600',
+    },
+
   });

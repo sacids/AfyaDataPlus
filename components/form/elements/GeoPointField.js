@@ -114,14 +114,13 @@ const GeoPointField = ({ element, globalValue }) => {
             latitudeDelta: 0.005,
             longitudeDelta: 0.005,
           } : {
-            latitude: -6.7924, // Default to Tanzania coordinates if null
+            latitude: -6.7924,
             longitude: 39.2083,
             latitudeDelta: 10,
             longitudeDelta: 10,
           }}
           scrollEnabled={false}
           rotateEnabled={false}
-          pitchEnabled={false}
         >
           {currentGeo && (
             <Marker
