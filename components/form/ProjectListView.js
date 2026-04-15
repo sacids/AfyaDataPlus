@@ -1,150 +1,294 @@
-import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons'
-import { router } from 'expo-router'
-import { useMemo, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
-import { FlatList, Text, TouchableOpacity, View } from 'react-native'
-import { getStyles } from '../../constants/styles'
-import { useTheme } from '../../context/ThemeContext'
-import useProjectStore from '../../store/projectStore'
-import { AppHeader } from '../layout/AppHeader'
+import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import { CameraView, useCameraPermissions } from 'expo-camera'; // Updated for latest expo-camera
+import { router } from 'expo-router';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import api from '../../api/axiosInstance';
+import { getStyles } from '../../constants/styles';
+import { useTheme } from '../../context/ThemeContext';
+import useProjectStore from '../../store/projectStore';
+import { insert, select } from '../../utils/database';
+import { AppHeader } from '../layout/AppHeader';
 
-const ProjectListView = ({ projects }) => {
+const ProjectListView = () => {
+  const { setCurrentProject, setCurrentData } = useProjectStore()
+  const { t } = useTranslation()
+  const theme = useTheme()
+  const styles = getStyles(theme)
 
+  const [viewMode, setViewMode] = useState('local') // 'local' | 'search' | 'public'
+  const [displayList, setDisplayList] = useState([])
+  const [searchCode, setSearchCode] = useState('')
+  const [loading, setLoading] = useState(false)
+  const isNavigating = useRef(false)
 
+  console.log('in project list view')
+  // Camera Permissions
+  const [permission, requestPermission] = useCameraPermissions()
 
-  const { currentProject, setCurrentProject, currentData, setCurrentData } = useProjectStore();
-
-
-  const { t, i18n } = useTranslation();
-  const theme = useTheme();
-  const styles = getStyles(theme);
-  const isNavigating = useRef(false);
-
-
-
-  const handleProjectPress = (project) => {
-    if (isNavigating.current) return;
-    isNavigating.current = true;
-
+  // 1. Available Projects (SQLite)
+  const loadLocalProjects = async () => {
+    setLoading(true)
+    setViewMode('local')
     try {
-      setCurrentData(null);
-      setCurrentProject(project);
-
-      // Use replace instead of dismissTo to avoid stacking
-      router.replace('/Main/');
+      const localData = await select('projects')
+      setDisplayList(localData || [])
+    } catch (error) {
+      console.error("SQLite Error:", error)
+      Alert.alert(t('errors:errorTitle'), t('errors:databaseError'))
     } finally {
-      setTimeout(() => {
-        isNavigating.current = false;
-      }, 500);
+      setLoading(false)
     }
-  };
+  }
 
-
-  const goToSettings = useMemo(() => [
-    {
-      icon: 'settings',
-      onPress: () => router.push('Project/Settings'),
+  // 2. Search Logic
+  const handleSearchByCode = async (codeOverride = null) => {
+    const code = (codeOverride || searchCode).trim()
+    if (!code) {
+      Alert.alert(t('common:attention'), t('projects:enterCode'))
+      return
     }
-  ], []);
 
+    setLoading(true)
+    try {
+      const response = await api.get(`/api/v1/projects/${code}`)
+      const results = Array.isArray(response.data) ? response.data : [response.data]
+
+      // If result found, switch to public view to show the result card
+      setDisplayList(results)
+      setViewMode('public')
+    } catch (error) {
+      Alert.alert(t('projects:error'), t('projects:projectNotFound'))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 3. Browse Public
+  const loadPublicProjects = async () => {
+    setLoading(true)
+    setViewMode('public')
+    try {
+      const response = await api.get('/api/v1/projects')
+      setDisplayList(response.data || [])
+    } catch (error) {
+      console.error("API Error:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadLocalProjects()
+  }, [])
+
+  // Handle switching to Search Mode
+  const enableSearchMode = async () => {
+    if (!permission?.granted) {
+      const { granted } = await requestPermission()
+      if (!granted) {
+        Alert.alert(t('common:attention'), t('errors:cameraPermissionDenied'))
+        return
+      }
+    }
+    setViewMode('search')
+    setSearchCode('')
+  }
+
+  const handleBarCodeScanned = ({ data }) => {
+    if (data && !loading) {
+      setSearchCode(data)
+      handleSearchByCode(data)
+    }
+  }
+
+  const handleProjectPress = async (project) => {
+    if (isNavigating.current) return
+    try {
+      if (viewMode === 'local') {
+        isNavigating.current = true
+        setCurrentData(null)
+        console.log('handle project press', JSON.stringify(project, null, 5))
+        setCurrentProject(project)
+        router.replace('/(app)/Main/')
+      } else {
+        setLoading(true)
+        const response = await api.post('/api/v1/project/request-access', { code: project.code })
+        if (!response.data.error) {
+          const projectToSave = {
+            ...project,
+            tags: typeof project.tags === 'string' ? project.tags : JSON.stringify(project.tags || [])
+          }
+          await insert('projects', projectToSave)
+          const localProjects = await select('projects', 'project = ?', [project.id])
+          setCurrentData(null)
+          setCurrentProject(localProjects[0] || projectToSave)
+          isNavigating.current = true
+          router.replace('/(app)/Main/')
+        } else {
+          Alert.alert(t('projects:joinFailed'), response.data.message)
+        }
+      }
+    } catch (err) {
+      Alert.alert(t('errors:errorTitle'), t('errors:unknown'))
+    } finally {
+      if (!isNavigating.current) setLoading(false)
+      setTimeout(() => { isNavigating.current = false }, 1000)
+    }
+  }
+
+  const goToSettings = useMemo(() => [{ icon: 'settings', onPress: () => router.push('Project/Settings') }], [])
 
   return (
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <AppHeader title={t('projects:myProjects')} searchEnabled={false} rightActions={goToSettings} />
 
-    <>
-      <AppHeader
-        title={t('projects:myProjects')}
-        searchEnabled={false}
-        rightActions={goToSettings}
-      />
+      {/* Nav Toggle */}
+      <View style={localStyles.navContainer(theme)}>
+        <View style={localStyles.buttonRow}>
+          <NavButton active={viewMode === 'local'} icon="folder-outline" label={t('projects:available')} onPress={loadLocalProjects} theme={theme} />
+          <NavButton active={viewMode === 'search'} icon="qrcode-scan" label={t('projects:code')} onPress={enableSearchMode} theme={theme} />
+          <NavButton active={viewMode === 'public'} icon="earth" label={t('projects:browse')} onPress={loadPublicProjects} theme={theme} />
+        </View>
+      </View>
 
-      <TouchableOpacity
-        onPress={() => router.push('/Project/Join')}
-        style={[styles.button, { justifyContent: 'space-between', margin: 16, paddingHorizontal: 16 }]}>
-        <Text style={[styles.buttonText, { fontWeight: 'bold' }]}>
-          {t('projects:joinProject')}
-        </Text>
-        <MaterialCommunityIcons name="shape-square-rounded-plus" size={26} color='white' />
-      </TouchableOpacity>
-
-      <FlatList
-        data={projects}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            onPress={() => handleProjectPress(item)}
-            style={styles.card}
-          >
-            {/* Header Section */}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <Text style={styles.pageTitle}>{item.title}</Text>
-              <MaterialIcons name="keyboard-arrow-right" size={24} color={theme.colors.text} />
+      {/* Main Content Area */}
+      <View style={{ flex: 1 }}>
+        {viewMode === 'search' ? (
+          <View style={localStyles.searchContainer}>
+            {/* 1. TextInput */}
+            <View style={localStyles.inputWrapper(theme)}>
+              <TextInput
+                style={[localStyles.input, { color: theme.colors.text }]}
+                placeholder={t('projects:enterCode')}
+                placeholderTextColor={theme.colors.hint}
+                value={searchCode}
+                onChangeText={setSearchCode}
+                autoCapitalize="characters"
+              />
+              {searchCode.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchCode('')} style={{ padding: 10 }}>
+                  <MaterialIcons name="close" size={20} color={theme.colors.hint} />
+                </TouchableOpacity>
+              )}
             </View>
 
-            {/* Meta Info Section */}
-            <View style={{ marginBottom: 12 }}>
-              <Text style={styles.hint}>
-                {t('projects:code')}: {item.code}
-              </Text>
-              <Text style={styles.hint}>
-                {t('projects:category')}: {item.category}
-              </Text>
-            </View>
+            <Text style={[styles.secTextInput, { textAlign: 'center', marginBottom: 18 }]} >OR</Text>
 
-            {/* Stats Section */}
-            <View style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              paddingTop: 10,
-              borderTopWidth: 0.5,
-              borderTopColor: theme.colors.inputBorder
-            }}>
-              <View style={{ alignItems: 'center' }}>
-                <Text style={[styles.bodyText, { fontWeight: 'bold' }]}>{item.formDefnCount}</Text>
-                <Text style={styles.tiny}>{t('common:forms')}</Text>
-              </View>
-
-              <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', flex: 1 }}>
-                <View style={{ alignItems: 'center' }}>
-                  <Text style={styles.tiny}>
-                    {t('common:total')}: {item.formDataTotal}
-                  </Text>
+            {/* 2. CameraView - Occupying remaining space */}
+            <View style={localStyles.cameraContainer(theme)}>
+              <CameraView
+                style={StyleSheet.absoluteFillObject}
+                onBarcodeScanned={handleBarCodeScanned}
+                barcodeSettings={{ barcodeTypes: ['qr'] }}
+              >
+                <View style={localStyles.cameraOverlay}>
+                  <View style={localStyles.scanFrame} />
+                  <Text style={localStyles.scanText}>{t('projects:alignQrCode')}</Text>
                 </View>
-                <Text style={styles.tiny}>|</Text>
-                <Text style={[styles.tiny, { color: '#f1c40f' }]}>
-                  {t('common:draft')}: {item.formDataDrafts}
-                </Text>
-                <Text style={[styles.tiny, { color: '#2ecc71' }]}>
-                  {t('common:final')}: {item.formDataFinalized}
-                </Text>
-                <Text style={[styles.tiny, { color: theme.colors.primary }]}>
-                  {t('common:sent')}: {item.formDataSent}
-                </Text>
-              </View>
+              </CameraView>
             </View>
-          </TouchableOpacity>
-        )}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.scrollContent}
-        ListEmptyComponent={
-          <Text style={[styles.hint, { textAlign: 'center', marginTop: 20 }]}>
-            {t('projects:noActiveProjects')}
-          </Text>
-        }
-      />
 
-      {/* Standardized FAB */}
-      <TouchableOpacity
-        style={[styles.fab, { backgroundColor: theme.colors.primary }]}
-        onPress={() => {
-          setCurrentData(null)
-          router.push(`/Main/`)
-        }}
-      >
+            {/* 3. Search Button */}
+            <TouchableOpacity
+              style={[styles.button, localStyles.searchSubmitBtn]}
+              onPress={() => handleSearchByCode()}
+            >
+              <MaterialIcons name="search" size={20} color="white" />
+              <Text style={styles.buttonText}>{t('projects:searchProject')}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          /* FlatList for Local and Public Browse */
+          loading ? (
+            <View style={localStyles.loaderOverlay}><ActivityIndicator size="large" color={theme.colors.primary} /></View>
+          ) : (
+            <FlatList
+              data={displayList}
+              keyExtractor={(item, index) => item.id?.toString() || index.toString()}
+              contentContainerStyle={[styles.scrollContent, { paddingHorizontal: 16 }]}
+              renderItem={({ item }) => (
+                <ProjectCard item={item} onPress={() => handleProjectPress(item)} theme={theme} t={t} styles={styles} />
+              )}
+              ListEmptyComponent={
+                <View style={localStyles.emptyState}>
+                  <MaterialCommunityIcons name="clipboard-text-search-outline" size={48} color={theme.colors.hint} />
+                  <Text style={[styles.hint, { marginTop: 10 }]}>{t('projects:noProjectsFound')}</Text>
+                </View>
+              }
+            />
+          )
+        )}
+      </View>
+
+      <TouchableOpacity style={[styles.fab, { backgroundColor: theme.colors.primary }]} onPress={() => router.push(`/Main/`)}>
         <MaterialIcons name="home-filled" size={24} color="white" />
       </TouchableOpacity>
-
-    </>
+    </View>
   )
 }
+
+// Sub-components
+const NavButton = ({ active, icon, label, onPress, theme }) => (
+  <TouchableOpacity onPress={onPress} style={[localStyles.navBtn, { backgroundColor: active ? theme.colors.primary : theme.colors.inputBackground }]}>
+    <MaterialCommunityIcons name={icon} size={18} color={active ? 'white' : theme.colors.primary} />
+    <Text style={[localStyles.navLabel, { color: active ? 'white' : theme.colors.text }]}>{label}</Text>
+  </TouchableOpacity>
+)
+
+const ProjectCard = ({ item, onPress, theme, t, styles }) => (
+  <TouchableOpacity onPress={onPress} style={[styles.inputBase]}>
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.pageTitle, { fontSize: 16 }]}>{item.title}</Text>
+        <Text style={[styles.hint]} numberOfLines={2}>{item.description}</Text>
+        <View style={localStyles.badgeRow}>
+          <View style={localStyles.codeBadge(theme)}><Text style={localStyles.codeText(theme)}>{item.code}</Text></View>
+          <Text style={[styles.tiny, { color: theme.colors.hint, marginLeft: 8 }]}>{item.category}</Text>
+        </View>
+      </View>
+
+      <MaterialIcons name="chevron-right" size={24} color={theme.colors.hint} />
+    </View>
+
+  </TouchableOpacity >
+)
+
+const localStyles = StyleSheet.create({
+  navContainer: (theme) => ({ paddingHorizontal: 16, paddingTop: 16, backgroundColor: theme.colors.background }),
+  buttonRow: { flexDirection: 'row', gap: 8 },
+  navBtn: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10 },
+  navLabel: { fontSize: 11, fontWeight: '600', marginTop: 4 },
+  searchContainer: { flex: 1, padding: 16 },
+  inputWrapper: (theme) => ({
+    flexDirection: 'row',
+    backgroundColor: theme.colors.card,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.inputBorder,
+    alignItems: 'center',
+    marginBottom: 16
+  }),
+  input: { flex: 1, paddingHorizontal: 12, height: 50, fontSize: 16 },
+  cameraContainer: (theme) => ({
+    flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: 'black',
+    borderWidth: 1,
+    borderColor: theme.colors.inputBorder
+  }),
+  cameraOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
+  scanFrame: { width: 200, height: 200, borderWidth: 2, borderColor: 'white', borderRadius: 16, borderStyle: 'dashed' },
+  scanText: { color: 'white', marginTop: 20, fontSize: 12, fontWeight: 'bold' },
+  searchSubmitBtn: { marginTop: 16, flexDirection: 'row', gap: 8, height: 55 },
+  loaderOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  card: (theme) => ({ backgroundColor: theme.colors.card, padding: 16, borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: theme.colors.inputBorder + '20' }),
+  badgeRow: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
+  codeBadge: (theme) => ({ backgroundColor: theme.colors.primary + '15', paddingHorizontal: 6, borderRadius: 4 }),
+  codeText: (theme) => ({ color: theme.colors.primary, fontSize: 10, fontWeight: 'bold' }),
+  emptyState: { alignItems: 'center', marginTop: 40 }
+})
 
 export default ProjectListView

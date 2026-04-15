@@ -42,6 +42,7 @@ const useAuthStore = create(
                     console.error('Session check error:', error);
                 }
             },
+            
         }),
         {
             name: 'auth-storage',

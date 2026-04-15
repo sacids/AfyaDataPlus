@@ -11,6 +11,7 @@ import { ThemeProvider, useTheme } from '../context/ThemeContext';
 import LanguageManager from '../i18n/languageManager';
 import { useAuthStore } from '../store/authStore';
 import { createTables } from '../utils/database';
+import * as SecureStore from 'expo-secure-store';
 
 
 
@@ -128,72 +129,105 @@ export default Sentry.wrap(function RootLayout() {
   }, []);
 
   // Handle navigation after everything is initialized
-  useEffect(() => {
+  // useEffect(() => {
+  //   const performNavigation = async () => {
+
+  //     const isAuthenticated = user && user.id;
+  //     if (!isAuthenticated) {
+  //       // Force redirect to onboarding or login if no valid ID exists
+  //       router.replace('/(auth)/login');
+  //     }
+  //     // Only proceed if resources are ready and navigation hasn't been performed
+  //     if (!isReady || !i18nInstance || navigationPerformed.current) return;
+
+
+  //     //console.log('go to main')
+  //     router.replace('/(app)/Main');
+
+  //     // try {
+  //     //   const onboardingCompleted = await SecureStore.getItemAsync('onboarding_completed');
+  //     //   //console.log('onboarding status:', onboardingCompleted);
+
+  //     //   const inAuthGroup = segments[0] === '(auth)';
+  //     //   const currentRoute = segments[1];
+
+  //     //   navigationPerformed.current = true;
+
+
+  //     //   // First install - no onboarding completed
+  //     //   if (!onboardingCompleted) {
+  //     //     if (!inAuthGroup || currentRoute !== 'index') {
+  //     //       console.log('Navigating to onboarding');
+  //     //       // Use setTimeout to ensure navigation happens after render
+  //     //       setTimeout(() => {
+  //     //         router.replace('/(auth)');
+  //     //       }, 0);
+  //     //     }
+  //     //   }
+
+
+  //     //   // User not logged in
+  //     //   else if (!user) {
+  //     //     if (!inAuthGroup) {
+  //     //       console.log('Navigating to login');
+  //     //       setTimeout(() => {
+  //     //         router.replace('/(auth)/login');
+  //     //       }, 0);
+  //     //     } else if (currentRoute === 'index') {
+  //     //       console.log('Navigating from index to login');
+  //     //       setTimeout(() => {
+  //     //         router.replace('/(auth)/login');
+  //     //       }, 0);
+  //     //     }
+  //     //   }
+  //     //   // User logged in
+  //     //   else {
+  //     //     if (inAuthGroup) {
+  //     //       console.log('Navigating to main app');
+  //     //       setTimeout(() => {
+  //     //         router.replace('/(app)/Main');
+  //     //       }, 0);
+  //     //     }
+  //     //   }
+  //     // } catch (error) {
+  //     //   console.error('Navigation error:', error);
+  //     // }
+  //   };
+
+  //   performNavigation();
+
+  //   return () => {
+  //     // Optional cleanup when the screen loses focus
+  //   };
+  // }, [isReady, i18nInstance, user]); // Add dependencies
+
+
+useEffect(() => {
     const performNavigation = async () => {
-      // Only proceed if resources are ready and navigation hasn't been performed
-      if (!isReady || !i18nInstance || navigationPerformed.current) return;
 
+        if (!isReady || !i18nInstance || navigationPerformed.current) return;
 
-      //console.log('go to main')
-      router.replace('/(app)/Main');
+        // 1. Check if we have a valid user with an ID
+        const hasValidUser = user && user.id;
 
-      // try {
-      //   const onboardingCompleted = await SecureStore.getItemAsync('onboarding_completed');
-      //   //console.log('onboarding status:', onboardingCompleted);
+        // 2. Check if they have completed onboarding
+        // (Assuming you store a 'has_completed_onboarding' key)
+        const hasCompletedOnboarding = await SecureStore.getItemAsync('onboarding_completed');
 
-      //   const inAuthGroup = segments[0] === '(auth)';
-      //   const currentRoute = segments[1];
-
-      //   navigationPerformed.current = true;
-
-
-      //   // First install - no onboarding completed
-      //   if (!onboardingCompleted) {
-      //     if (!inAuthGroup || currentRoute !== 'index') {
-      //       console.log('Navigating to onboarding');
-      //       // Use setTimeout to ensure navigation happens after render
-      //       setTimeout(() => {
-      //         router.replace('/(auth)');
-      //       }, 0);
-      //     }
-      //   }
-
-
-      //   // User not logged in
-      //   else if (!user) {
-      //     if (!inAuthGroup) {
-      //       console.log('Navigating to login');
-      //       setTimeout(() => {
-      //         router.replace('/(auth)/login');
-      //       }, 0);
-      //     } else if (currentRoute === 'index') {
-      //       console.log('Navigating from index to login');
-      //       setTimeout(() => {
-      //         router.replace('/(auth)/login');
-      //       }, 0);
-      //     }
-      //   }
-      //   // User logged in
-      //   else {
-      //     if (inAuthGroup) {
-      //       console.log('Navigating to main app');
-      //       setTimeout(() => {
-      //         router.replace('/(app)/Main');
-      //       }, 0);
-      //     }
-      //   }
-      // } catch (error) {
-      //   console.error('Navigation error:', error);
-      // }
+        if (!hasCompletedOnboarding) {
+            // New install or cleared data: Go to Onboarding
+            router.replace('/');
+        } else if (!hasValidUser) {
+            // Onboarding done, but no valid session: Go to Login
+            router.replace('/(auth)/login');
+        } else {
+            // Everything valid: Go to Main App
+            router.replace('/(app)/Main');
+        }
     };
 
     performNavigation();
-
-    return () => {
-      // Optional cleanup when the screen loses focus
-    };
-  }, [isReady, i18nInstance, user]); // Add dependencies
-
+}, [isReady, user]);
   // Don't render anything until resources are ready
   if (!isReady || !i18nInstance) {
     return (

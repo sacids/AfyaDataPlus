@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 
-import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import api from '../../../api/axiosInstance';
@@ -18,6 +18,10 @@ import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
 import useProjectStore from '../../../store/projectStore';
 import { insert, select } from '../../../utils/database';
+
+import { AppHeader } from '../../../components/layout/AppHeader';
+import { ScreenWrapper } from '../../../components/layout/ScreenWrapper';
+
 
 const listProjects = async () => {
   const response = await api.get('/api/v1/projects');
@@ -172,8 +176,8 @@ const JoinProjectScreen = () => {
   );
 
   return (
-    <View style={[styles.pageContainer, { paddingBottom: insets.bottom }]}>
-      <View style={{
+    <ScreenWrapper>
+      {/* <View style={{
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -188,12 +192,20 @@ const JoinProjectScreen = () => {
           <MaterialCommunityIcons name={'arrow-left'} size={24} color={theme.colors.text} />
           <Text style={styles.pageTitle}>{t('projects:availableProjects')}</Text>
         </TouchableOpacity>
+
+            
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <TouchableOpacity onPress={() => alert(t('alerts:information'))}>
             <MaterialIcons name={'search'} size={24} color={theme.colors.text} />
           </TouchableOpacity>
         </View>
-      </View>
+      </View> */}
+
+
+      <AppHeader
+        title={t('projects:availableProjects')}
+        searchEnabled={false}
+      />
 
       <FlatList
         contentContainerStyle={styles.scrollContent}
@@ -216,7 +228,7 @@ const JoinProjectScreen = () => {
           </View>
         }
       />
-    </View>
+    </ScreenWrapper>
   );
 };
 
