@@ -1,14 +1,18 @@
 import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import axios from 'axios';
 import { CameraView, useCameraPermissions } from 'expo-camera'; // Updated for latest expo-camera
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import api from '../../api/axiosInstance';
+import api, { hubApi } from '../../api/axiosInstance';
+import { config } from '../../constants/config';
 import { getStyles } from '../../constants/styles';
 import { useTheme } from '../../context/ThemeContext';
+import { useAuthStore } from '../../store/authStore';
 import useProjectStore from '../../store/projectStore';
 import { insert, select } from '../../utils/database';
+import { getGlobalUsername } from '../../utils/deviceUtils';
 import { AppHeader } from '../layout/AppHeader';
 
 const ProjectListView = () => {
@@ -69,7 +73,8 @@ const ProjectListView = () => {
     setLoading(true)
     setViewMode('public')
     try {
-      const response = await api.get('/api/v1/projects')
+      const response = await hubApi.get(config.AFYADATA_HUB_URL + '/api/v1/projects/discover/')
+      console.log(JSON.stringify(response.data, null, 4))
       setDisplayList(response.data || [])
     } catch (error) {
       console.error("API Error:", error)
@@ -102,6 +107,38 @@ const ProjectListView = () => {
     }
   }
 
+
+  const handleJoinProject = async (projectFromHub) => {
+    const { instance_url, remote_project_id } = projectFromHub;
+    const authStore = useAuthStore.getState();
+
+    let session = authStore.instances[instance_url];
+
+    if (!session) {
+      const globalUsername = getGlobalUsername(authStore.user.fullName);
+
+      // 1. API Request
+      try {
+        const regResponse = await axios.post(`${instance_url}/api/v1/register/`, {
+          username: authStore.user.globalUsername,
+          fullName: authStore.user.fullName,
+          phoneNumber: authStore.user.phone,
+          device_id: authStore.user.deviceId,
+          password: authStore.user.password
+        });
+
+        // Save session for this instance
+        authStore.setInstanceSession(instance_url, regResponse.data.access, globalUsername);
+      } catch (err) {
+        console.error("Failed to auto-register on new instance", err);
+        return;
+      }
+    }
+
+    // SUBSEQUENT JOIN: Just request access to the project
+    await api.post(`/api/v1/projects/${remote_project_id}/join/`);
+  };
+
   const handleProjectPress = async (project) => {
     if (isNavigating.current) return
     try {
@@ -112,10 +149,68 @@ const ProjectListView = () => {
         router.replace('/(app)/Main/')
       } else {
         setLoading(true)
-        const response = await api.post('/api/v1/project/request-access', { code: project.code })
+
+
+
+
+
+
+
+
+
+
+
+
+
+        const { instance_url, remote_project_id } = project;
+        const authStore = useAuthStore.getState();
+
+        let session = authStore.instances[instance_url];
+
+        if (!session) {
+
+          // 1. API Request
+          try {
+
+            const payload = {
+              username: authStore.user.globalUsername,
+              fullName: authStore.user.fullName,
+              phoneNumber: authStore.user.phoneNumber,
+              device_id: authStore.user.deviceId,
+              password: authStore.user.password,
+              passwordConfirm: authStore.user.password
+            }
+
+            console.log('payload', JSON.stringify(authStore.user, null, 5))
+            const regResponse = await axios.post(`${instance_url}/api/v1/register`, payload);
+
+            // Save session for this instance
+            authStore.setInstanceSession(instance_url, regResponse.data.access, authStore.user.globalUsername);
+          } catch (err) {
+            console.error("Failed to auto-register on new instance", err);
+            return;
+          }
+        }
+
+        // SUBSEQUENT JOIN: Just request access to the project
+        const response = await api.post(`/api/v1/project/${remote_project_id}/join/`);
+
+
+
+
+
+
+
+        const project_to_save = response.data.project
+
+        console.log('project to save', JSON.stringify(response.data, null, 4))
+
+
         if (!response.data.error) {
           const projectToSave = {
-            ...project,
+            ...project_to_save,
+            project: project_to_save.id,
+            instance_url: instance_url,
             tags: typeof project.tags === 'string' ? project.tags : JSON.stringify(project.tags || [])
           }
           await insert('projects', projectToSave)
@@ -190,7 +285,7 @@ const ProjectListView = () => {
 
             {/* 3. Search Button */}
             <TouchableOpacity
-              style={[styles.button, localStyles.searchSubmitBtn]}
+              style={[styles.button, styles.inputBase, localStyles.searchSubmitBtn,]}
               onPress={() => handleSearchByCode()}
             >
               <MaterialIcons name="search" size={20} color="white" />
@@ -236,7 +331,7 @@ const NavButton = ({ active, icon, label, onPress, theme }) => (
 )
 
 const ProjectCard = ({ item, onPress, theme, t, styles }) => (
-  <TouchableOpacity onPress={onPress} style={[styles.inputBase]}>
+  <TouchableOpacity onPress={onPress} style={[styles.inputBase, { marginBottom: 12 }]}>
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
       <View style={{ flex: 1 }}>
         <Text style={[styles.pageTitle, { fontSize: 16 }]}>{item.title}</Text>

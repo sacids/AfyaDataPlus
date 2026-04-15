@@ -1,3 +1,4 @@
+import * as Device from 'expo-device';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { useEffect, useState } from 'react';
@@ -22,6 +23,7 @@ import api from '../../api/axiosInstance';
 import { config } from '../../constants/config';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuthStore } from '../../store/authStore';
+import { getGlobalUsername } from '../../utils/deviceUtils';
 
 
 const logo = require('../../assets/images/AfyaDataLogo.png');
@@ -52,7 +54,7 @@ const RegisterScreen = () => {
       // Optional cleanup when the screen loses focus
     };
   }, [fullName, phoneNumber, password, confirmPassword]);
-  const handleRegister = async () => {
+  const handleRegister1 = async () => {
     try {
       setError('');
 
@@ -104,6 +106,38 @@ const RegisterScreen = () => {
       } else {
         setError(t('auth:registrationFailed'));
       }
+    }
+  };
+
+  const handleRegister = async () => {
+    setLoading(true);
+    setError('');
+
+
+    try {
+      // 1. Generate Global Username (Username + Device ID suffix)
+      const globalUsername = getGlobalUsername(phoneNumber)
+
+      // 2. Create the Profile Object (The "Passport")
+      const userProfile = {
+        fullName,
+        phoneNumber,
+        password, // Saved locally to auto-register on new instances
+        globalUsername,
+        deviceId: Device.osBuildId,
+        registeredLocally: true,
+      };
+
+      // 3. Save locally to Zustand (which persists to SecureStore)
+      await setUser(userProfile);
+
+      // 4. Navigate to the main app / discovery page
+      router.replace('/(app)/Main');
+
+    } catch (err) {
+      setError('Failed to save profile locally.');
+    } finally {
+      setLoading(false);
     }
   };
 

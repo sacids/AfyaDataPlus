@@ -24,6 +24,8 @@ const ProjectDetailView = ({ project }) => {
 
   const { user } = useAuthStore()
 
+  console.log('currentproject', JSON.stringify(currentProject, null, 8))
+
   const [showFullDescription, setShowFullDescription] = useState(false);
   const description = currentProject?.description || "";
 
@@ -297,7 +299,7 @@ const ProjectDetailView = ({ project }) => {
               ]
             );
           }}
-        > 
+        >
           <MaterialIcons name="notifications-off" size={20} color={theme.colors.error} />
           <Text style={[styles.label, { color: theme.colors.error, marginLeft: 8, marginBottom: 0 }]}>
             {t('projects:unsubscribe')}

@@ -4,6 +4,7 @@ import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import * as SecureStore from 'expo-secure-store';
 import {
     ActivityIndicator, Alert, FlatList, Modal,
     RefreshControl,
@@ -54,8 +55,6 @@ const Settings = () => {
     }, []);
 
     const loadInitialData = async () => {
-        const server = await AsyncStorage.getItem('serverUrl');
-        setServerUrl(server || 'https://api.example.com');
         await Promise.all([
             fetchProjects(),
             fetchAvailableLanguages(),
@@ -110,29 +109,43 @@ const Settings = () => {
         );
     };
 
-    const handleResetDatabase = async () => {
+    const handleResetDatabase = () => {
         Alert.alert(
-            t('alerts:confirmation'),
-            t('settings:confirmReset'),
+            t('settings:resetTitle'),
+            t('settings:resetConfirm'),
             [
                 { text: t('common:cancel'), style: 'cancel' },
                 {
-                    text: t('settings:resetDatabase'),
+                    text: t('settings:resetAction'),
                     style: 'destructive',
                     onPress: async () => {
                         setIsResetting(true);
                         try {
+                            // 1. Drop and Recreate SQLite Tables
                             await dropTables();
                             await createTables();
-                            await logout();
-                            router.replace('/(auth)/index');
+
+                            // 2. Clear Project specific storage (AsyncStorage)
+                            await AsyncStorage.clear();
+
+                            // 3. Clear Auth storage (SecureStore)
+                            // This removes the user object, tokens, and "instances"
+                            await SecureStore.deleteItemAsync('auth-storage');
+
+                            // 4. Reset Zustand Stores in memory
+                            setCurrentProject(null);
+                            useAuthStore.getState().logout();
+
+                            // 5. Force navigation to onboarding
+                            router.replace('/');
                         } catch (error) {
-                            Alert.alert('Error', 'Failed to reset database');
+                            console.error('Reset error:', error);
+                            Alert.alert("Error", "Failed to fully reset the app.");
                         } finally {
                             setIsResetting(false);
                         }
-                    }
-                }
+                    },
+                },
             ]
         );
     };

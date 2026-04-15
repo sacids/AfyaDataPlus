@@ -357,53 +357,6 @@ export const syncMessages = async (formData, participants = []) => {
     }
 };
 
-export const syncMessages1 = async (formData, participants = []) => {
-    try {
-
-
-        // 1. Ensure Conversation exists on Backend
-        // console.log('api chat', {
-        //     title: formData.title || `Chat for ${formData.uuid}`,
-        //     form: formData.form, // ensure this matches backend expected ID
-        //     instance: formData.original_uuid,
-        //     participants: participants
-        // })
-
-        const convResponse = await api.post('api/v1/chat/conversations', {
-            title: formData.title || `Chat for ${formData.uuid}`,
-            form: formData.form, 
-            instance: formData.original_uuid,
-            participants: participants
-        });
-
-        console.log('conv', convResponse)
-        const conversation = convResponse.data.data;
-
-        console.log(`api/v1/chat/conversations/${conversation.id}/messages`)
-        // 2. Fetch remote messages
-        const msgResponse = await api.get(`api/v1/chat/conversations/${conversation.id}/messages`);
-
-        // 3. Save to local SQLite
-        for (const msg of msgResponse.data) {
-            await insert_into_messages({
-                remote_id: msg.id,
-                local_id: msg.external_id,
-                conversation_id: conversation.id,
-                formDataUUID: formData.original_uuid,
-                text: msg.text,
-                sender_id: msg.sender.id,
-                sender_name: msg.sender.username,
-                sync_status: 'synced',
-                created_at: msg.created_at
-            });
-        }
-        return conversation.id;
-    } catch (error) {
-        console.error("Sync failed, using offline mode", error);
-        return null;
-    }
-};
-
 
 export const postData = async (endpoint, data = {}, headers = {}) => {
     try {

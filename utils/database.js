@@ -19,6 +19,7 @@ let PROJECT_SQL = `CREATE TABLE IF NOT EXISTS projects (
     created_by TEXT,
     tags TEXT,
     icon TEXT,
+    instance_url TEXT,
     title TEXT NOT NULL,
     code TEXT NOT NULL,
     description TEXT NULL, 
@@ -650,7 +651,7 @@ export const insert = async (tableName, data) => {
 
         const sql = `INSERT OR REPLACE INTO ${tableName} (${filteredKeys.join(', ')}) VALUES (${placeholders});`;
         //console.log('sql')
-        //console.log('Inserting sql:', sql, values);
+        console.log('Inserting sql:', sql, values);
         const result = await db.runAsync(sql, values);
         return result;
     } catch (error) {

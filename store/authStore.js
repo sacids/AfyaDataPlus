@@ -20,15 +20,34 @@ const secureStorage = {
 
 const useAuthStore = create(
     persist(
-        (set) => ({
+        (set, get) => ({
             user: null,
             isLoading: true,
-            setUser: (user) => set({ user, isLoading: false }),
+            setUser: async (user) => {
+                set({ user, isLoading: false });
+            },
+
+            instances: {}, // { "https://server-a.com": { token: '...', username: '...' } }
+
+            // New method to add/update an instance session
+            setInstanceSession: (url, token, username) => set((state) => ({
+                instances: {
+                    ...state.instances,
+                    [url]: { token, username }
+                }
+            })),
+
+            getTokenForUrl: (url) => {
+                const state = get();
+                return state.instances[url]?.token || null;
+            },
+
+
             logout: async () => {
-                await SecureStore.deleteItemAsync(config.TOKEN_KEY);
+                await SecureStore.deleteItemAsync('auth-storage'); // The Zustand persistence key
                 await SecureStore.deleteItemAsync('saved_username');
                 await SecureStore.deleteItemAsync('saved_password');
-                set({ user: null, isLoading: false });
+                set({ user: null, instances: {}, isLoading: false });
             },
             checkSession: async () => {
                 // Don't set loading state here to avoid re-renders
@@ -42,7 +61,43 @@ const useAuthStore = create(
                     console.error('Session check error:', error);
                 }
             },
-            
+
+        }),
+        {
+            name: 'auth-storage',
+            storage: createJSONStorage(() => secureStorage),
+        }
+    )
+);
+
+
+const useAuthStore1 = create(
+    persist(
+        (set, get) => ({
+            user: null, // Global profile (Name, Phone)
+            instances: {}, // { "https://server-a.com": { token: '...', username: '...' } }
+
+            // New method to add/update an instance session
+            setInstanceSession: (url, token, username) => set((state) => ({
+                instances: {
+                    ...state.instances,
+                    [url]: { token, username }
+                }
+            })),
+
+            setUser: (user) => set({ user }),
+
+            // Get token for a specific URL
+            getTokenForUrl: (url) => {
+                const state = get();
+                return state.instances[url]?.token || null;
+            },
+
+            logout: async () => {
+                // Clear all keys from SecureStore
+                await SecureStore.deleteItemAsync(config.TOKEN_KEY);
+                set({ user: null, instances: {}, isLoading: false });
+            },
         }),
         {
             name: 'auth-storage',

@@ -1,78 +1,145 @@
 import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
 import { config } from '../constants/config';
 import { useAuthStore } from '../store/authStore';
+import useProjectStore from '../store/projectStore';
 
-//console.log('base url', config.BASE_URL)
+const api = axios.create();
 
-const api = axios.create({
-  baseURL: config.BASE_URL,
-});
-
+// Request interceptor - sets baseURL and auth token
 api.interceptors.request.use(
   async (req) => {
-    const tokenData = await SecureStore.getItemAsync(config.TOKEN_KEY);
-    if (tokenData) {
-      const { access } = JSON.parse(tokenData);
-      req.headers.Authorization = `Bearer ${access}`;
+    // Get current project from store
+    const { currentProject } = useProjectStore.getState();
+
+    // Determine base URL to use
+    // If this is a Hub operation (registration, browsing public projects),
+    // we need to explicitly use Hub URL. For now, we check if there's a special flag
+    // or we can assume all requests go to instance_url if currentProject exists
+    let baseURL;
+
+    if (req.useHub) {
+      // Use Hub URL for public operations (registration, browsing projects)
+      baseURL = config.AFYADATA_HUB_URL;
+      console.log('Using Hub URL:', baseURL);
+    } else if (currentProject?.instance_url) {
+      // Use project instance URL for authenticated operations
+      baseURL = currentProject.instance_url;
+      console.log('Using Instance URL:', baseURL);
+    } else {
+      // Fallback to Hub URL if no project selected
+      baseURL = config.AFYADATA_HUB_URL;
+      console.log('Using default Hub URL:', baseURL);
     }
+
+    // Set the baseURL
+    req.baseURL = baseURL;
+
+    // Add authentication token for instance requests
+    // Skip auth for Hub requests that are public
+    const isPublicHubRequest = req.useHub;
+
+    if (!isPublicHubRequest && currentProject?.instance_url) {
+      try {
+        // Get token for this specific instance
+        const instanceOrigin = new URL(currentProject.instance_url).origin;
+        const token = useAuthStore.getState().getTokenForUrl(instanceOrigin);
+
+        if (token) {
+          req.headers.Authorization = `Bearer ${token}`;
+          console.log('Added auth token for instance:', instanceOrigin);
+        } else {
+          console.log('No token found for instance:', instanceOrigin);
+        }
+      } catch (e) {
+        console.warn('Could not get token for instance:', e);
+      }
+    }
+
+    console.log(`Request: ${req.method?.toUpperCase()} ${baseURL}${req.url}`);
+
     return req;
   },
   (error) => Promise.reject(error)
 );
 
-
+// Response interceptor for token refresh
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
+    // Don't retry if it's not a 401 or already retried
     if (error.response?.status !== 401 || originalRequest._retry) {
+      return Promise.reject(error);
+    }
+
+    // Don't retry Hub requests
+    if (originalRequest.baseURL === config.AFYADATA_HUB_URL) {
       return Promise.reject(error);
     }
 
     originalRequest._retry = true;
 
     try {
-
-
-
-      // Retrieve manually entered credentials saved during Register/Login
-      const username = await SecureStore.getItemAsync('saved_username');
-      const password = await SecureStore.getItemAsync('saved_password');
-
-      console.log('saved username', username, password)
-
-
-      if (!username || !password) {
-        throw new Error('No saved credentials for auto-login');
+      // Get the instance URL that failed
+      const { currentProject } = useProjectStore.getState();
+      if (!currentProject?.instance_url) {
+        throw new Error('No current project instance URL');
       }
 
-      const loginResponse = await axios.post(`${config.BASE_URL}/api/v1/token/`, {
-        username,
-        password,
+      const instanceOrigin = new URL(currentProject.instance_url).origin;
+      const { user, setInstanceSession } = useAuthStore.getState();
+
+      // Check if we have credentials for auto-login
+      if (!user?.globalUsername || !user?.password) {
+        throw new Error('No global credentials found for auto-login');
+      }
+
+      console.log(`Attempting auto-login for instance: ${instanceOrigin}`);
+
+      // Call token endpoint on the specific instance
+      const loginResponse = await axios.post(`${instanceOrigin}/api/v1/token/`, {
+        username: user.globalUsername,
+        password: user.password,
       });
 
-      const { access, refresh, user } = loginResponse.data;
-      const authData = { access, refresh, user };
+      const { access } = loginResponse.data;
 
-      await SecureStore.setItemAsync(config.TOKEN_KEY, JSON.stringify(authData));
-      if (user) useAuthStore.getState().setUser(user);
+      // Update store with new token
+      setInstanceSession(instanceOrigin, access, user.globalUsername);
 
+      // Retry original request with new token
       originalRequest.headers.Authorization = `Bearer ${access}`;
       return api(originalRequest);
 
     } catch (authError) {
-      // Clear credentials on failure to prevent loops
-      await SecureStore.deleteItemAsync(config.TOKEN_KEY);
-      await SecureStore.deleteItemAsync('saved_username');
-      await SecureStore.deleteItemAsync('saved_password');
-      useAuthStore.getState().logout();
+      console.error('Auto-login failed:', authError);
+      // Clear token for this instance
+      const { currentProject } = useProjectStore.getState();
+      if (currentProject?.instance_url) {
+        const instanceOrigin = new URL(currentProject.instance_url).origin;
+        useAuthStore.getState().clearInstanceToken(instanceOrigin);
+      }
       return Promise.reject(authError);
     }
   }
 );
 
+// Helper method to explicitly make Hub requests
+export const hubApi = axios.create({
+  baseURL: config.AFYADATA_HUB_URL
+});
 
+// Helper to check if we're using instance or hub
+export const isUsingInstance = () => {
+  const { currentProject } = useProjectStore.getState();
+  return !!currentProject?.instance_url;
+};
+
+// Helper to get current base URL
+export const getCurrentBaseURL = () => {
+  const { currentProject } = useProjectStore.getState();
+  return currentProject?.instance_url || config.AFYADATA_HUB_URL;
+};
 
 export default api;

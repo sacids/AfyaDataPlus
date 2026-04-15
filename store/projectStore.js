@@ -41,6 +41,7 @@ const useProjectStore = create(
                     project: project.project,
                     title: project.title,
                     code: project.code,
+                    instance_url: project.instance_url,
                     description: project.description,
                     tags: parsedTags,
                 } : null;

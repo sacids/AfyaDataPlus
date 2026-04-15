@@ -1,5 +1,6 @@
 // i18n/languageManager.js
 import * as LegacyFileSystem from 'expo-file-system/legacy';
+import { hubApi } from '../api/axiosInstance';
 import { config } from '../constants/config';
 import i18n from './index';
 
@@ -120,13 +121,11 @@ class LanguageManager {
   // Fetch available languages from server
   async fetchAvailableLanguages() {
     try {
-      const response = await fetch(`${config.BASE_URL}/api/v1/languages/`);
 
-
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-      const data = await response.json();
-      return data.languages || [];
+      //const response = await fetch(`${config.BASE_URL}/api/v1/languages/`);
+      const response = await hubApi.get(`/api/v1/languages/`);
+      console.log('language manager', response.data.languages)
+      return response.data.languages || [];
     } catch (error) {
       console.error('Error fetching languages from server:', error);
 
