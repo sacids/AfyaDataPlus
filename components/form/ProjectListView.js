@@ -23,7 +23,6 @@ const ProjectListView = () => {
   const [loading, setLoading] = useState(false)
   const isNavigating = useRef(false)
 
-  console.log('in project list view')
   // Camera Permissions
   const [permission, requestPermission] = useCameraPermissions()
 
@@ -109,7 +108,6 @@ const ProjectListView = () => {
       if (viewMode === 'local') {
         isNavigating.current = true
         setCurrentData(null)
-        console.log('handle project press', JSON.stringify(project, null, 5))
         setCurrentProject(project)
         router.replace('/(app)/Main/')
       } else {

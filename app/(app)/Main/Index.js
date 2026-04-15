@@ -30,7 +30,6 @@ function screenReducer(state, action) {
         case 'SET_PROJECT_LIST':
             return { ...state, status: 'success', mode: 'projectList', list: action.payload, data: null };
         case 'SET_PROJECT_DETAIL':
-            console.log('reducer', JSON.stringify(action))
             return { ...state, status: 'success', mode: 'projectDetail', list: action.payload.forms, data: action.payload.project };
         case 'SET_FORM_DETAIL':
             return { ...state, status: 'success', mode: 'formDetail', data: action.payload };
@@ -65,7 +64,6 @@ export default function FormDataOrProjectListScreen() {
             }
 
             if (currentProject) {
-                console.log('current project', currentProject)
                 //dispatch({ type: 'SET_PROJECT_LIST', payload: projectWithStats });
                 dispatch({ type: 'SET_PROJECT_DETAIL', payload: currentProject });
                 return
@@ -88,12 +86,10 @@ export default function FormDataOrProjectListScreen() {
         }, [loadScreenData])
     );
 
-    console.log('status', state.status)
 
     // 3. Decoupled Rendering logic
     if (state.status === 'loading') return <ActivityIndicator />;
 
-    console.log('tupo')
 
 
     return (
