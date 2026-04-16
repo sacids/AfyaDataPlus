@@ -124,7 +124,7 @@ class LanguageManager {
 
       //const response = await fetch(`${config.BASE_URL}/api/v1/languages/`);
       const response = await hubApi.get(`/api/v1/languages/`);
-      console.log('language manager', response.data.languages)
+      //console.log('language manager', response.data.languages)
       return response.data.languages || [];
     } catch (error) {
       console.error('Error fetching languages from server:', error);

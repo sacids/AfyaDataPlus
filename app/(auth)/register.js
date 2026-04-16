@@ -1,6 +1,5 @@
 import * as Device from 'expo-device';
 import { router } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -19,8 +18,6 @@ import {
 } from 'react-native';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import api from '../../api/axiosInstance';
-import { config } from '../../constants/config';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuthStore } from '../../store/authStore';
 import { getGlobalUsername } from '../../utils/deviceUtils';
@@ -42,9 +39,17 @@ const RegisterScreen = () => {
   const { setUser } = useAuthStore();
   const theme = useTheme();
 
+
+  const isValidFullName = (name) => {
+    const trimmedName = name.trim();
+    if (trimmedName.length === 0) return false;
+    // Only allow letters (both cases) and spaces
+    const nameRegex = /^[A-Za-z\s]+$/;
+    return nameRegex.test(trimmedName);
+  };
   useEffect(() => {
     const isValid =
-      fullName.trim().length > 0 &&
+      isValidFullName(fullName) &&
       phoneNumber.trim().length >= 10 &&
       password.length >= 6 &&
       password === confirmPassword;
@@ -54,60 +59,7 @@ const RegisterScreen = () => {
       // Optional cleanup when the screen loses focus
     };
   }, [fullName, phoneNumber, password, confirmPassword]);
-  const handleRegister1 = async () => {
-    try {
-      setError('');
 
-      // 1. API Request
-      const response = await api.post('/api/v1/register', {
-        fullName,
-        username: phoneNumber,
-        password: password,
-        passwordConfirm: password,
-        phoneNumber
-      });
-
-      console.log('registration response', JSON.stringify(response.data))
-
-
-      // 3. Save Credentials for Auto-Login/Interceptors (Critical for your setup)
-      console.log('saving username saved_username', phoneNumber)
-
-      const { access, refresh, user } = response.data;
-      const authData = { access, refresh, user };
-
-      // 2. Save Session Tokenssss
-      await SecureStore.setItemAsync(config.TOKEN_KEY, JSON.stringify(authData));
-      await SecureStore.setItemAsync('saved_username', phoneNumber);
-      await SecureStore.setItemAsync('saved_password', password);
-
-      await SecureStore.setItemAsync('onboarding_completed', 'true');
-
-      // 4. Update Zustand and Auth Context
-      setUser(user);
-
-      // 5. Navigate to Main App
-      router.replace('/(app)/Main');
-
-    } catch (err) {
-      setLoading(false);
-      console.error('Registration error:', err);
-
-      // Handle Validation Errors from Response
-      if (err.response && err.response.data && err.response.data.errors) {
-        const serverErrors = err.response.data.errors;
-        // Flatten the error object into a single string
-        const errorMessages = Object.keys(serverErrors)
-          .map(key => `${serverErrors[key].join(' ')}`)
-          .join('\n');
-        setError(errorMessages);
-      } else if (err.response && err.response.data && err.response.data.error_msg) {
-        setError(err.response.data.error_msg);
-      } else {
-        setError(t('auth:registrationFailed'));
-      }
-    }
-  };
 
   const handleRegister = async () => {
     setLoading(true);

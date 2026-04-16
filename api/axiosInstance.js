@@ -5,30 +5,53 @@ import useProjectStore from '../store/projectStore';
 
 const api = axios.create();
 
+// Helper to check if URL is absolute (has protocol)
+const isAbsoluteUrl = (url) => {
+  return url && (url.startsWith('http://') || url.startsWith('https://'));
+};
+
+// Helper to get origin from URL
+const getOriginFromUrl = (url) => {
+  try {
+    return new URL(url).origin;
+  } catch (e) {
+    return null;
+  }
+};
+
 // Request interceptor - sets baseURL and auth token
 api.interceptors.request.use(
   async (req) => {
     // Get current project from store
     const { currentProject } = useProjectStore.getState();
 
-    // Determine base URL to use
-    // If this is a Hub operation (registration, browsing public projects),
-    // we need to explicitly use Hub URL. For now, we check if there's a special flag
-    // or we can assume all requests go to instance_url if currentProject exists
     let baseURL;
+    let targetOrigin = null;
 
-    if (req.useHub) {
-      // Use Hub URL for public operations (registration, browsing projects)
-      baseURL = config.AFYADATA_HUB_URL;
-      console.log('Using Hub URL:', baseURL);
-    } else if (currentProject?.instance_url) {
-      // Use project instance URL for authenticated operations
-      baseURL = currentProject.instance_url;
-      console.log('Using Instance URL:', baseURL);
+    // Check if request URL is absolute
+    if (req.url && isAbsoluteUrl(req.url)) {
+      // For absolute URLs, no baseURL needed
+      baseURL = '';
+      targetOrigin = getOriginFromUrl(req.url);
+      //console.log('Using absolute URL (no baseURL):', req.url);
     } else {
-      // Fallback to Hub URL if no project selected
-      baseURL = config.AFYADATA_HUB_URL;
-      console.log('Using default Hub URL:', baseURL);
+      // Determine base URL to use for relative paths
+      if (req.useHub) {
+        // Use Hub URL for public operations (registration, browsing projects)
+        baseURL = config.AFYADATA_HUB_URL;
+        targetOrigin = getOriginFromUrl(baseURL);
+        //console.log('Using Hub URL:', baseURL);
+      } else if (currentProject?.instance_url) {
+        // Use project instance URL for authenticated operations
+        baseURL = currentProject.instance_url;
+        targetOrigin = getOriginFromUrl(baseURL);
+        ////console.log('Using Instance URL:', baseURL);
+      } else {
+        // Fallback to Hub URL if no project selected
+        baseURL = config.AFYADATA_HUB_URL;
+        targetOrigin = getOriginFromUrl(baseURL);
+        //console.log('Using default Hub URL:', baseURL);
+      }
     }
 
     // Set the baseURL
@@ -38,24 +61,24 @@ api.interceptors.request.use(
     // Skip auth for Hub requests that are public
     const isPublicHubRequest = req.useHub;
 
-    if (!isPublicHubRequest && currentProject?.instance_url) {
+    if (!isPublicHubRequest && targetOrigin) {
       try {
-        // Get token for this specific instance
-        const instanceOrigin = new URL(currentProject.instance_url).origin;
-        const token = useAuthStore.getState().getTokenForUrl(instanceOrigin);
+        // Get token for this specific origin
+        const token = useAuthStore.getState().getTokenForUrl(targetOrigin);
 
         if (token) {
           req.headers.Authorization = `Bearer ${token}`;
-          console.log('Added auth token for instance:', instanceOrigin);
+          //console.log('Added auth token for origin:', targetOrigin);
         } else {
-          console.log('No token found for instance:', instanceOrigin);
+          //console.log('No token found for origin:', targetOrigin);
         }
       } catch (e) {
-        console.warn('Could not get token for instance:', e);
+        console.warn('Could not get token for origin:', e);
       }
     }
 
-    console.log(`Request: ${req.method?.toUpperCase()} ${baseURL}${req.url}`);
+    const finalUrl = baseURL ? `${baseURL}${req.url}` : req.url;
+    //console.log(`Request: ${req.method?.toUpperCase()} ${finalUrl}`);
 
     return req;
   },
@@ -73,21 +96,22 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
+    // Determine the target origin from the request
+    let targetOrigin = null;
+    if (originalRequest.url && isAbsoluteUrl(originalRequest.url)) {
+      targetOrigin = getOriginFromUrl(originalRequest.url);
+    } else if (originalRequest.baseURL) {
+      targetOrigin = getOriginFromUrl(originalRequest.baseURL);
+    }
+
     // Don't retry Hub requests
-    if (originalRequest.baseURL === config.AFYADATA_HUB_URL) {
+    if (targetOrigin === getOriginFromUrl(config.AFYADATA_HUB_URL)) {
       return Promise.reject(error);
     }
 
     originalRequest._retry = true;
 
     try {
-      // Get the instance URL that failed
-      const { currentProject } = useProjectStore.getState();
-      if (!currentProject?.instance_url) {
-        throw new Error('No current project instance URL');
-      }
-
-      const instanceOrigin = new URL(currentProject.instance_url).origin;
       const { user, setInstanceSession } = useAuthStore.getState();
 
       // Check if we have credentials for auto-login
@@ -95,18 +119,18 @@ api.interceptors.response.use(
         throw new Error('No global credentials found for auto-login');
       }
 
-      console.log(`Attempting auto-login for instance: ${instanceOrigin}`);
+      console.log(`Attempting auto-login for origin: ${targetOrigin}`);
 
       // Call token endpoint on the specific instance
-      const loginResponse = await axios.post(`${instanceOrigin}/api/v1/token/`, {
+      const loginResponse = await axios.post(`${targetOrigin}/api/v1/token/`, {
         username: user.globalUsername,
         password: user.password,
       });
 
       const { access } = loginResponse.data;
 
-      // Update store with new token
-      setInstanceSession(instanceOrigin, access, user.globalUsername);
+      // Update store with new token for this origin
+      setInstanceSession(targetOrigin, access, user.globalUsername);
 
       // Retry original request with new token
       originalRequest.headers.Authorization = `Bearer ${access}`;
@@ -114,11 +138,9 @@ api.interceptors.response.use(
 
     } catch (authError) {
       console.error('Auto-login failed:', authError);
-      // Clear token for this instance
-      const { currentProject } = useProjectStore.getState();
-      if (currentProject?.instance_url) {
-        const instanceOrigin = new URL(currentProject.instance_url).origin;
-        useAuthStore.getState().clearInstanceToken(instanceOrigin);
+      // Clear token for this origin
+      if (targetOrigin) {
+        useAuthStore.getState().clearInstanceToken(targetOrigin);
       }
       return Promise.reject(authError);
     }
@@ -140,6 +162,26 @@ export const isUsingInstance = () => {
 export const getCurrentBaseURL = () => {
   const { currentProject } = useProjectStore.getState();
   return currentProject?.instance_url || config.AFYADATA_HUB_URL;
+};
+
+// Helper to make requests with absolute URLs
+export const absoluteRequest = async (absoluteUrl, options = {}) => {
+  const { method = 'GET', data, headers = {} } = options;
+
+  const targetOrigin = getOriginFromUrl(absoluteUrl);
+  const token = useAuthStore.getState().getTokenForUrl(targetOrigin);
+
+  const config = {
+    method,
+    url: absoluteUrl,
+    data,
+    headers: {
+      ...headers,
+      ...(token && { Authorization: `Bearer ${token}` })
+    }
+  };
+
+  return api(config);
 };
 
 export default api;

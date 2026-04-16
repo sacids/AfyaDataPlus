@@ -651,7 +651,7 @@ export const insert = async (tableName, data) => {
 
         const sql = `INSERT OR REPLACE INTO ${tableName} (${filteredKeys.join(', ')}) VALUES (${placeholders});`;
         //console.log('sql')
-        console.log('Inserting sql:', sql, values);
+        //console.log('Inserting sql:', sql, values);
         const result = await db.runAsync(sql, values);
         return result;
     } catch (error) {
@@ -751,7 +751,7 @@ export const dropTables = async () => {
         // Re-enable foreign keys
         await db.execAsync('PRAGMA foreign_keys = ON;');
 
-        console.log('All tables and triggers dropped');
+        //console.log('All tables and triggers dropped');
     } catch (e) {
         console.error('Failed to drop tables:', e);
         throw e;

@@ -24,7 +24,7 @@ const ProjectDetailView = ({ project }) => {
 
   const { user } = useAuthStore()
 
-  console.log('currentproject', JSON.stringify(currentProject, null, 8))
+  //console.log('currentproject', JSON.stringify(currentProject, null, 8))
 
   const [showFullDescription, setShowFullDescription] = useState(false);
   const description = currentProject?.description || "";

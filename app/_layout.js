@@ -103,11 +103,11 @@ export default function RootLayout() {
 
       // Validate the local "Passport" (Identity)
       const hasProfile = user && user.globalUsername && user.deviceId;
-      console.log('hasprofile', hasProfile)
+      //console.log('hasprofile', hasProfile)
 
       // Check for onboarding completion flag
       const hasCompletedOnboarding = await SecureStore.getItemAsync('onboarding_completed');
-      console.log('hasCompletedOnboarding', hasCompletedOnboarding)
+      //console.log('hasCompletedOnboarding', hasCompletedOnboarding)
 
       if (!hasCompletedOnboarding) {
         // Scenario: Fresh install or total reset -> Onboarding
