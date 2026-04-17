@@ -2,7 +2,7 @@
   "expo": {
     "name": "AfyaDataPlus",
     "slug": "AfyaDataPlus",
-    "version": "3.1.0",
+    "version": "3.2.1",
     "orientation": "portrait",
     "icon": "./assets/images/AfyaDataLogoIcon.png",
     "scheme": "afyadataplus",
