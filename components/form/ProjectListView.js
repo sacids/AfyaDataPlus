@@ -4,10 +4,12 @@ import { CameraView, useCameraPermissions } from 'expo-camera'; // Updated for l
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import api, { hubApi } from '../../api/axiosInstance';
+import { config } from '../../constants/config';
 import { getStyles } from '../../constants/styles';
 import { useTheme } from '../../context/ThemeContext';
+import { xorDecrypt } from '../../lib/form/utils';
 import { useAuthStore } from '../../store/authStore';
 import useProjectStore from '../../store/projectStore';
 import { insert, select } from '../../utils/database';
@@ -109,10 +111,31 @@ const ProjectListView = () => {
 
     try {
       if (data) {
-        setSearchCode(data);
-        //console.log('Processing scan for:', data);
+        //setSearchCode(data);
 
-        const response = await joinProject(data);
+
+        const { user } = useAuthStore.getState();
+        //console.log('Processing scan for:', data);
+        const [prefix, encoded] = data.split(':');
+        const key = (prefix === 'G') ? config.AFYADATA_GLOBAL_KEY : user.globalUsername;
+
+        // 1. Decrypt the XOR string
+        const decryptedJson = xorDecrypt(encoded, key);
+
+        const qr_data = JSON.parse(decryptedJson);
+
+        // 3. Check Expiry
+        if (qr_data.exp && new Date(qr_data.exp) < new Date()) {
+          alert("This project invitation has expired.");
+          return;
+        }
+
+        // console.log("Success! QR ID:", qr_data.id);
+        // console.log("URL to call:", qr_data.url);
+
+        const url = qr_data.url + '?qr_id=' + qr_data.id
+
+        const response = await joinProject(url);
         const project_to_save = response.project;
 
         if (project_to_save) {
@@ -250,24 +273,6 @@ const ProjectListView = () => {
       <View style={{ flex: 1 }}>
         {viewMode === 'search' ? (
           <View style={localStyles.searchContainer}>
-            {/* 1. TextInput */}
-            <View style={localStyles.inputWrapper(theme)}>
-              <TextInput
-                style={[localStyles.input, { color: theme.colors.text }]}
-                placeholder={t('projects:enterCode')}
-                placeholderTextColor={theme.colors.hint}
-                value={searchCode}
-                onChangeText={setSearchCode}
-                autoCapitalize="characters"
-              />
-              {searchCode.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchCode('')} style={{ padding: 10 }}>
-                  <MaterialIcons name="close" size={20} color={theme.colors.hint} />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <Text style={[styles.secTextInput, { textAlign: 'center', marginBottom: 18 }]} >OR</Text>
 
             {/* 2. CameraView - Occupying remaining space */}
             <View style={localStyles.cameraContainer(theme)}>
