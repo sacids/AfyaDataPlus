@@ -86,7 +86,7 @@ const OnboardingScreen = () => {
     return (
       <View style={themedStyles.container}>
         <Image source={logo} style={{ width: 120, height: 120, alignSelf: 'center', marginTop: 60, marginBottom: 30, resizeMode: 'contain' }} />
-        <Text style={themedStyles.title}>{t('common:selectLanguage') || "Select Language"}</Text>
+        <Text style={themedStyles.title}>{t('settings:selectLanguage') || "Select Language"}</Text>
         <Text style={[themedStyles.subtitle, { marginBottom: 30 }]}>Please choose your preferred language to proceed.</Text>
 
         <FlatList
