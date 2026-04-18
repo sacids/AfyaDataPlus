@@ -151,8 +151,8 @@ const SavePage = () => {
                 parent_uuid: parentUUID,
                 original_uuid: formUUID,
                 title: title || t('savePage:untitledRecord'),
-                created_by: user?.id,
-                created_by_name: user?.fullName ?? user?.id,
+                created_by: user?.globalUsername,
+                created_by_name: user?.fullName ?? user?.globalUsername,
                 created_on: new Date().toISOString(),
                 status: status,
                 status_date: new Date().toISOString(),
@@ -161,6 +161,8 @@ const SavePage = () => {
                 form_data: JSON.stringify(main_formData),
                 gps: finalGps ? JSON.stringify(finalGps) : null,
             });
+
+
 
             if (status === 'finalized') {
                 // Fetch rules for this specific ODK form_id

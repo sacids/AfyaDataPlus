@@ -55,9 +55,9 @@ export default function FormDataList() {
     try {
       let results = []
       if (currentData) {
-        results = await getFormData(user?.id, currentProject?.project, currentData.original_uuid);
+        results = await getFormData(user?.globalUsername, currentProject?.project, currentData.original_uuid);
       } else {
-        results = await getFormData(user?.id, currentProject?.project, false);
+        results = await getFormData(user?.globalUsername, currentProject?.project, false);
       }
 
       setData(results);

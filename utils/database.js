@@ -62,7 +62,7 @@ let FORM_DATA_SQL = `CREATE TABLE IF NOT EXISTS form_data (
   deleted INTEGER DEFAULT 0, 
   archived INTEGER DEFAULT 0, 
   form_data TEXT NOT NULL, 
-  created_by INTEGER NOT NULL,
+  created_by TEXT NOT NULL,
   created_by_name TEXT NOT NULL,  
   created_on TEXT DEFAULT CURRENT_TIMESTAMP,
   status TEXT NOT NULL CHECK(status IN ('sent', 'draft', 'finalized')),
