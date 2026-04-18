@@ -288,14 +288,6 @@ const ProjectListView = () => {
               </CameraView>
             </View>
 
-            {/* 3. Search Button */}
-            <TouchableOpacity
-              style={[styles.button, styles.inputBase, localStyles.searchSubmitBtn,]}
-              onPress={() => handleSearchByCode()}
-            >
-              <MaterialIcons name="search" size={20} color="white" />
-              <Text style={styles.buttonText}>{t('projects:searchProject')}</Text>
-            </TouchableOpacity>
           </View>
         ) : (
           /* FlatList for Local and Public Browse */
