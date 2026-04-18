@@ -281,14 +281,14 @@ export const sendMessageToServer = async (conversationId, messageData) => {
             text: messageData.text,
             external_id: messageData.local_id,
         });
-        
+
         // Update local status to synced and save the remote_id
-        await update('messages', 
-            { sync_status: 'synced', remote_id: response.data.id }, 
-            'local_id = ?', 
+        await update('messages',
+            { sync_status: 'synced', remote_id: response.data.id },
+            'local_id = ?',
             [messageData.local_id]
         );
-        
+
         return response.data;
     } catch (error) {
         console.error("Failed to send message to server:", error);
@@ -304,7 +304,7 @@ export const syncMessages = async (formData, participants = []) => {
     try {
         const convResponse = await api.post('api/v1/chat/conversations', {
             title: formData.title || `Chat for ${formData.uuid}`,
-            form: formData.form, 
+            form: formData.form,
             instance: formData.original_uuid,
             participants: participants
         });
@@ -313,9 +313,9 @@ export const syncMessages = async (formData, participants = []) => {
         const convId = conversation.id;
 
         // 1. Update all local messages that belong to this form but lack a conversation_id
-        await update('messages', 
-            { conversation_id: convId }, 
-            'formDataUUID = ? AND (conversation_id IS NULL OR conversation_id = "")', 
+        await update('messages',
+            { conversation_id: convId },
+            'formDataUUID = ? AND (conversation_id IS NULL OR conversation_id = "")',
             [formData.original_uuid]
         );
 
@@ -337,8 +337,8 @@ export const syncMessages = async (formData, participants = []) => {
         }
 
         // 3. Automatically push any messages that are still 'pending' for this conversation
-        const pendingMessages = await select('messages', 
-            'conversation_id = ? AND sync_status = ?', 
+        const pendingMessages = await select('messages',
+            'conversation_id = ? AND sync_status = ?',
             [convId, 'pending']
         );
 
@@ -473,7 +473,7 @@ export const submitSingleForm = async (formItem) => {
         return { success: false, error: error.message };
     }
 
-    console.log('Submission result for form:', formItem.form, result);
+    //console.log('Submission result for form:', formItem.form, result);
 
     // Handle null result or network errors
     if (!result) {
@@ -544,7 +544,7 @@ const processSingleImage = async (fileItem, formData) => {
             name: `${fieldName}_${Date.now()}.jpg`
         });
 
-        console.log(`Successfully processed image: ${fileName}`);
+        //console.log(`Successfully processed image: ${fileName}`);
     } catch (resizeError) {
         console.error(`Error compressing image ${fileName}:`, resizeError);
 
@@ -564,7 +564,7 @@ const processSingleImage = async (fileItem, formData) => {
                 name: `${fieldName}_${Date.now()}.jpg`
             });
 
-            console.log(`Successfully processed image with fallback: ${fileName}`);
+            //console.log(`Successfully processed image with fallback: ${fileName}`);
         } catch (fallbackError) {
             console.error(`Fallback also failed for ${fileName}:`, fallbackError);
 
