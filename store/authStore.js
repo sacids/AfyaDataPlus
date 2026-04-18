@@ -2,8 +2,6 @@
 import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import { config } from '../constants/config';
-
 
 const secureStorage = {
     getItem: async (key) => {
@@ -22,14 +20,14 @@ const useAuthStore = create(
     persist(
         (set, get) => ({
             user: null,
-            isLoading: true,
-            setUser: async (user) => {
+            isLoading: true, // Start as true
+
+            setUser: (user) => {
                 set({ user, isLoading: false });
             },
 
-            instances: {}, // { "https://server-a.com": { token: '...', username: '...' } }
+            instances: {},
 
-            // New method to add/update an instance session
             setInstanceSession: (url, token, username) => set((state) => ({
                 instances: {
                     ...state.instances,
@@ -42,33 +40,42 @@ const useAuthStore = create(
                 return state.instances[url]?.token || null;
             },
 
-
             logout: async () => {
-                await SecureStore.deleteItemAsync('auth-storage'); // The Zustand persistence key
+                await SecureStore.deleteItemAsync('auth-storage');
                 await SecureStore.deleteItemAsync('saved_username');
                 await SecureStore.deleteItemAsync('saved_password');
                 set({ user: null, instances: {}, isLoading: false });
             },
-            checkSession: async () => {
-                // Don't set loading state here to avoid re-renders
-                try {
-                    const tokenData = await SecureStore.getItemAsync(config.TOKEN_KEY);
-                    if (tokenData) {
-                        const { user } = JSON.parse(tokenData);
-                        set({ user });
-                    }
-                } catch (error) {
-                    console.error('Session check error:', error);
-                }
-            },
 
+            finishLoading: () => {
+                set({ isLoading: false });
+            },
         }),
         {
             name: 'auth-storage',
             storage: createJSONStorage(() => secureStorage),
+            // This runs after rehydration is complete
+            onRehydrateStorage: () => (state) => {
+                // State has been restored from storage
+                if (state) {
+                    // You can do any post-rehydration logic here
+                    console.log('Auth state rehydrated');
+                }
+                // Return a function to run after rehydration
+                return (state, error) => {
+                    if (error) {
+                        console.error('Rehydration error:', error);
+                    }
+                    // Mark loading as complete after rehydration
+                    if (state) {
+                        setTimeout(() => {
+                            state.finishLoading();
+                        }, 0);
+                    }
+                };
+            },
         }
     )
 );
-
 
 export { useAuthStore };

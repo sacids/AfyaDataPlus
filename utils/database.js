@@ -2,7 +2,7 @@ import * as SQLite from 'expo-sqlite';
 
 // Open database connection
 export const openDatabase = () => {
-    return SQLite.openDatabaseSync('afyadataplus-v2.db');
+    return SQLite.openDatabaseSync('afyadataplus-v3.db');
 };
 
 const db = openDatabase();

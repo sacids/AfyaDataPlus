@@ -1,4 +1,4 @@
-// app/_layout.js
+// app/_layout.js - Updated with production logging
 import * as Sentry from '@sentry/react-native';
 import { Slot, useRouter, useSegments } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
@@ -12,24 +12,19 @@ import { ThemeProvider, useTheme } from '../context/ThemeContext';
 import LanguageManager from '../i18n/languageManager';
 import { useAuthStore } from '../store/authStore';
 import { createTables } from '../utils/database';
+import i18n from '../i18n/index';
 
 
-
-
-// Sentry Initialization
 Sentry.init({
   dsn: 'https://353d41653058700282e0748a68a61793@o4511093529575424.ingest.de.sentry.io/4511093544714320',
   sendDefaultPii: true,
   enableLogs: true,
 });
 
-
 const ThemedStatusBar = () => {
   const { isDark } = useTheme();
   return (
     <StatusBar
-      translucent
-      backgroundColor="transparent"
       style={isDark ? 'light' : 'dark'}
     />
   );
@@ -38,6 +33,9 @@ const ThemedStatusBar = () => {
 const SplashScreen = () => {
   const theme = useTheme();
   const { colors } = theme;
+  const { isLoading } = useAuthStore();
+
+
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
       <ActivityIndicator size="large" color={colors.primary} />
@@ -51,89 +49,97 @@ const SplashScreen = () => {
       <Text style={{ fontSize: 16, color: colors.secText, textAlign: 'center', paddingHorizontal: 20, marginTop: 10 }}>
         Taarifa kwa Wakati
       </Text>
+      {/* Debug info - remove after fixing */}
+      <View style={{ marginTop: 50, padding: 10, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 5 }}>
+        <Text style={{ fontSize: 12, color: colors.secText }}>
+          Status: {isLoading ? 'Loading...' : 'Ready'}
+        </Text>
+      </View>
     </View>
   );
 };
 
-
 export default function RootLayout() {
   const [isReady, setIsReady] = useState(false);
-  const [i18nInstance, setI18nInstance] = useState(null);
+  const [initError, setInitError] = useState(null);
 
   const router = useRouter();
   const segments = useSegments();
 
-  // Auth Store: Hydrates the 'user' (Passport) from SecureStore
-  const { user, isLoading, checkSession } = useAuthStore();
+  const { user, isLoading, setLoadingComplete } = useAuthStore();
 
-  // 1. System initialization (DB, i18n, and Auth State)
+
+  // 1. System initialization
   useEffect(() => {
+
     const prepare = async () => {
       try {
-        // Initialize SQLite
         await createTables();
-
-
-        // Initialize language directories
         await LanguageManager.initializeDirectories();
+        setTimeout(() => {
+          useAuthStore.getState().finishLoading();
+        }, 100);
 
-        // Load i18n
-        const { default: i18n } = await import('../i18n/index');
-        setI18nInstance(i18n);
-
-        // Hydrate the store from persistence
-        // await checkSession();
       } catch (e) {
-        console.warn("Initialization error", e);
+        console.error('Init error details:', e);
+        setInitError(e);
       } finally {
         setIsReady(true);
       }
     };
+
     prepare();
+
+    // Safety timeout
+    const timeout = setTimeout(() => {
+      if (!isReady) {
+        console.log('WARNING: Initialization taking too long, forcing ready');
+        setIsReady(true);
+      }
+    }, 5000);
+
+    return () => clearTimeout(timeout);
   }, []);
 
-  // 2. Navigation Guard Logic
+  // 2. Navigation Guard Logic with detailed logging
   useEffect(() => {
-    // Prevent navigation if the system isn't ready or still hydrating
-    if (!isReady || isLoading || !i18nInstance) return;
+
+    if (!isReady || isLoading) {
+      return;
+    }
 
     const performNavigation = async () => {
-      const inAppGroup = segments[0] === '(app)';
-      const inAuthGroup = segments[0] === '(auth)';
+      try {
 
-      // Validate the local "Passport" (Identity)
-      const hasProfile = user && user.globalUsername && user.deviceId;
-      //console.log('hasprofile', hasProfile)
+        const hasCompletedOnboarding = await SecureStore.getItemAsync('onboarding_completed');
 
-      // Check for onboarding completion flag
-      const hasCompletedOnboarding = await SecureStore.getItemAsync('onboarding_completed');
-      //console.log('hasCompletedOnboarding', hasCompletedOnboarding)
+        const hasProfile = user && user.globalUsername && user.deviceId;
 
-      if (!hasCompletedOnboarding) {
-        // Scenario: Fresh install or total reset -> Onboarding
-        if (segments.length > 0 && segments[0] !== '') {
-          router.replace('/');
+        if (!hasCompletedOnboarding) {
+          if (segments[0] !== '' && segments[0] !== 'onboarding') {
+            router.replace('/');
+          } 
         }
-      }
-      else if (!hasProfile) {
-        // Scenario: Onboarded but no identity -> Register/Profile creation
-        if (!inAuthGroup) {
-          router.replace('/(auth)/register');
+        else if (!hasProfile) {
+          if (segments[0] !== '(auth)') {
+            router.replace('/(auth)/register');
+          } 
         }
-      }
-      else {
-        // Scenario: Identity exists -> Main App
-        if (!inAppGroup) {
-          router.replace('/(app)/Main');
+        else {
+          if (segments[0] !== '(app)') {
+            router.replace('/(app)/Main');
+          } 
         }
+      } catch (error) {
+        console.error('Navigation error details:', error);
       }
     };
 
     performNavigation();
   }, [isReady, isLoading, user, segments]);
 
-  // Show custom splash until resources are ready
-  if (!isReady || isLoading || !i18nInstance) {
+  // Show splash until ready
+  if (!isReady || isLoading) {
     return (
       <ThemeProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
@@ -145,7 +151,7 @@ export default function RootLayout() {
   }
 
   return (
-    <I18nextProvider i18n={i18nInstance}>
+    <I18nextProvider i18n={i18n}>
       <ThemeProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <ThemedStatusBar />

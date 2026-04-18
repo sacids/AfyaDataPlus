@@ -80,7 +80,11 @@
     "fillAllFields": "すべての項目を入力してください",
     "invalidCredentials": "電話番号またはパスワードが正しくありません",
     "registrationFailed": "登録に失敗しました。もう一度お試しください。",
-    "logoutConfirm": "ログアウトしてもよろしいですか？"
+    "logoutConfirm": "ログアウトしてもよろしいですか？",
+    "nameError": "Use letters and spaces only.",
+    "phoneError": "Minimum 10 digits required.",
+    "passError": "Minimum 6 characters required.",
+    "matchError": "Passwords do not match."
   },
   
   "disease": {

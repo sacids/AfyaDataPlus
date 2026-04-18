@@ -83,7 +83,11 @@
     "fillAllFields": "Please fill in all fields",
     "invalidCredentials": "Invalid phone number or password",
     "registrationFailed": "Registration failed. Please try again.",
-    "logoutConfirm": "Are you sure you want to sign out?"
+    "logoutConfirm": "Are you sure you want to sign out?",
+    "nameError": "Use letters and spaces only.",
+    "phoneError": "Minimum 10 digits required.",
+    "passError": "Minimum 6 characters required.",
+    "matchError": "Passwords do not match."
   },
   
   "disease": {
@@ -252,6 +256,9 @@
     "minValue": "Minimum value is {{min}}",
     "maxValue": "Maximum value is {{max}}"
   },
+
+
+
   
   "errors": {
     "network": "Network error. Please check your connection.",

@@ -80,7 +80,11 @@
     "fillAllFields": "Veuillez remplir tous les champs",
     "invalidCredentials": "Numéro de téléphone ou mot de passe invalide",
     "registrationFailed": "L'inscription a échoué. Veuillez réessayer.",
-    "logoutConfirm": "Êtes-vous sûr de vouloir vous déconnecter ?"
+    "logoutConfirm": "Êtes-vous sûr de vouloir vous déconnecter ?",
+    "nameError": "Use letters and spaces only.",
+    "phoneError": "Minimum 10 digits required.",
+    "passError": "Minimum 6 characters required.",
+    "matchError": "Passwords do not match."
   },
   
   "disease": {
