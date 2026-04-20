@@ -20,6 +20,7 @@ let PROJECT_SQL = `CREATE TABLE IF NOT EXISTS projects (
     tags TEXT,
     icon TEXT,
     instance_url TEXT,
+    instance_name TEXT,
     title TEXT NOT NULL,
     code TEXT NOT NULL,
     description TEXT NULL, 

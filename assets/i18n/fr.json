@@ -83,7 +83,7 @@
     "logoutConfirm": "Êtes-vous sûr de vouloir vous déconnecter ?",
     "nameError": "Use letters and spaces only.",
     "phoneError": "Minimum 10 digits required.",
-    "passError": "Minimum 6 characters required.",
+    "passError": "Le mot de passe doit contenir au moins 8 caractères et ne peut pas être un mot de passe courant ou composé uniquement de chiffres.",
     "matchError": "Passwords do not match."
   },
   

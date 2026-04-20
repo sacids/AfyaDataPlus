@@ -9,5 +9,5 @@ export const getGlobalUsername = (chosenName) => {
   // Format: chosenname_deviceid (cleaned for URL safety)
   const deviceId = Device.osBuildId || Device.modelId || 'unknown';
   const cleanName = chosenName.toLowerCase().replace(/[^a-z0-9]/g, '');
-  return `${cleanName}_${deviceId.substring(0, 8)}`;
+  return `${cleanName}_${deviceId.substring(0, 20)}`;
 };

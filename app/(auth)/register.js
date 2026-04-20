@@ -1,6 +1,6 @@
 import * as Device from 'expo-device';
 import { router } from 'expo-router';
-import { useEffect, useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
@@ -36,16 +36,33 @@ const RegisterScreen = () => {
   const { setUser } = useAuthStore();
   const theme = useTheme();
 
+  const COMMON_PASSWORDS = ['password', '12345678', 'qwerty', '123456789', 'welcome', 'admin123'];
+
+
+
+
+  const isTooCommon = (pass) => {
+    const lower = pass.toLowerCase();
+    // Check against forbidden list
+    if (COMMON_PASSWORDS.includes(lower)) return true;
+    // Django's NumericPasswordValidator (rejects passwords that are purely digits)
+    if (/^\d+$/.test(pass)) return true;
+    // Check for simple repetitive characters (e.g., "aaaaaaa")
+    if (/^(.)\1+$/.test(lower)) return true;
+    return false;
+  };
+
   // Validation Logic
   const isValidFullName = (name) => /^[A-Za-z\s]+$/.test(name.trim()) && name.trim().length > 0;
   const isValidPhone = phoneNumber.trim().length >= 10;
-  const isValidPassword = password.length >= 6;
+  const isValidPassword = password.length >= 8 && !isTooCommon(password);
   const passwordsMatch = password === confirmPassword && password.length > 0;
 
-  const isFormValid = useMemo(() => 
+  const isFormValid = useMemo(() =>
     isValidFullName(fullName) && isValidPhone && isValidPassword && passwordsMatch,
     [fullName, phoneNumber, password, confirmPassword]
   );
+
 
   const handleRegister = async () => {
     setLoading(true);
@@ -58,7 +75,7 @@ const RegisterScreen = () => {
       const userProfile = {
         fullName: fullName.trim(),
         phoneNumber: phoneNumber.trim(),
-        password, 
+        password,
         globalUsername,
         deviceId: Device.osBuildId || 'unknown_device',
         registeredLocally: true,
@@ -74,12 +91,12 @@ const RegisterScreen = () => {
   };
 
   const styles = StyleSheet.create({
-    container: { 
-      flexGrow: 1, 
-      backgroundColor: theme.colors.background, 
-      padding: 20, 
-      justifyContent: 'center', 
-      alignItems: 'center' 
+    container: {
+      flexGrow: 1,
+      backgroundColor: theme.colors.background,
+      padding: 20,
+      justifyContent: 'center',
+      alignItems: 'center'
     },
     input: {
       backgroundColor: theme.colors.inputBackground,
@@ -129,7 +146,7 @@ const RegisterScreen = () => {
           {fullName.length > 0 && !isValidFullName(fullName) && (
             <Text style={styles.helperText}>{t('auth:nameError')}</Text>
           )}
-          
+
           <TextInput
             style={styles.input}
             placeholder={t('auth:phonePlaceholder')}
@@ -168,9 +185,9 @@ const RegisterScreen = () => {
 
           {submissionError ? <Text style={styles.errorText}>{submissionError}</Text> : null}
 
-          <TouchableOpacity 
-            style={styles.button} 
-            onPress={handleRegister} 
+          <TouchableOpacity
+            style={styles.button}
+            onPress={handleRegister}
             disabled={!isFormValid || loading}
           >
             {loading ? (

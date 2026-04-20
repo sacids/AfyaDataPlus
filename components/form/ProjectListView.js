@@ -162,14 +162,12 @@ const ProjectListView = () => {
 
 
 
-  const joinProject = async (url) => {
+  const joinProject1 = async (url) => {
 
     const instance_url = new URL(url).origin
     const authStore = useAuthStore.getState();
 
     let session = authStore.instances[instance_url];
-
-    //console.log('instance url', instance_url)
 
     if (!session) {
 
@@ -221,7 +219,7 @@ const ProjectListView = () => {
 
   }
 
-  const handleProjectPress = async (project) => {
+  const handleProjectPress1 = async (project) => {
     if (isNavigating.current) return
     try {
       if (viewMode === 'local') {
@@ -239,7 +237,7 @@ const ProjectListView = () => {
 
         if (project_to_save) {
           setCurrentData(null)
-          setCurrentProject(project_to_save[0])
+          setCurrentProject(project_to_save)
           isNavigating.current = true
           router.replace('/(app)/Main/')
         } else {
@@ -253,6 +251,243 @@ const ProjectListView = () => {
       setTimeout(() => { isNavigating.current = false }, 1000)
     }
   }
+
+
+
+
+
+
+  const joinProject2 = async (url) => {
+    const instance_url = new URL(url).origin;
+    const authStore = useAuthStore.getState();
+
+    let session = authStore.instances[instance_url];
+
+    if (!session) {
+      // 1. Auto-register on new instance
+      try {
+        const payload = {
+          username: authStore.user.globalUsername,
+          fullName: authStore.user.fullName,
+          phoneNumber: authStore.user.phoneNumber,
+          device_id: authStore.user.deviceId,
+          password: authStore.user.password,
+          passwordConfirm: authStore.user.password
+        }
+
+        console.log('register url:', `${instance_url}/api/v1/register`, payload)
+        const regResponse = await axios.post(`${instance_url}/api/v1/register`, payload);
+        console.log('Registration response:', JSON.stringify(regResponse.data, null, 4));
+
+        // Save session for this instance
+        authStore.setInstanceSession(instance_url, regResponse.data.access, authStore.user.globalUsername);
+      } catch (err) {
+        console.error("Failed to auto-register on new instance", err);
+        return { message: "Failed to register on instance", project: false };
+      }
+    }
+
+    // JOIN: Request access to the project (works for both existing and new sessions)
+    try {
+      const response = await api.post(`${url}`);
+      const project_to_save = response.data.project;
+
+      if (!response.data.error && project_to_save) {
+        const projectToSave = {
+          ...project_to_save,
+          project: project_to_save.id,
+          instance_url: instance_url,
+          tags: typeof project_to_save.tags === 'string' ? project_to_save.tags : JSON.stringify(project_to_save.tags || [])
+        };
+
+        await insert('projects', projectToSave);
+        const localProjects = await select('projects', 'project = ?', [project_to_save.id]);
+
+        return {
+          message: response?.data?.message,
+          project: localProjects && localProjects.length > 0 ? localProjects[0] : null
+        };
+      } else {
+        return { message: response?.data?.message || "Failed to join project", project: false };
+      }
+    } catch (err) {
+      console.error("Join project error:", err);
+      return { message: "Failed to join project", project: false };
+    }
+  };
+
+
+  const joinProject = async (url) => {
+    const instance_url = new URL(url).origin;
+    const authStore = useAuthStore.getState();
+
+    try {
+      let session = authStore.instances[instance_url];
+
+      if (!session) {
+        try {
+          const payload = {
+            username: authStore.user.globalUsername,
+            fullName: authStore.user.fullName,
+            phoneNumber: authStore.user.phoneNumber,
+            device_id: authStore.user.deviceId,
+            password: authStore.user.password,
+            passwordConfirm: authStore.user.password
+          };
+
+          console.log('register url:', `${instance_url}/api/v1/register`, payload);
+
+          const regResponse = await axios.post(`${instance_url}/api/v1/register`, payload, {
+            timeout: 10000,
+            headers: {
+              'Content-Type': 'application/json',
+            }
+          });
+
+          // Registration successful (new user created)
+          authStore.setInstanceSession(instance_url, regResponse.data.access, authStore.user.globalUsername);
+
+        } catch (err) {
+          // Handle error response - even on 400, the server returns JSON with error details
+          console.error("Registration failed:", err.message);
+
+          // Check if we have a response with error data
+          if (err.response) {
+            const errorData = err.response.data;
+            const statusCode = err.response.status;
+
+            console.log("Error response data:", JSON.stringify(errorData, null, 2));
+            console.log("Status code:", statusCode);
+
+            // Check for username exists with wrong password scenario
+            if (errorData && errorData.error === true) {
+              // Check if it's the "username exists with different password" error
+              if (errorData.error_msg === "Username already exists with a different password." ||
+                (errorData.errors && errorData.errors.username &&
+                  errorData.errors.username[0].includes("different password"))) {
+
+                Alert.alert(
+                  'Incorrect Password',
+                  'An account exists with this username but the password is incorrect. Please check your credentials.',
+                  [{ text: 'OK' }]
+                );
+                return { message: errorData.error_msg, project: false, requiresPasswordCheck: true };
+              }
+
+              // Handle other validation errors
+              let errorMessage = errorData.error_msg || 'Registration failed';
+              if (errorData.errors) {
+                const firstError = Object.values(errorData.errors)[0];
+                if (firstError && firstError[0]) {
+                  errorMessage = firstError[0];
+                }
+              }
+
+              Alert.alert('Registration Error', errorMessage);
+              return { message: errorMessage, project: false };
+            }
+
+            // Handle 502 or other server errors
+            if (statusCode === 502) {
+              Alert.alert(
+                'Server Error',
+                `The server at ${instance_url} is currently unavailable. Please try again later.`
+              );
+            } else if (statusCode === 400) {
+              Alert.alert('Registration Error', errorData?.error_msg || 'Invalid registration data');
+            } else {
+              Alert.alert('Registration Error', `Server returned status ${statusCode}`);
+            }
+          } else if (err.code === 'ECONNABORTED') {
+            Alert.alert('Timeout', 'Server is taking too long to respond. Check your internet connection.');
+          } else {
+            Alert.alert('Network Error', 'Could not connect to the server. Please check your internet connection.');
+          }
+
+          return { message: "Failed to register on instance", project: false };
+        }
+      }
+
+      // JOIN: Request access to the project (works for both existing and new sessions)
+      try {
+        const response = await api.post(`${url}`);
+        const project_to_save = response.data.project;
+
+        if (!response.data.error && project_to_save) {
+          const projectToSave = {
+            ...project_to_save,
+            project: project_to_save.id,
+            instance_url: instance_url,
+            tags: typeof project_to_save.tags === 'string' ? project_to_save.tags : JSON.stringify(project_to_save.tags || [])
+          };
+
+          await insert('projects', projectToSave);
+          const localProjects = await select('projects', 'project = ?', [project_to_save.id]);
+
+          return {
+            message: response?.data?.message,
+            project: localProjects && localProjects.length > 0 ? localProjects[0] : null
+          };
+        } else {
+          return { message: response?.data?.message || "Failed to join project", project: false };
+        }
+      } catch (err) {
+        console.error("Join project error:", err);
+        if (err.response) {
+          Alert.alert('Join Error', err.response.data?.message || 'Failed to join project');
+        } else {
+          Alert.alert('Network Error', 'Could not connect to join the project');
+        }
+        return { message: "Failed to join project", project: false };
+      }
+
+    } catch (err) {
+      console.error("Join project outer error:", err);
+      return { message: "Failed to process request", project: false };
+    }
+  };
+
+  const handleProjectPress = async (project) => {
+    if (isNavigating.current) return;
+
+    try {
+      if (viewMode === 'local') {
+        isNavigating.current = true;
+        setCurrentData(null);
+        setCurrentProject(project);
+        router.replace('/(app)/Main/');
+      } else {
+        setLoading(true);
+
+        const { instance_url, remote_project_id } = project;
+        const join_url = `${instance_url}/api/v1/project/${remote_project_id}/join/`;
+        const response = await joinProject(join_url);
+        const project_to_save = response.project;
+
+        if (project_to_save) {
+          setCurrentData(null);
+          setCurrentProject(project_to_save[0]); // project_to_save is already a single object, not an array
+          isNavigating.current = true;
+          router.replace('/(app)/Main/');
+        } else {
+          Alert.alert(t('projects:joinFailed'), response.message || t('projects:joinFailedMessage'));
+        }
+      }
+    } catch (err) {
+      console.error("Project press error:", err);
+      Alert.alert(t('errors:errorTitle'), t('errors:unknown'));
+    } finally {
+      if (!isNavigating.current) setLoading(false);
+      setTimeout(() => { isNavigating.current = false }, 1000);
+    }
+  };
+
+
+
+
+
+
+
 
   const goToSettings = useMemo(() => [{ icon: 'settings', onPress: () => router.push('Project/Settings') }], [])
 
@@ -334,8 +569,8 @@ const ProjectCard = ({ item, onPress, theme, t, styles }) => (
         <Text style={[styles.pageTitle, { fontSize: 16 }]}>{item.title}</Text>
         <Text style={[styles.hint]} numberOfLines={2}>{item.description}</Text>
         <View style={localStyles.badgeRow}>
-          <View style={localStyles.codeBadge(theme)}><Text style={localStyles.codeText(theme)}>{item.code}</Text></View>
-          <Text style={[styles.tiny, { color: theme.colors.hint, marginLeft: 8 }]}>{item.category}</Text>
+          <View style={localStyles.codeBadge(theme)}><Text style={localStyles.codeText(theme)}>{item.instance_name}</Text></View>
+          <Text style={[styles.tiny, { color: theme.colors.hint, marginLeft: 8 }]}>{item.country}</Text>
         </View>
       </View>
 

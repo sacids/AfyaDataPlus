@@ -81,10 +81,10 @@
     "invalidCredentials": "Namba ya simu au nywila si sahihi",
     "registrationFailed": "Usajili umeshindikana. Tafadhali jaribu tena.",
     "logoutConfirm": "Je, una uhakika unataka kutoka?",
-    "nameError": "Use letters and spaces only.",
+    "nameError": "Tumia herufi na nafasi tu.",
     "phoneError": "Minimum 10 digits required.",
-    "passError": "Minimum 6 characters required.",
-    "matchError": "Passwords do not match."
+    "passError": "Nywila lazima iwe na angalau herufi 8 na isiwe nywila ya kawaida au nambari tupu",
+    "matchError": "Nywila hazifanani."
     },
   
   "disease": {

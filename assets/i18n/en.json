@@ -86,7 +86,7 @@
     "logoutConfirm": "Are you sure you want to sign out?",
     "nameError": "Use letters and spaces only.",
     "phoneError": "Minimum 10 digits required.",
-    "passError": "Minimum 6 characters required.",
+    "passError": "Password must be at least 8 characters and cannot be a common or entirely numeric password.",
     "matchError": "Passwords do not match."
   },
   

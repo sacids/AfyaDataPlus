@@ -81,10 +81,10 @@
     "invalidCredentials": "電話番号またはパスワードが正しくありません",
     "registrationFailed": "登録に失敗しました。もう一度お試しください。",
     "logoutConfirm": "ログアウトしてもよろしいですか？",
-    "nameError": "Use letters and spaces only.",
-    "phoneError": "Minimum 10 digits required.",
-    "passError": "Minimum 6 characters required.",
-    "matchError": "Passwords do not match."
+    "nameError": "氏名は文字とスペースのみを使用してください。",
+    "phoneError": "電話番号は最低10桁必要です。",
+    "passError": "パスワードは8文字以上である必要があります。また、一般的なものや数字のみのパスワードは使用できません。",
+    "matchError": "パスワードが一致しません。"
   },
   
   "disease": {
