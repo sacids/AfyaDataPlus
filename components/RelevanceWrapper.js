@@ -74,7 +74,11 @@ const RelevanceWrapper = ({ field }) => {
     }
   }, [field.name, dependencyValues]);
 
-  if (field.type === 'calculate') return null;
+  if (field.type === 'calculate') {
+    return null
+  };
+
+
   const Component = elementComponents[field.type];
   if (!Component) return null;
 

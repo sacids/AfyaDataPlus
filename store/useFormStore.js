@@ -2,7 +2,7 @@
 
 import * as Crypto from 'expo-crypto';
 import { create } from 'zustand';
-import { evaluateODKExpression, filterOptions } from '../lib/form/odkEngine';
+import { evaluateCalculation, evaluateODKExpression, filterOptions } from '../lib/form/odkEngine';
 
 export const useFormStore = create((set, get) => ({
     schema: null,
@@ -15,6 +15,7 @@ export const useFormStore = create((set, get) => ({
     _isUpdating: false,
     filteredOptionsCache: new Map(),
     _fieldDependencies: new Map(),
+    _calculateFields: [],
 
 
 
@@ -23,6 +24,8 @@ export const useFormStore = create((set, get) => ({
 
         // Pre-compute field dependencies
         const fieldDependencies = new Map();
+        const calculateFields = [];
+
         if (schema?.form_defn?.pages) {
             for (const page of schema.form_defn.pages) {
                 for (const fieldGroup of page.fields) {
@@ -39,6 +42,10 @@ export const useFormStore = create((set, get) => ({
                                 options: field.options || []
                             });
                         }
+                        const calcExpr = field.calculation || field.calculate;
+                        if (field.type === 'calculate' && calcExpr) {
+                            calculateFields.push({ ...field, formula: calcExpr });
+                        }
                     });
                 }
             }
@@ -54,6 +61,7 @@ export const useFormStore = create((set, get) => ({
             language: defaultLang,
             _fieldDependencies: fieldDependencies,
             filteredOptionsCache: new Map(),
+            _calculateFields: calculateFields,
         });
     },
 
@@ -81,6 +89,33 @@ export const useFormStore = create((set, get) => ({
             }
             set({ filteredOptionsCache: newCache });
         }
+    },
+
+    runCalculations: (currentData) => {
+        const { _calculateFields, isRelevant } = get();
+        if (!_calculateFields.length) return currentData;
+
+        let updatedData = { ...currentData };
+        let hasChanged = false;
+
+        // Run each calculation
+        _calculateFields.forEach(field => {
+            // Only calculate if the field/group is relevant
+            const relevant = isRelevant(field, updatedData);
+
+            let newValue = '';
+            if (relevant) {
+                newValue = evaluateCalculation(field.formula, updatedData);
+            }
+
+            // Only update state if the value actually changed
+            if (updatedData[field.name] !== newValue) {
+                updatedData[field.name] = newValue;
+                hasChanged = true;
+            }
+        });
+
+        return updatedData;
     },
 
     getFilteredOptions: (field) => {
@@ -140,39 +175,45 @@ export const useFormStore = create((set, get) => ({
             return;
         }
 
-        //console.log('updating field')
-        set({ formData: { ...state.formData, [name]: value } });
+        // 1. Apply primary update
+        const baseData = { ...state.formData, [name]: value };
 
+        // 2. Run dependent calculations
+        const finalData = get().runCalculations(baseData);
 
+        set({ formData: finalData });
         get().invalidateCacheForField(name);
+
+        
     },
 
     batchUpdateFields: (updates) => {
+        const state = get();
         const changedFields = Object.keys(updates);
         if (changedFields.length === 0) return;
 
-        set((state) => {
-            const hasChanges = changedFields.some(key => state.formData[key] !== updates[key]);
-            if (!hasChanges) return state;
+        // 1. Apply batch updates
+        const baseData = { ...state.formData, ...updates };
 
-            return {
-                formData: { ...state.formData, ...updates }
-            };
-        });
+        // 2. Run calculations
+        const finalData = get().runCalculations(baseData);
 
-        // Invalidate caches for all changed fields
-        const uniqueChangedFields = [...new Set(changedFields)];
-        for (const field of uniqueChangedFields) {
+        set({ formData: finalData });
+
+        // Invalidate caches
+        for (const field of changedFields) {
             get().invalidateCacheForField(field);
         }
+
     },
 
     setFormData: (data) => set({ formData: data }),
 
-    isRelevant: (element) => {
+    isRelevant: (element, customData = null) => {
+        const data = customData || get().formData;
         if (!element.relevant || element.relevant === 'null') return true;
         try {
-            return evaluateODKExpression(element.relevant, get().formData);
+            return evaluateODKExpression(element.relevant, data);
         } catch (error) {
             console.error('Error evaluating relevance:', error);
             return false;
