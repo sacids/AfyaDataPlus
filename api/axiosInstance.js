@@ -45,7 +45,7 @@ api.interceptors.request.use(
         // Use project instance URL for authenticated operations
         baseURL = currentProject.instance_url;
         targetOrigin = getOriginFromUrl(baseURL);
-        ////console.log('Using Instance URL:', baseURL);
+        //console.log('Using Instance URL:', baseURL);
       } else {
         // Fallback to Hub URL if no project selected
         baseURL = config.AFYADATA_HUB_URL;

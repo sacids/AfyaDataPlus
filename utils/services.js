@@ -277,9 +277,11 @@ export const submitProjectData = async (project_id, setStatus) => {
  */
 export const sendMessageToServer = async (conversationId, messageData) => {
     try {
-        const response = await api.post(`api/v1/chat/conversations/${conversationId}/messages`, {
+        //console.log('message data', messageData)
+        const response = await api.post(`/api/v1/chat/conversations/${conversationId}/messages`, {
             text: messageData.text,
             external_id: messageData.local_id,
+            sender_id: messageData.sender_id
         });
 
         // Update local status to synced and save the remote_id
@@ -300,9 +302,9 @@ export const sendMessageToServer = async (conversationId, messageData) => {
  * Syncs messages and ensures all local messages for this form 
  * are linked to the newly created/retrieved conversation_id.
  */
-export const syncMessages = async (convId, uuid) => {
+export const syncMessages1 = async (convId, uuid) => {
     try {
-       
+
         // 2. Fetch remote messages and insert them
         const msgResponse = await api.get(`api/v1/chat/conversations/${convId}/messages`);
 
@@ -341,10 +343,70 @@ export const syncMessages = async (convId, uuid) => {
     }
 };
 
+// In services.js, update the syncMessages function:
+
+export const syncMessages = async (convId, uuid) => {
+    try {
+        // Validate inputs
+        if (!convId || convId === 'null' || convId === 'undefined') {
+            console.error('Invalid conversation ID provided to syncMessages:', convId);
+            return null;
+        }
+
+        if (typeof convId !== 'string') {
+            console.error('Conversation ID must be a string, got:', typeof convId, convId);
+            return null;
+        }
+
+        // 2. Fetch remote messages and insert them
+        const msgResponse = await api.get(`api/v1/chat/conversations/${convId}/messages`);
+
+        if (!msgResponse.data || !Array.isArray(msgResponse.data)) {
+            console.warn('No messages or invalid response format');
+            return convId;
+        }
+
+        for (const msg of msgResponse.data) {
+            await insert_into_messages({
+                remote_id: msg.id,
+                local_id: msg.external_id,
+                conversation_id: convId,
+                formDataUUID: uuid,
+                text: msg.text,
+                sender_id: msg.sender?.id || '0',
+                sender_name: msg.sender?.username || 'afyadata_assistant',
+                sync_status: 'synced',
+                created_at: msg.created_at
+            });
+        }
+
+        // 3. Automatically push any messages that are still 'pending' for this conversation
+        const pendingMessages = await select('messages',
+            'conversation_id = ? AND sync_status = ?',
+            [convId, 'pending']
+        );
+
+        for (const localMsg of pendingMessages) {
+            try {
+                await sendMessageToServer(convId, localMsg);
+            } catch (err) {
+                console.warn("Failed to push pending message during sync", localMsg.local_id, err);
+            }
+        }
+
+        return convId;
+    } catch (error) {
+        console.error("Sync failed, using offline mode", error);
+        return null;
+    }
+};
+
 /**
  * Syncs messages and ensures all local messages for this form 
  * are linked to the newly created/retrieved conversation_id.
  */
+// In services.js, update the initChat function:
+
 export const initChat = async (formData, participants = []) => {
     try {
         const convResponse = await api.post('api/v1/chat/conversations', {
@@ -357,17 +419,25 @@ export const initChat = async (formData, participants = []) => {
         const conversation = convResponse.data.data;
         const convId = conversation.id;
 
+        // Ensure convId is a string
+        const convIdString = String(convId);
+
+        if (!convIdString || convIdString === 'null' || convIdString === 'undefined') {
+            console.error('Invalid conversation ID returned from server:', convId);
+            return null;
+        }
+
         // 1. Update all local messages that belong to this form but lack a conversation_id
         await update('messages',
-            { conversation_id: convId },
+            { conversation_id: convIdString },
             'formDataUUID = ? AND (conversation_id IS NULL OR conversation_id = "")',
             [formData.original_uuid]
         );
 
-        return convId;
+        return convIdString;
 
     } catch (error) {
-        console.error("Sync failed, using offline mode", error);
+        console.error("Failed to initialize chat:", error);
         return null;
     }
 };

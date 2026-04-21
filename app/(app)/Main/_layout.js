@@ -6,7 +6,7 @@ import useProjectStore from '../../../store/projectStore';
 export default function TabLayout() {
     const { colors } = useTheme();
     const { currentData, currentFormChildren } = useProjectStore();
-    //console.log('current form', currentFormChildren)
+    //console.log('current form', currentFormChildren,'dd', ( (currentFormChildren !== '') ))
 
     return (
         <Tabs
@@ -30,7 +30,7 @@ export default function TabLayout() {
             />
 
 
-            {(!currentData || (currentData && currentFormChildren !== null)) ? (
+            {(!currentData || (currentData && currentFormChildren !== null && currentFormChildren !== '')) ? (
                 <Tabs.Screen
                     name="FormDataList"
                     options={{

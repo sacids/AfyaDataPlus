@@ -171,23 +171,40 @@ const SavePage = () => {
                 if (rules && rules.length > 0) {
                     const actions = processFormRules(main_formData, rules);
                     //console.log('actions', actions)
+
+                    // Collect all chat responses
+                    const chatResponses = [];
+
                     for (const action of actions) {
                         if (action.action_type === 'chat_response') {
-                            // Insert into messages table for the chat view
-                            await insert('messages', {
-                                local_id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                                formDataUUID: formUUID,
-                                text: action.message,
-                                sender_id: '0',
-                                sender_name: 'AfyaData Assistant',
-                                sync_status: 'pending' // System messages can be marked as pending or local
-                            });
+                            chatResponses.push(action.message);
                         }
 
                         // Handle other types like 'navigation' if necessary
                         if (action.action_type === 'navigation') {
                             console.log("Rule triggered navigation to:", action.metadata.screen);
                         }
+                    }
+
+                    // If there are chat responses, combine them into one message
+                    if (chatResponses.length > 0) {
+                        let combinedMessage = '';
+                        if (chatResponses.length === 1) {
+                            combinedMessage = chatResponses[0];
+                        } else {
+                            const numberedSteps = chatResponses.map((msg, index) => `${index + 1}. ${msg}`);
+                            combinedMessage = numberedSteps.join('\n\n');
+                        }
+
+                        // Insert single combined message into messages table
+                        await insert('messages', {
+                            local_id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                            formDataUUID: formUUID,
+                            text: combinedMessage,
+                            sender_id: '1000000000', // System sender ID (can be any fixed value since it's not a real user)
+                            sender_name: 'afyadata_system',
+                            sync_status: 'pending' // System messages can be marked as pending or local
+                        });
                     }
                 }
             }

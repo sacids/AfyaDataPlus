@@ -685,6 +685,7 @@ export const insert_into_messages = async (message) => {
             message.local_id,
         ];
 
+        //console.log('update message sql', updateSql, updateParams);
         const updateResult = await db.runAsync(updateSql, updateParams);
 
         // If updated, we are done
@@ -762,32 +763,6 @@ export const dropTables = async () => {
 
 
 
-// Drop tables - add trigger cleanup
-export const dropTables1 = async () => {
-    const FORM_DEFN_SQL = 'DROP TABLE IF EXISTS form_defn';
-    const FORM_DATA_SQL = 'DROP TABLE IF EXISTS form_data';
-    const MESSAGES_SQL = 'DROP TABLE IF EXISTS messages';
-    const PROJECT_SQL = 'DROP TABLE IF EXISTS projects';
-    const MIGRATION_SQL = 'DROP TABLE IF EXISTS migration';
-    const DROP_TRIGGER_SQL = 'DROP TRIGGER IF EXISTS soft_delete_form_data_cascade';
-
-    try {
-        // Drop trigger first
-        await db.execAsync(DROP_TRIGGER_SQL);
-
-        // Then drop tables
-        await db.execAsync(FORM_DEFN_SQL);
-        await db.execAsync(FORM_DATA_SQL);
-        await db.execAsync(PROJECT_SQL);
-        await db.execAsync(MESSAGES_SQL);
-        await db.execAsync(MIGRATION_SQL);
-
-        console.log('Tables and trigger dropped');
-    } catch (e) {
-        console.error('Failed to drop tables:', e);
-        throw e;
-    }
-};
 
 // The rest of your existing functions remain the same (insert, update, remove, etc.)
 // ... [Keep all your existing functions below unchanged] ...
