@@ -300,25 +300,9 @@ export const sendMessageToServer = async (conversationId, messageData) => {
  * Syncs messages and ensures all local messages for this form 
  * are linked to the newly created/retrieved conversation_id.
  */
-export const syncMessages = async (formData, participants = []) => {
+export const syncMessages = async (convId, uuid) => {
     try {
-        const convResponse = await api.post('api/v1/chat/conversations', {
-            title: formData.title || `Chat for ${formData.uuid}`,
-            form: formData.form,
-            instance: formData.original_uuid,
-            participants: participants
-        });
-
-        const conversation = convResponse.data.data;
-        const convId = conversation.id;
-
-        // 1. Update all local messages that belong to this form but lack a conversation_id
-        await update('messages',
-            { conversation_id: convId },
-            'formDataUUID = ? AND (conversation_id IS NULL OR conversation_id = "")',
-            [formData.original_uuid]
-        );
-
+       
         // 2. Fetch remote messages and insert them
         const msgResponse = await api.get(`api/v1/chat/conversations/${convId}/messages`);
 
@@ -327,7 +311,7 @@ export const syncMessages = async (formData, participants = []) => {
                 remote_id: msg.id,
                 local_id: msg.external_id,
                 conversation_id: convId,
-                formDataUUID: formData.original_uuid,
+                formDataUUID: uuid,
                 text: msg.text,
                 sender_id: msg.sender.id,
                 sender_name: msg.sender.username,
@@ -356,6 +340,38 @@ export const syncMessages = async (formData, participants = []) => {
         return null;
     }
 };
+
+/**
+ * Syncs messages and ensures all local messages for this form 
+ * are linked to the newly created/retrieved conversation_id.
+ */
+export const initChat = async (formData, participants = []) => {
+    try {
+        const convResponse = await api.post('api/v1/chat/conversations', {
+            title: formData.title || `Chat for ${formData.uuid}`,
+            form: formData.form,
+            instance: formData.original_uuid,
+            participants: participants
+        });
+
+        const conversation = convResponse.data.data;
+        const convId = conversation.id;
+
+        // 1. Update all local messages that belong to this form but lack a conversation_id
+        await update('messages',
+            { conversation_id: convId },
+            'formDataUUID = ? AND (conversation_id IS NULL OR conversation_id = "")',
+            [formData.original_uuid]
+        );
+
+        return convId;
+
+    } catch (error) {
+        console.error("Sync failed, using offline mode", error);
+        return null;
+    }
+};
+
 
 
 export const postData = async (endpoint, data = {}, headers = {}) => {

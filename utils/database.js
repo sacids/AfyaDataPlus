@@ -21,6 +21,7 @@ let PROJECT_SQL = `CREATE TABLE IF NOT EXISTS projects (
     icon TEXT,
     instance_url TEXT,
     instance_name TEXT,
+    country TEXT,
     title TEXT NOT NULL,
     code TEXT NOT NULL,
     description TEXT NULL, 

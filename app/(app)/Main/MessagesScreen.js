@@ -17,7 +17,7 @@ import { useTheme } from '../../../context/ThemeContext';
 import { useAuthStore } from '../../../store/authStore';
 import useProjectStore from '../../../store/projectStore';
 import { insert, select } from '../../../utils/database';
-import { handleFormSubmission, submitSingleForm, syncMessages } from '../../../utils/services';
+import { initChat, submitSingleForm, syncMessages } from '../../../utils/services';
 
 export default function MessagesScreen() {
   const theme = useTheme();
@@ -75,64 +75,6 @@ export default function MessagesScreen() {
   };
 
 
-  const handleSend1 = async () => {
-    //console.log('current data', JSON.stringify(currentData, null, 5))
-    if (!input.trim() || !currentData) return;
-
-    const messageText = input.trim();
-    setInput(''); // Clear immediately for UX
-
-    const localId = `local_${Date.now()}`;
-    const newMessage = {
-      local_id: localId,
-      formDataUUID: currentData.uuid,
-      text: messageText,
-      sender_id: user.id, // Or 'user'
-      sender_name: user.name || 'Me',
-      sync_status: 'pending',
-      created_at: new Date().toISOString()
-    };
-
-    // 1. Always save to local DB first
-    await insert('messages', newMessage);
-
-    // Update local UI state immediately
-    setMessages(prev => [...prev, { ...newMessage, id: localId }]);
-    setTimeout(() => flatListRef.current?.scrollToEnd(), 100);
-
-    // 2. Check if Data needs to be submitted
-    if (currentData.status === 'finalized') {
-
-      try {
-        setIsSubmitting(true);
-        // Attempt to submit the form data first
-        //console.log('attempting to submit currentData', currentData)
-        //await handleFormSubmission([currentData]);
-        await submitSingleForm(currentData)
-        const updatedData = {
-          ...currentData,
-          status: 'sent',
-          status_date: new Date().toISOString()
-        };
-
-        useProjectStore.getState().setCurrentData(updatedData);
-
-
-        await syncMessages(currentData);
-        loadLocalMessages(); // Refresh to get server IDs/status
-
-      } catch (error) {
-        console.error("Submission from messages failed:", error);
-      } finally {
-        setIsSubmitting(false);
-      }
-
-
-    }
-
-
-  };
-
   const handleSend = async () => {
     if (!input.trim() || !currentData) return;
 
@@ -145,9 +87,9 @@ export default function MessagesScreen() {
     const newMessage = {
       local_id: localId,
       formDataUUID: fUUID,
-      conversation_id: conversationId, // May be null if offline/first message
+      conversation_id: conversationId,
       text: messageText,
-      sender_id: user.id,
+      sender_id: user.globalUsername,
       sender_name: user.name || 'Me',
       sync_status: 'pending',
       created_at: new Date().toISOString()
@@ -174,16 +116,16 @@ export default function MessagesScreen() {
         }
       }
 
-      // 3. Ensure Conversation exists and sync pending messages
-      // syncMessages now handles updating conversation_id for all matched formDataUUIDs
-      const activeConvId = await syncMessages(currentData);
-
-      if (activeConvId) {
-        setConversationId(activeConvId);
-
-        // Load messages again to refresh the UI with correct sync_status and IDs
-        await loadLocalMessages();
+      if (!conversationId) {
+        console.log('No conversation ID, initializing chat for form data:', currentData.original_uuid);
+        let convId = await initChat(currentData);
+        setConversationId(convId);
       }
+
+      syncMessages(conversationId, currentData.original_uuid).then(() => {
+        loadLocalMessages();
+      });
+
 
     } catch (error) {
       console.error("Workflow failed, message remains pending locally:", error);
@@ -192,33 +134,14 @@ export default function MessagesScreen() {
     }
   };
 
-  const handleDirectSubmit = async () => {
-    try {
-      setIsSubmitting(true);
-      // The library expects an array of forms
-      await handleFormSubmission([currentData]);
-
-      const updatedData = {
-        ...currentData,
-        status: 'sent',
-        status_date: new Date().toISOString()
-      };
-
-      useProjectStore.getState().setCurrentData(updatedData);
-
-    } catch (error) {
-      console.error("Submission from messages failed:", error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
 
   const renderItem = ({ item }) => {
-    const isMe = parseInt(item.sender_id) === parseInt(user.id);
+    const isMe = item.sender_id === user.globalUsername;
     const isSystem = item.sender_id === '0' || item.sender_id === 'system';
 
-    //console.log('items', item.sender_id, user.id, isMe)
+    console.log('items', item.sender_id, user.globalUsername, isMe)
+
     if (isSystem) {
       return (
         <View style={[styles.messageBubbleThem, {

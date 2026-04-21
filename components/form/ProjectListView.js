@@ -46,28 +46,6 @@ const ProjectListView = () => {
     }
   }
 
-  // 2. Search Logic
-  const handleSearchByCode = async (codeOverride = null) => {
-    const code = (codeOverride || searchCode).trim()
-    if (!code) {
-      Alert.alert(t('common:attention'), t('projects:enterCode'))
-      return
-    }
-
-    setLoading(true)
-    try {
-      const response = await api.get(`/api/v1/projects/${code}`)
-      const results = Array.isArray(response.data) ? response.data : [response.data]
-
-      // If result found, switch to public view to show the result card
-      setDisplayList(results)
-      setViewMode('public')
-    } catch (error) {
-      Alert.alert(t('projects:error'), t('projects:projectNotFound'))
-    } finally {
-      setLoading(false)
-    }
-  }
 
   // 3. Browse Public
   const loadPublicProjects = async () => {
@@ -161,160 +139,8 @@ const ProjectListView = () => {
   };
 
 
-
-  const joinProject1 = async (url) => {
-
-    const instance_url = new URL(url).origin
-    const authStore = useAuthStore.getState();
-
-    let session = authStore.instances[instance_url];
-
-    if (!session) {
-
-      // 1. API Request
-      try {
-
-        const payload = {
-          username: authStore.user.globalUsername,
-          fullName: authStore.user.fullName,
-          phoneNumber: authStore.user.phoneNumber,
-          device_id: authStore.user.deviceId,
-          password: authStore.user.password,
-          passwordConfirm: authStore.user.password
-        }
-
-        //console.log('user', JSON.stringify(authStore.user, null, 5))
-        //console.log('payload', JSON.stringify(payload, null, 5))
-        const regResponse = await axios.post(`${instance_url}/api/v1/register`, payload);
-
-        // Save session for this instance
-        authStore.setInstanceSession(instance_url, regResponse.data.access, authStore.user.globalUsername);
-      } catch (err) {
-        console.error("Failed to auto-register on new instance", err);
-        return;
-      }
-    }
-
-    // SUBSEQUENT JOIN: Just request access to the project
-    const response = await api.post(`${url}`);
-    const project_to_save = response.data.project
-
-    if (!response.data.error) {
-      const projectToSave = {
-        ...project_to_save,
-        project: project_to_save.id,
-        instance_url: instance_url,
-        tags: typeof project_to_save.tags === 'string' ? project_to_save.tags : JSON.stringify(project_to_save.tags || [])
-      }
-      await insert('projects', projectToSave)
-      const localProjects = await select('projects', 'project = ?', [project_to_save.id])
-
-      return {
-        "message": response?.data?.message,
-        "project": localProjects && localProjects.length > 0 ? localProjects[0] : null
-      }
-    } else {
-      return { "message": response?.data?.message, "project": false }
-    }
-
-  }
-
-  const handleProjectPress1 = async (project) => {
-    if (isNavigating.current) return
-    try {
-      if (viewMode === 'local') {
-        isNavigating.current = true
-        setCurrentData(null)
-        setCurrentProject(project)
-        router.replace('/(app)/Main/')
-      } else {
-        setLoading(true)
-
-        const { instance_url, remote_project_id } = project;
-        const join_url = `${instance_url}/api/v1/project/${remote_project_id}/join/`
-        const response = await joinProject(join_url)
-        const project_to_save = response.project
-
-        if (project_to_save) {
-          setCurrentData(null)
-          setCurrentProject(project_to_save)
-          isNavigating.current = true
-          router.replace('/(app)/Main/')
-        } else {
-          Alert.alert(t('projects:joinFailed'), project_to_save.message)
-        }
-      }
-    } catch (err) {
-      Alert.alert(t('errors:errorTitle'), t('errors:unknown'))
-    } finally {
-      if (!isNavigating.current) setLoading(false)
-      setTimeout(() => { isNavigating.current = false }, 1000)
-    }
-  }
-
-
-
-
-
-
-  const joinProject2 = async (url) => {
-    const instance_url = new URL(url).origin;
-    const authStore = useAuthStore.getState();
-
-    let session = authStore.instances[instance_url];
-
-    if (!session) {
-      // 1. Auto-register on new instance
-      try {
-        const payload = {
-          username: authStore.user.globalUsername,
-          fullName: authStore.user.fullName,
-          phoneNumber: authStore.user.phoneNumber,
-          device_id: authStore.user.deviceId,
-          password: authStore.user.password,
-          passwordConfirm: authStore.user.password
-        }
-
-        console.log('register url:', `${instance_url}/api/v1/register`, payload)
-        const regResponse = await axios.post(`${instance_url}/api/v1/register`, payload);
-        console.log('Registration response:', JSON.stringify(regResponse.data, null, 4));
-
-        // Save session for this instance
-        authStore.setInstanceSession(instance_url, regResponse.data.access, authStore.user.globalUsername);
-      } catch (err) {
-        console.error("Failed to auto-register on new instance", err);
-        return { message: "Failed to register on instance", project: false };
-      }
-    }
-
-    // JOIN: Request access to the project (works for both existing and new sessions)
-    try {
-      const response = await api.post(`${url}`);
-      const project_to_save = response.data.project;
-
-      if (!response.data.error && project_to_save) {
-        const projectToSave = {
-          ...project_to_save,
-          project: project_to_save.id,
-          instance_url: instance_url,
-          tags: typeof project_to_save.tags === 'string' ? project_to_save.tags : JSON.stringify(project_to_save.tags || [])
-        };
-
-        await insert('projects', projectToSave);
-        const localProjects = await select('projects', 'project = ?', [project_to_save.id]);
-
-        return {
-          message: response?.data?.message,
-          project: localProjects && localProjects.length > 0 ? localProjects[0] : null
-        };
-      } else {
-        return { message: response?.data?.message || "Failed to join project", project: false };
-      }
-    } catch (err) {
-      console.error("Join project error:", err);
-      return { message: "Failed to join project", project: false };
-    }
-  };
+  // console.log("Current view mode:", viewMode);
+  // console.log('Display list:', displayList);
 
 
   const joinProject = async (url) => {
@@ -343,6 +169,8 @@ const ProjectListView = () => {
               'Content-Type': 'application/json',
             }
           });
+
+          console.log('registration response:', regResponse.data);
 
           // Registration successful (new user created)
           authStore.setInstanceSession(instance_url, regResponse.data.access, authStore.user.globalUsername);
