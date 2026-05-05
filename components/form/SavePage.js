@@ -156,6 +156,7 @@ const SavePage = () => {
                 created_on: new Date().toISOString(),
                 status: status,
                 status_date: new Date().toISOString(),
+                seen_by: user?.globalUsername,
                 deleted: 0,
                 synced: 0,
                 form_data: JSON.stringify(main_formData),

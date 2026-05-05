@@ -1,6 +1,6 @@
 import { Alert } from "react-native";
 import api from "../api/axiosInstance";
-import { insert, insert_into_messages, remove, select, update } from "./database";
+import { db, getLastSyncTime, insert, insert_into_messages, remove, select, update, updateLastSyncTime } from "./database";
 
 
 import { Directory, Paths } from "expo-file-system";
@@ -106,7 +106,7 @@ export const getForms = async (project_id, setStatus) => {
     }
 };
 
-export const getProjfectForms = async (project_id, setStatus) => {
+export const getProjectForms = async (project_id, setStatus) => {
 
     try {
         // Initialize status if empty
@@ -175,6 +175,256 @@ export const getProjfectForms = async (project_id, setStatus) => {
     }
 };
 
+
+export const getProjectData = async (project_id, setStatus, options = {}) => {
+    const {
+        pageSize = 50,
+        maxPages = null,
+        onProgress = null,
+        incrementalSync = true,  // Enable incremental sync by default
+        forceFullSync = false,    // Force full sync even if incremental is available
+        syncMode = 'modified'     // 'modified', 'missing', 'all'
+    } = options;
+
+    let activityCounter = 0;
+    let activityInterval = null;
+
+    try {
+        setStatus(prev => prev || 'Starting data sync...');
+
+        // Start activity indicator
+        activityInterval = setInterval(() => {
+            activityCounter = (activityCounter + 1) % ACTIVITY_INDICATORS.length;
+            setStatus(prevStatus => {
+                if (!prevStatus) return '';
+                const lines = prevStatus.split('\n');
+                if (lines[lines.length - 1].endsWith('...')) {
+                    lines[lines.length - 1] = lines[lines.length - 1].replace(/\.\.\.$/, '') +
+                        ACTIVITY_INDICATORS[activityCounter];
+                    return lines.join('\n');
+                }
+                return prevStatus;
+            });
+        }, 100);
+
+        // Get local record count and last sync info
+        const localRecords = await select('form_data', 'project = ?', [project_id], 'uuid, status, status_date', false, true);
+        const localCount = localRecords.length;
+        const lastSyncTime = await getLastSyncTime(project_id);
+        
+        updateStatus(setStatus, `Local records: ${localCount}`);
+        
+        // Determine sync strategy
+        let syncStrategy = 'full';
+        let queryParams = new URLSearchParams({
+            page: 1,
+            page_size: pageSize,
+            project_id: project_id
+        });
+
+        if (incrementalSync && !forceFullSync && lastSyncTime) {
+            if (syncMode === 'modified') {
+                // Fetch only records modified after last sync
+                queryParams.append('modified_after', lastSyncTime);
+                syncStrategy = 'incremental_modified';
+                updateStatus(setStatus, `Fetching records modified since ${new Date(lastSyncTime).toLocaleString()}...`);
+            } else if (syncMode === 'missing') {
+                // Fetch only missing UUIDs
+                const localUuids = localRecords.map(r => r.uuid);
+                if (localUuids.length > 0) {
+                    // Send UUIDs to server to get only missing ones
+                    const missingResponse = await api.post(`api/v1/form-data/find-missing/`, {
+                        uuids: localUuids,
+                        project_id: project_id
+                    });
+                    
+                    if (missingResponse.data.missing_uuids?.length > 0) {
+                        queryParams.append('uuids', missingResponse.data.missing_uuids.join(','));
+                        syncStrategy = 'incremental_missing';
+                        updateStatus(setStatus, `Fetching ${missingResponse.data.missing_uuids.length} missing records...`);
+                    } else {
+                        updateStatus(setStatus, 'All records are already synced!');
+                        return { success: true, message: 'Already up to date', fetched: 0 };
+                    }
+                }
+            }
+        } else if (!incrementalSync || forceFullSync || !lastSyncTime) {
+            updateStatus(setStatus, `Performing full sync...`);
+        }
+
+        // For missing sync with many UUIDs, use batch approach
+        let allData = [];
+        let currentPage = 1;
+        let next = null;
+        let totalFetched = 0;
+        let totalUpdated = 0;
+        let totalInserted = 0;
+
+        // Get server record count first (if endpoint supports it)
+        try {
+            const countResponse = await api.head(`api/v1/form-data/`, { params: Object.fromEntries(queryParams) });
+            const serverCount = parseInt(countResponse.headers['x-total-count'] || '0');
+            if (serverCount === 0 && syncStrategy !== 'full') {
+                updateStatus(setStatus, 'No new records to sync');
+                return { success: true, message: 'Already up to date', fetched: 0 };
+            }
+            if (serverCount > 0) {
+                updateStatus(setStatus, `Found ${serverCount} records to sync`);
+            }
+        } catch (e) {
+            // HEAD request not supported, continue without count
+        }
+
+        // Fetch paginated data
+        do {
+            updateStatus(setStatus, `Fetching page ${currentPage}...`);
+            
+            const response = await api.get(`api/v1/form-data/`, { 
+                params: Object.fromEntries(queryParams) 
+            });
+            
+            let results, nextUrl;
+            if (response.data.results) {
+                results = response.data.results;
+                nextUrl = response.data.next;
+            } else if (Array.isArray(response.data)) {
+                results = response.data;
+                nextUrl = null;
+            } else {
+                break;
+            }
+
+            if (results && results.length > 0) {
+                // Process batch
+                const batchResult = await processFormDataBatch(results, project_id);
+                totalInserted += batchResult.inserted;
+                totalUpdated += batchResult.updated;
+                totalFetched += results.length;
+                
+                allData.push(...results);
+                
+                if (onProgress) {
+                    onProgress(totalFetched, null);
+                }
+                
+                updateStatus(setStatus, `Synced ${totalFetched} records (${totalInserted} new, ${totalUpdated} updated)...`);
+            }
+
+            // Update pagination
+            if (nextUrl) {
+                // Parse next URL or just use the URL directly
+                currentPage++;
+            }
+            next = nextUrl;
+
+            if (maxPages && currentPage >= maxPages) {
+                updateStatus(setStatus, `Reached maximum page limit (${maxPages})`);
+                break;
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 50));
+
+        } while (next);
+
+        // Update last sync timestamp
+        if (incrementalSync && (totalFetched > 0 || forceFullSync)) {
+            await updateLastSyncTime(project_id);
+        }
+
+        const finalMessage = `Sync complete! Fetched: ${totalFetched}, New: ${totalInserted}, Updated: ${totalUpdated}`;
+        updateStatus(setStatus, finalMessage);
+
+        return {
+            success: true,
+            fetched: totalFetched,
+            inserted: totalInserted,
+            updated: totalUpdated,
+            strategy: syncStrategy
+        };
+
+    } catch (error) {
+        const errorMessage = `Sync failed: ${error.message}`;
+        updateStatus(setStatus, errorMessage);
+        console.error('Error syncing form data:', error);
+        
+        return {
+            success: false,
+            error: error.message,
+            fetched: 0
+        };
+    } finally {
+        if (activityInterval) {
+            clearInterval(activityInterval);
+        }
+    }
+};
+
+// Helper function to process batch efficiently
+const processFormDataBatch = async (records, project_id) => {
+    let inserted = 0;
+    let updated = 0;
+    
+    // Get existing UUIDs in one query
+    const uuids = records.map(r => r.uuid);
+    const placeholders = uuids.map(() => '?').join(',');
+    const existingRecords = await select(
+        'form_data', 
+        `uuid IN (${placeholders})`, 
+        uuids, 
+        'uuid, status, status_date',
+        false,
+        true
+    );
+    
+    const existingUuids = new Set(existingRecords.map(r => r.uuid));
+    
+    
+    // Batch insert/update using transaction
+    await db.execAsync('BEGIN TRANSACTION;');
+    
+    try {
+        for (const record of records) {
+            const isExisting = existingUuids.has(record.uuid);
+            
+            const formDataRecord = {
+                project: record.project || project_id,
+                form: record.form,
+                title: record.title || '',
+                uuid: record.uuid,
+                original_uuid: record.original_uuid || record.uuid,
+                parent_uuid: record.parent_uuid || null,
+                gps: record.gps || null,
+                deleted: record.deleted || 0,
+                archived: record.archived || 0,
+                form_data: typeof record.form_data === 'string' 
+                    ? record.form_data 
+                    : JSON.stringify(record.form_data || {}),
+                created_by: record.created_by,
+                created_by_name: record.created_by_name || record.created_by,
+                created_on: record.created_on || record.created_at,
+                status: record.status || 'finalized',
+                status_date: record.status_date || record.updated_at,
+                synced: 1
+            };
+            
+            if (isExisting) {
+                const result = await update('form_data', formDataRecord, 'uuid = ?', [record.uuid]);
+                if (result > 0) updated++;
+            } else {
+                const result = await insert('form_data', formDataRecord);
+                if (result && result.changes > 0) inserted++;
+            }
+        }
+        
+        await db.execAsync('COMMIT;');
+    } catch (error) {
+        await db.execAsync('ROLLBACK;');
+        console.error('Batch processing error:', error);
+        throw error;
+    }
+    
+    return { inserted, updated };
+};
 
 
 export const syncProjectReactions = async (project_id, setStatus) => {
@@ -451,6 +701,90 @@ export const postData = async (endpoint, data = {}, headers = {}) => {
     } catch (error) {
         console.error(`Error fetching ${endpoint}:`, error);
         return null;
+    }
+};
+
+
+
+/**
+ * Check if the current user has seen a specific form data record
+ * @param {number|string} id - The form_data record ID
+ * @param {string} username - The current user's username (from global state)
+ * @returns {Promise<boolean>} - True if user has seen the record
+ */
+export const hasSeen = async (id, username) => {
+    try {
+        if (!username) {
+            console.warn('No username provided to hasSeen');
+            return false;
+        }
+
+        const result = await db.getFirstAsync(
+            'SELECT seen_by FROM form_data WHERE id = ?',
+            [id]
+        );
+
+        if (!result || !result.seen_by) {
+            return false;
+        }
+
+        // Split the comma-separated list and check if username exists
+        const seenByList = result.seen_by.split(',').map(name => name.trim());
+        return seenByList.includes(username);
+        
+    } catch (error) {
+        console.error('Error checking if user has seen record:', error);
+        return false;
+    }
+};
+
+/**
+ * Update the seen_by field to add the current user if not already present
+ * @param {number|string} id - The form_data record ID
+ * @param {string} username - The current user's username (from global state)
+ * @returns {Promise<boolean>} - True if update was successful or user already in list
+ */
+export const updateSeenBy = async (id, username) => {
+    try {
+        if (!username) {
+            console.warn('No username provided to updateSeenBy');
+            return false;
+        }
+
+        // First, check if user has already seen this record
+        const hasSeenResult = await hasSeen(id, username);
+        
+        if (hasSeenResult) {
+            // User already in the list, no need to update
+            return true;
+        }
+
+        // Get current seen_by value
+        const result = await db.getFirstAsync(
+            'SELECT seen_by FROM form_data WHERE id = ?',
+            [id]
+        );
+
+        let newSeenBy;
+        if (!result || !result.seen_by) {
+            // No one has seen it yet
+            newSeenBy = username;
+        } else {
+            // Append new username to the list
+            newSeenBy = `${result.seen_by},${username}`;
+        }
+
+        // Update the record
+        const updateResult = await db.runAsync(
+            'UPDATE form_data SET seen_by = ? WHERE id = ?',
+            [newSeenBy, id]
+        );
+
+        return updateResult.changes > 0;
+        
+    } catch (error) {
+        console.error('Error updating seen_by field:', error);
+        return false;
     }
 };
 

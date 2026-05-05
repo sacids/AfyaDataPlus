@@ -47,9 +47,6 @@ export default function FormDataOrProjectListScreen() {
     const currentProject = useProjectStore(state => state.currentProject);
     const currentData = useProjectStore(state => state.currentData);
 
-
-
-
     // 2. Use a stable callback to prevent memory leaks/infinite loops
     const loadScreenData = useCallback(async () => {
         dispatch({ type: 'FETCH_START' });

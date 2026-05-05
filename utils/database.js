@@ -5,7 +5,7 @@ export const openDatabase = () => {
     return SQLite.openDatabaseSync('afyadataplus-v3.db');
 };
 
-const db = openDatabase();
+export const db = openDatabase();
 
 
 const MIGRATION_SQL = `CREATE TABLE IF NOT EXISTS migration (
@@ -67,10 +67,17 @@ let FORM_DATA_SQL = `CREATE TABLE IF NOT EXISTS form_data (
   created_by TEXT NOT NULL,
   created_by_name TEXT NOT NULL,  
   created_on TEXT DEFAULT CURRENT_TIMESTAMP,
+  seen_by TEXT,
   status TEXT NOT NULL CHECK(status IN ('sent', 'draft', 'finalized')),
   status_date TEXT,
   synced INTEGER DEFAULT 0
 );`;
+
+const SEEN_BY_INDEX_SQL = `
+CREATE INDEX IF NOT EXISTS idx_form_data_seen_by 
+ON form_data(seen_by) 
+WHERE seen_by IS NOT NULL;
+`;
 
 // let MESSAGES_SQL = `CREATE TABLE IF NOT EXISTS messages (
 //         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -141,6 +148,21 @@ const FORM_REACTIONS_SQL = `CREATE TABLE IF NOT EXISTS form_reactions (
 );`;
 
 
+// Add to database.js
+const LAST_SYNC_SQL = `CREATE TABLE IF NOT EXISTS last_sync (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    project_id TEXT NOT NULL UNIQUE,
+    table_name TEXT NOT NULL,
+    last_sync_timestamp TEXT NOT NULL,
+    last_sync_version TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);`;
+
+// Add to createTables function
+
+
+
 // Create tables with soft delete cascade
 export const createTables = async () => {
     try {
@@ -149,6 +171,7 @@ export const createTables = async () => {
         await db.execAsync(FORM_DATA_SQL);
         await db.execAsync(MESSAGES_SQL);
         await db.execAsync(PROJECT_SQL);
+        await db.execAsync(LAST_SYNC_SQL);
 
         // New First Aid Tables
         await db.execAsync(FORM_REACTIONS_SQL);
@@ -159,6 +182,7 @@ export const createTables = async () => {
         await db.execAsync(PARENT_UUID_INDEX_SQL);
         await db.execAsync(UUID_INDEX_SQL);
         await db.execAsync(DELETED_INDEX_SQL);
+        await db.execAsync(SEEN_BY_INDEX_SQL);
 
         // Enable foreign key support
         await db.execAsync('PRAGMA foreign_keys = ON;');
@@ -471,7 +495,7 @@ export const select = async (tableName, whereClause = '', whereArgs = [], fields
 
 
 
-export const getFormData = async (user_id, project_id, currentData_uuid = false) => {
+export const getFormData1 = async (user_id, project_id, currentData_uuid = false) => {
     try {
         let query = '';
         let params = [0, project_id, user_id];
@@ -501,6 +525,75 @@ export const getFormData = async (user_id, project_id, currentData_uuid = false)
         result = await db.getAllAsync(query, params);
         //console.log('results', JSON.stringify(result, null, 5))
         return result;
+    } catch (error) {
+        console.error('Error getting form data:', error);
+        return [];
+    }
+};
+
+
+export const getFormData = async (user_id, project_id, currentData_uuid = false) => {
+    try {
+        let query = '';
+        let params = [];
+        
+        // Use a more efficient JSON-like approach if usernames have no commas
+        // This assumes usernames don't contain commas
+        const hasSeenCondition = user_id 
+            ? `, (fd.seen_by IS NOT NULL AND fd.seen_by LIKE '%${user_id}%') as has_seen`
+            : ', 0 as has_seen';
+        
+        if (currentData_uuid) {
+            query = `
+                SELECT 
+                    fd.*, 
+                    fdef.is_root, 
+                    fdef.title AS form_title, 
+                    fdef.icon
+                    ${hasSeenCondition}
+                FROM form_data fd 
+                JOIN form_defn fdef ON fd.form = CAST(fdef.form_id AS TEXT) 
+                WHERE fd.deleted = ?
+                AND fd.project = ?
+                AND fd.created_by = ?
+                AND fd.parent_uuid = ?
+                ORDER BY fd.id DESC
+            `;
+            params = [0, project_id, user_id, currentData_uuid];
+        } else {
+            query = `
+                SELECT 
+                    fd.*, 
+                    fdef.is_root, 
+                    fdef.title AS form_title, 
+                    fdef.icon
+                    ${hasSeenCondition}
+                FROM form_data fd 
+                JOIN form_defn fdef ON fd.form = CAST(fdef.form_id AS TEXT) 
+                WHERE fd.deleted = ?
+                AND fd.project = ?
+                AND fd.created_by = ?
+                AND fdef.is_root = 1
+                ORDER BY fd.id DESC
+            `;
+            params = [0, project_id, user_id];
+        }
+        
+        const result = await db.getAllAsync(query, params);
+        
+        // For larger datasets, you might want to add a secondary check
+        // to ensure exact username matching (prevents partial matches)
+
+        // if (currentUsername && result.length > 0) {
+        //     return result.map(record => ({
+        //         ...record,
+        //         has_seen: record.has_seen ? 
+        //             (record.seen_by?.split(',').includes(currentUsername) ? 1 : 0) : 0
+        //     }));
+        // }
+        
+        return result;
+        
     } catch (error) {
         console.error('Error getting form data:', error);
         return [];
@@ -653,7 +746,7 @@ export const insert = async (tableName, data) => {
 
         const sql = `INSERT OR REPLACE INTO ${tableName} (${filteredKeys.join(', ')}) VALUES (${placeholders});`;
         //console.log('sql')
-        //console.log('Inserting sql:', sql, values);
+        console.log('Inserting sql:', sql, values);
         const result = await db.runAsync(sql, values);
         return result;
     } catch (error) {
@@ -805,3 +898,35 @@ const handlePurge = async () => {
   await purgeDeletedFormData();
 };
 */
+
+
+
+// Helper function to get last sync time
+export const getLastSyncTime = async (project_id, table_name = 'form_data') => {
+    try {
+        const result = await db.getFirstAsync(
+            'SELECT last_sync_timestamp FROM last_sync WHERE project_id = ? AND table_name = ?',
+            [project_id, table_name]
+        );
+        return result ? result.last_sync_timestamp : null;
+    } catch (error) {
+        console.error('Error getting last sync time:', error);
+        return null;
+    }
+};
+
+// Helper function to update last sync time
+export const updateLastSyncTime = async (project_id, table_name = 'form_data') => {
+    const now = new Date().toISOString();
+    try {
+        await db.runAsync(
+            `INSERT OR REPLACE INTO last_sync (id, project_id, table_name, last_sync_timestamp, updated_at)
+             VALUES (1, ?, ?, ?, ?)`,
+            [project_id, table_name, now, now]
+        );
+        return true;
+    } catch (error) {
+        console.error('Error updating last sync time:', error);
+        return false;
+    }
+};

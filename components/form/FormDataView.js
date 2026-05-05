@@ -12,14 +12,17 @@ import { getLabel } from '../../lib/form/utils';
 import useProjectStore from '../../store/projectStore';
 import { useFormStore } from '../../store/useFormStore';
 import { select } from '../../utils/database';
+import { hasSeen, updateSeenBy } from '../../utils/services';
 import { AppHeader } from '../layout/AppHeader';
+
+import { useAuthStore } from '../../store/authStore';
 
 // Enable LayoutAnimation for Android
 const FormDataView = ({ formData }) => {
 
     const initForm = useFormStore(state => state.initForm);
     const schema = useFormStore(state => state.schema);
-
+    const { user } = useAuthStore.getState();
 
 
     const currentProject = useProjectStore(state => state.currentProject);
@@ -151,9 +154,22 @@ const FormDataView = ({ formData }) => {
                 console.error("Error loading FormDataView:", error);
             } finally {
                 // 3. CRITICAL: This was missing. Without this, 'ready' stays false.
+                markAsSeen();
                 setReady(true);
             }
         }
+
+        const markAsSeen = async () => {
+            if (formData.id && user?.globalUsername) {
+                const wasSeen = await hasSeen(formData.id, user.globalUsername);
+
+                if (!wasSeen) {
+                    await updateSeenBy(formData.id, user.globalUsername);
+                    console.log('Record marked as seen');
+                }
+            }
+        };
+
 
         if (formData) {
             load();

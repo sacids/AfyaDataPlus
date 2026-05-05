@@ -96,6 +96,10 @@ export default function FormDataItem({
     const initials = item.status?.charAt(0).toUpperCase() || 'D';
     const statusTheme = getStatusTheme(initials);
 
+    // Check if item has been seen (has_seen is 1 or true)
+    const hasBeenSeen = item.has_seen === 1 || item.has_seen === true;
+    const isUnseen = !hasBeenSeen && !isSubmitting;
+
     return (
         <GestureDetector gesture={combinedGesture}>
             <View style={{
@@ -135,7 +139,10 @@ export default function FormDataItem({
                 </View>
 
                 {/* Foreground Card */}
-                <Animated.View style={[animatedStyle, styles.swipeForeground, isSubmitting && { backgroundColor: theme.isDark ? '#232312' : '#efefef', }]}>
+                <Animated.View style={[
+                    animatedStyle, styles.swipeForeground,
+                    isSubmitting && { backgroundColor: theme.isDark ? '#232312' : '#efefef', },
+                ]}>
                     <Pressable
                         onPress={() => {
                             if (isSubmitting) return;
@@ -193,6 +200,26 @@ export default function FormDataItem({
                                 <Text style={styles.tiny}>
                                     {new Date(item.status_date).toLocaleDateString()}
                                 </Text>
+
+                                {/* Badge for unseen items */}
+                                {isUnseen && (
+                                    <View style={{
+                                        backgroundColor: '#4CAF50',
+                                        paddingHorizontal: 8,
+                                        paddingVertical: 2,
+                                        borderRadius: 4,
+                                        marginLeft: 4,
+                                    }}>
+                                        <Text style={{
+                                            color: '#fff',
+                                            fontSize: 10,
+                                            fontWeight: 'bold',
+                                        }}>
+                                            NEW
+                                        </Text>
+                                    </View>
+                                )}
+
                             </View>
                         </View>
 
