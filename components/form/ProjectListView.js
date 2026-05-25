@@ -173,7 +173,7 @@ const ProjectListView = () => {
           console.log('registration response:', regResponse.data);
 
           // Registration successful (new user created)
-          authStore.setInstanceSession(instance_url, regResponse.data.access, authStore.user.globalUsername);
+          authStore.setInstanceSession(instance_url, regResponse.data.access, authStore.user.globalUsername, regResponse.data.user);
 
         } catch (err) {
           // Handle error response - even on 400, the server returns JSON with error details

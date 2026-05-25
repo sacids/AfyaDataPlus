@@ -211,9 +211,9 @@ export const getProjectData = async (project_id, setStatus, options = {}) => {
         const localRecords = await select('form_data', 'project = ?', [project_id], 'uuid, status, status_date', false, true);
         const localCount = localRecords.length;
         const lastSyncTime = await getLastSyncTime(project_id);
-        
+
         updateStatus(setStatus, `Local records: ${localCount}`);
-        
+
         // Determine sync strategy
         let syncStrategy = 'full';
         let queryParams = new URLSearchParams({
@@ -237,7 +237,7 @@ export const getProjectData = async (project_id, setStatus, options = {}) => {
                         uuids: localUuids,
                         project_id: project_id
                     });
-                    
+
                     if (missingResponse.data.missing_uuids?.length > 0) {
                         queryParams.append('uuids', missingResponse.data.missing_uuids.join(','));
                         syncStrategy = 'incremental_missing';
@@ -278,11 +278,11 @@ export const getProjectData = async (project_id, setStatus, options = {}) => {
         // Fetch paginated data
         do {
             updateStatus(setStatus, `Fetching page ${currentPage}...`);
-            
-            const response = await api.get(`api/v1/form-data/`, { 
-                params: Object.fromEntries(queryParams) 
+
+            const response = await api.get(`api/v1/form-data/`, {
+                params: Object.fromEntries(queryParams)
             });
-            
+
             let results, nextUrl;
             if (response.data.results) {
                 results = response.data.results;
@@ -300,13 +300,13 @@ export const getProjectData = async (project_id, setStatus, options = {}) => {
                 totalInserted += batchResult.inserted;
                 totalUpdated += batchResult.updated;
                 totalFetched += results.length;
-                
+
                 allData.push(...results);
-                
+
                 if (onProgress) {
                     onProgress(totalFetched, null);
                 }
-                
+
                 updateStatus(setStatus, `Synced ${totalFetched} records (${totalInserted} new, ${totalUpdated} updated)...`);
             }
 
@@ -346,7 +346,7 @@ export const getProjectData = async (project_id, setStatus, options = {}) => {
         const errorMessage = `Sync failed: ${error.message}`;
         updateStatus(setStatus, errorMessage);
         console.error('Error syncing form data:', error);
-        
+
         return {
             success: false,
             error: error.message,
@@ -363,29 +363,29 @@ export const getProjectData = async (project_id, setStatus, options = {}) => {
 const processFormDataBatch = async (records, project_id) => {
     let inserted = 0;
     let updated = 0;
-    
+
     // Get existing UUIDs in one query
     const uuids = records.map(r => r.uuid);
     const placeholders = uuids.map(() => '?').join(',');
     const existingRecords = await select(
-        'form_data', 
-        `uuid IN (${placeholders})`, 
-        uuids, 
+        'form_data',
+        `uuid IN (${placeholders})`,
+        uuids,
         'uuid, status, status_date',
         false,
         true
     );
-    
+
     const existingUuids = new Set(existingRecords.map(r => r.uuid));
-    
-    
+
+
     // Batch insert/update using transaction
     await db.execAsync('BEGIN TRANSACTION;');
-    
+
     try {
         for (const record of records) {
             const isExisting = existingUuids.has(record.uuid);
-            
+
             const formDataRecord = {
                 project: record.project || project_id,
                 form: record.form,
@@ -396,8 +396,8 @@ const processFormDataBatch = async (records, project_id) => {
                 gps: record.gps || null,
                 deleted: record.deleted || 0,
                 archived: record.archived || 0,
-                form_data: typeof record.form_data === 'string' 
-                    ? record.form_data 
+                form_data: typeof record.form_data === 'string'
+                    ? record.form_data
                     : JSON.stringify(record.form_data || {}),
                 created_by: record.created_by,
                 created_by_name: record.created_by_name || record.created_by,
@@ -406,7 +406,7 @@ const processFormDataBatch = async (records, project_id) => {
                 status_date: record.status_date || record.updated_at,
                 synced: 1
             };
-            
+
             if (isExisting) {
                 const result = await update('form_data', formDataRecord, 'uuid = ?', [record.uuid]);
                 if (result > 0) updated++;
@@ -415,14 +415,14 @@ const processFormDataBatch = async (records, project_id) => {
                 if (result && result.changes > 0) inserted++;
             }
         }
-        
+
         await db.execAsync('COMMIT;');
     } catch (error) {
         await db.execAsync('ROLLBACK;');
         console.error('Batch processing error:', error);
         throw error;
     }
-    
+
     return { inserted, updated };
 };
 
@@ -731,7 +731,7 @@ export const hasSeen = async (id, username) => {
         // Split the comma-separated list and check if username exists
         const seenByList = result.seen_by.split(',').map(name => name.trim());
         return seenByList.includes(username);
-        
+
     } catch (error) {
         console.error('Error checking if user has seen record:', error);
         return false;
@@ -753,7 +753,7 @@ export const updateSeenBy = async (id, username) => {
 
         // First, check if user has already seen this record
         const hasSeenResult = await hasSeen(id, username);
-        
+
         if (hasSeenResult) {
             // User already in the list, no need to update
             return true;
@@ -781,7 +781,7 @@ export const updateSeenBy = async (id, username) => {
         );
 
         return updateResult.changes > 0;
-        
+
     } catch (error) {
         console.error('Error updating seen_by field:', error);
         return false;
@@ -1044,3 +1044,120 @@ const showSubmissionResults = async (successForms, failedForms, totalForms) => {
 };
 
 export { handleFormSubmission, submitForms };
+
+
+/**
+ * Synchronizes workflow states and action logs for a specific project.
+ * * @param {string} projectId - The UUID of the project to sync.
+ * @param {function} setStatus - State setter for UI feedback.
+ */
+export const syncWorkflowData = async (projectId, setStatus) => {
+    try {
+        // ---------------------------------------------------------
+        // 1. UPSYNC: Push local project changes to Server
+        // ---------------------------------------------------------
+        updateStatus(setStatus, `Checking for unsynced updates in project ${projectId}...`);
+
+        // Filter local selection by both sync_status AND project_id
+        const unsyncedWorkflows = await select('tb_form_data_workflow', 'sync_status = ? AND project_id = ?', [0, projectId]);
+        const unsyncedLogs = await select('tb_workflow_action_logs', 'sync_status = ? AND project_id = ?', [0, projectId]);
+
+        if (unsyncedWorkflows.length > 0 || unsyncedLogs.length > 0) {
+            updateStatus(setStatus, `Uploading ${unsyncedWorkflows.length} states and ${unsyncedLogs.length} logs...`);
+
+            // The 'api' instance should be configured with the project's specific Token/BaseURL before this call
+            await api.post('api/v1/workflow-sync/', {
+                project_id: projectId,
+                workflows: unsyncedWorkflows,
+                logs: unsyncedLogs
+            });
+
+            // Mark only this project's records as synced
+            await update('tb_form_data_workflow', { sync_status: 1 }, 'sync_status = ? AND project_id = ?', [0, projectId]);
+            await update('tb_workflow_action_logs', { sync_status: 1 }, 'sync_status = ? AND project_id = ?', [0, projectId]);
+
+            updateStatus(setStatus, "Project updates uploaded successfully.");
+        }
+
+        // ---------------------------------------------------------
+        // 2. DOWNSYNC: Fetch project updates from Server
+        // ---------------------------------------------------------
+        updateStatus(setStatus, "Fetching latest workflow updates...");
+
+        // Get the latest update timestamp for this specific project
+        const lastUpdateResult = await select(
+            'tb_form_data_workflow',
+            'project_id = ?',
+            [projectId],
+            'MAX(updated_at) as last_val'
+        );
+        const lastUpdate = lastUpdateResult[0]?.last_val || "1970-01-01T00:00:00Z";
+
+        // Include project_id in the query params if your backend requires it for filtering
+        let nextUrl = `api/v1/workflow-sync/?project_id=${projectId}&last_update=${lastUpdate}`;
+        console.log('Initial workflow sync URL:', nextUrl);
+        let totalDownloaded = 0;
+
+        while (nextUrl) {
+            const downResponse = await api.get(nextUrl);
+            const data = downResponse.data;
+
+            // Detect if response is paginated (object with results) or a direct array
+            const results = Array.isArray(data) ? data : (data.results || []);
+            const next = data.next || null; // Arrays won't have a .next property
+
+            if (results.length > 0) {
+                updateStatus(setStatus, `Downloading ${results.length} records...`);
+
+                for (const record of results) {
+                    // Update current workflow runtime state
+                    await insert('tb_form_data_workflow', {
+                        id: record.id,
+                        form_data_uuid: record.form_data_uuid,
+                        project_id: projectId, // Ensure project_id is persisted locally
+                        workflow_state: record.workflow_state,
+                        workflow_updated_at: record.workflow_updated_at,
+                        last_action: record.last_action,
+                        is_locked: record.is_locked ? 1 : 0,
+                        is_closed: record.is_closed ? 1 : 0,
+                        metadata: JSON.stringify(record.metadata),
+                        sync_status: 1,
+                        updated_at: record.updated_at
+                    }, true);
+
+                    // Sync nested action logs if provided by the backend
+                    if (record.action_logs && Array.isArray(record.action_logs)) {
+                        for (const log of record.action_logs) {
+                            await insert('tb_workflow_action_logs', {
+                                id: log.id,
+                                form_data_uuid: record.form_data_uuid,
+                                project_id: projectId,
+                                transition_action: log.action_name,
+                                from_state: log.from_state,
+                                to_state: log.to_state,
+                                action_by: log.action_by,
+                                created_at: log.created_at,
+                                sync_status: 1
+                            }, true);
+                        }
+                    }
+                }
+                totalDownloaded += results.length;
+            }
+
+            // Break the loop if there's no next page or if data was a simple array
+            nextUrl = next;
+            if (Array.isArray(data)) nextUrl = null;
+        }
+        updateStatus(setStatus, `Sync complete for project ${projectId}. ${totalDownloaded} records updated.`);
+        return { success: true, count: totalDownloaded };
+
+    } catch (error) {
+        console.error(`Workflow sync failed for project ${projectId}:`, error);
+        updateStatus(setStatus, `Sync error: ${error.message}`);
+        return { success: false, error: error.message };
+    }
+};
+
+
+

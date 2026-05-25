@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { select } from '../utils/database';
+import { useAuthStore } from './authStore';
 
 const useProjectStore = create(
     persist(
@@ -12,11 +13,15 @@ const useProjectStore = create(
             currentFormChildren: null,  // Store only the ID, not the full data
             // Optional: cache for form definitions with LRU strategy
             formDefCache: new Map(),
+            userData: null,
+            hasChildren: false,
 
             setCurrentProject: (project) => {
                 // Store minimal project data (only what's needed for display)
 
                 let parsedTags = [];
+
+                const { instances } = useAuthStore.getState();
 
                 if (project?.tags) {
                     try {
@@ -45,7 +50,9 @@ const useProjectStore = create(
                     description: project.description,
                     tags: parsedTags,
                 } : null;
-                set({ currentProject: minimalProject });
+
+                //console.log('Setting current project in store:', minimalProject, 'with user instance:', instances);
+                set({ currentProject: minimalProject, userData: instances ? instances[project?.instance_url]?.userInstance : null });
             },
 
             setCurrentData: async (data) => {
@@ -66,6 +73,11 @@ const useProjectStore = create(
                         status: data.status,
                         // Exclude form_data field (the actual JSON data)
                     };
+
+                    const childrenCount = await select('form_data', 'parent_uuid = ? AND form_role != ?', [data?.uuid, 'workflow']);
+                    const hasChildren = childrenCount.length > 0;
+
+                    set({ hasChildren });
 
                     // Then fetch and set the form data
                     if (data?.form) {

@@ -192,14 +192,6 @@ export default function FormDataItem({
 
 
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                <View style={[styles.badge, { backgroundColor: statusTheme.bg + '20', borderWidth: 1, borderColor: statusTheme.bg }]}>
-                                    <Text style={[styles.tiny, { color: statusTheme.bg, fontWeight: '800' }]}>
-                                        {statusTheme.label}
-                                    </Text>
-                                </View>
-                                <Text style={styles.tiny}>
-                                    {new Date(item.status_date).toLocaleDateString()}
-                                </Text>
 
                                 {/* Badge for unseen items */}
                                 {isUnseen && (
@@ -219,6 +211,21 @@ export default function FormDataItem({
                                         </Text>
                                     </View>
                                 )}
+
+                                <View style={[styles.badge, { backgroundColor: statusTheme.bg + '20', borderWidth: 1, borderColor: statusTheme.bg }]}>
+                                    <Text style={[styles.tiny, { color: statusTheme.bg, fontWeight: '800' }]}>
+                                        {statusTheme.label}
+                                    </Text>
+                                </View>
+                                <View style={[styles.badge, { backgroundColor: theme.colors.chipBackground + '40', borderWidth: 1, borderColor: theme.colors.chipBackground }]}>
+                                    <Text style={[styles.tiny, { color: theme.colors.chipBackground, fontWeight: '800' }]}>
+                                        {item.form_role.charAt(0).toUpperCase()}
+                                    </Text>
+                                </View>
+                                <Text style={styles.tiny}>
+                                    {new Date(item.status_date).toLocaleDateString()}
+                                </Text>
+
 
                             </View>
                         </View>

@@ -12,6 +12,7 @@ export const useFormStore = create((set, get) => ({
     currentPage: 0,
     formUUID: null,
     parentUUID: null,
+    workflowAction: null,
     _isUpdating: false,
     filteredOptionsCache: new Map(),
     _fieldDependencies: new Map(),
@@ -19,7 +20,7 @@ export const useFormStore = create((set, get) => ({
 
 
 
-    initForm: (schema, existingData = null, existingUUID = null, parentUUID = null) => {
+    initForm: (schema, existingData = null, existingUUID = null, parentUUID = null, workflowAction = null) => {
         const defaultLang = schema.form_defn?.meta?.default_language || schema.form_defn?.language?.[0] || 'English (en)';
 
         // Pre-compute field dependencies
@@ -56,6 +57,7 @@ export const useFormStore = create((set, get) => ({
             formData: existingData || {},
             formUUID: existingUUID || Crypto.randomUUID(),
             parentUUID: parentUUID || null,
+            workflowAction: workflowAction || null,
             currentPage: 0,
             errors: {},
             language: defaultLang,

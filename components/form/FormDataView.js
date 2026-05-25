@@ -1,21 +1,21 @@
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
-import { File, Paths } from 'expo-file-system';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, LayoutAnimation, ScrollView, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
-import MapView, { Marker, Polygon, PROVIDER_GOOGLE } from 'react-native-maps';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import { FormIcons } from '../../components/layout/FormIcons';
 import { getStyles } from '../../constants/styles';
 import { useTheme } from '../../context/ThemeContext';
-import { getLabel } from '../../lib/form/utils';
 import useProjectStore from '../../store/projectStore';
 import { useFormStore } from '../../store/useFormStore';
 import { select } from '../../utils/database';
 import { hasSeen, updateSeenBy } from '../../utils/services';
 import { AppHeader } from '../layout/AppHeader';
 
+
+
 import { useAuthStore } from '../../store/authStore';
+import CurrentDataView from './CurrentDataView';
 
 // Enable LayoutAnimation for Android
 const FormDataView = ({ formData }) => {
@@ -28,6 +28,8 @@ const FormDataView = ({ formData }) => {
     const currentProject = useProjectStore(state => state.currentProject);
     const currentData = useProjectStore(state => state.currentData);
     const setCurrentData = useProjectStore(state => state.setCurrentData);
+    const userData = useProjectStore(state => state.userData);
+    const currentFormChildren = useProjectStore(state => state.currentFormChildren);
 
 
     const isRelevant = useFormStore(state => state.isRelevant);
@@ -43,16 +45,14 @@ const FormDataView = ({ formData }) => {
     const [expandedGroups, setExpandedGroups] = useState({});
     const [menuVisible, setMenuVisible] = useState(false);
 
+    const [workflowModalVisible, setWorkflowModalVisible] = useState(false);
+    const [workflowRuntime, setWorkflowRuntime] = useState(null);
+    const [availableWorkflowActions, setAvailableWorkflowActions] = useState([]);
+    const [workflowLogs, setWorkflowLogs] = useState([]);
+    const [formChildrenData, setFormChildrenData] = useState([]);
+
     const theme = useTheme();
     const styles = getStyles(theme);
-
-
-    const interpolateText = (text) => {
-        if (!text) return null;
-        return text.replace(/\${(\w+)}/g, (_, varName) => {
-            return formData[varName] !== undefined ? formData[varName] : `[${varName}]`;
-        });
-    };
 
 
     const handleOutsidePress = () => {
@@ -147,9 +147,75 @@ const FormDataView = ({ formData }) => {
                     initForm(parsedSchema, existingData, formData.uuid, formData.parent_uuid);
                     await getFormDataBreadcrumbs(existingData)
 
+
+                    const workflowEnabled = parsedSchema?.form_defn?.workflow?.enabled;
+                    //console.log('work flow enabled', workflowEnabled, JSON.stringify(parsedSchema?.form_defn?.workflow, null, 4))
+
+                    if (workflowEnabled) {
+
+                        const workflowData = await select(
+                            'tb_form_data_workflow',
+                            'form_data_uuid = ?',
+                            [formData.uuid]
+                        );
+
+                        if (workflowData?.length > 0) {
+
+                            setWorkflowRuntime(workflowData[0]);
+
+                            const currentState = workflowData[0].workflow_state;
+                            const transitions = parsedSchema.form_defn.workflow.transitions || [];
+                            const userGroups = userData?.groups || [];
+                            const allowedActions = transitions.filter(
+                                transition => {
+                                    console.log('checking transition', transition.action, 'from', transition.icon, 'user groups', userData, 'transition groups', transition.groups)
+                                    // State match
+                                    if (!transition.from.includes(currentState)) {
+                                        return false;
+                                    }
+
+                                    //Group match
+                                    if (transition.groups && transition.groups.length > 0) {
+                                        const hasGroup = transition.groups.some(g => userGroups.includes(g));
+                                        if (!hasGroup) { return false; }
+                                    }
+
+                                    return true;
+                                }
+                            );
+
+                            //console.log('allowed actions', allowedActions)
+
+                            setAvailableWorkflowActions(
+                                allowedActions
+                            );
+                        }
+
+                    }
+
+                    console.log('currentFormChildren', currentFormChildren)
+                    if (currentFormChildren && currentFormChildren.trim().length > 0) {
+                        const childCodes = currentFormChildren.split(',').filter(code => code.trim() !== '');
+
+                        const formChildren = await select(
+                            'form_defn',
+                            'code IN (' + childCodes.map(() => '?').join(',') + ')',
+                            childCodes,
+                            'id, title, short_title, code'
+                        );
+
+                        setFormChildrenData(formChildren || []);
+                    } else {
+                        setFormChildrenData([]);
+                    }
+
+
+
                 } else {
                     console.error("No schema found for ID:", formData.form);
                 }
+
+
             } catch (error) {
                 console.error("Error loading FormDataView:", error);
             } finally {
@@ -182,321 +248,6 @@ const FormDataView = ({ formData }) => {
 
     if (!ready) return <ActivityIndicator style={{ flex: 1 }} />;
 
-
-
-    const parsedFormData = JSON.parse(formData.form_data || '{}');
-
-    const toggleGroup = (groupId) => {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        setExpandedGroups(prev => ({
-            ...prev,
-            [groupId]: !prev[groupId]
-        }));
-    };
-
-    const getImageUri = (imageFileName) => {
-        if (!imageFileName || !formData.original_uuid) return null;
-        try {
-            const documentDir = Paths.document;
-            const filePath = `${formData.original_uuid}/${imageFileName}`;
-            const file = new File(documentDir, filePath);
-            return file.uri;
-        } catch (error) { return null; }
-    };
-
-    let page_holder = [];
-
-    // --- LOOP 1: PAGES ---
-    for (const [pageIndex, page] of Object.entries(schema.form_defn.pages)) {
-
-        if (!isRelevant(page)) continue
-
-
-        let group_holder = [];
-        //console.log('page group', JSON.stringify(page, null, 6))
-
-        // --- LOOP 2: GROUPS ---
-        for (const [groupIndex, fieldGroup] of Object.entries(page.fields)) {
-            if (!isRelevant(fieldGroup)) continue;
-
-            let field_holder = [];
-            const groupId = `${pageIndex}-${groupIndex}`;
-            const isExpanded = !!expandedGroups[groupId];
-
-
-            let label = ''
-            let hint = ''
-            // --- LOOP 3: FIELDS ---
-            for (const [colName, field] of Object.entries(fieldGroup)) {
-                if (field.type === 'calculate') continue;
-                if (!isRelevant(field)) continue
-
-                const value = parsedFormData[field.name];
-
-                label = getLabel(field, 'label', language, schemaLanguage)
-                hint = getLabel(field, 'hint', language, schemaLanguage)
-
-                label = interpolateText(label);
-                hint = interpolateText(hint);
-
-                // FIELD RENDERING LOGIC
-                let inputContent = null;
-
-                if (field.type === 'geopoint' && value?.latitude) {
-
-                    let value = parsedFormData[field.name]
-                    let geoValue = value && typeof value === 'object' && value.latitude && value.longitude ? value : null;
-
-                    if (!geoValue) continue;
-
-                    inputContent = (
-                        <View style={styles.mapContainer}>
-                            <MapView
-                                style={styles.map}
-                                liteMode={true}
-                                region={{
-                                    latitude: geoValue.latitude,
-                                    longitude: geoValue.longitude,
-                                    latitudeDelta: 0.01,
-                                    longitudeDelta: 0.01,
-                                }}
-                                scrollEnabled={true}
-                                zoomEnabled={true}
-                            >
-                                <Marker coordinate={geoValue} />
-                            </MapView>
-                            <Text style={styles.locationText}>
-                                {geoValue.latitude}, {geoValue.longitude}, {geoValue.accuracy}
-                            </Text>
-                        </View>
-                    )
-
-                } else if (field.type === 'geoshape') {
-                    let polygonCoords = [];
-                    let bounds = {
-                        latitudeDelta: 0.02,
-                        longitudeDelta: 0.02,
-                        latitude: 0,
-                        longitude: 0
-                    };
-
-                    try {
-                        polygonCoords = JSON.parse(parsedFormData[field.name] || '[]');
-                    } catch (e) {
-                        console.log('Error parsing geoshape data:', e);
-                        continue;
-                    }
-
-                    if (polygonCoords.length > 0) {
-                        const latitudes = polygonCoords.map(coord => coord.latitude);
-                        const longitudes = polygonCoords.map(coord => coord.longitude);
-
-                        bounds.latitude = (Math.max(...latitudes) + Math.min(...latitudes)) / 2;
-                        bounds.longitude = (Math.max(...longitudes) + Math.min(...longitudes)) / 2;
-                        bounds.latitudeDelta = (Math.max(...latitudes) - Math.min(...latitudes)) * 1.5;
-                        bounds.longitudeDelta = (Math.max(...longitudes) - Math.min(...longitudes)) * 1.5;
-                    }
-
-                    inputContent = (
-                        <View style={[styles.mapContainer]}>
-                            <MapView
-                                provider={PROVIDER_GOOGLE}
-                                style={{ flex: 1 }}
-                                initialRegion={bounds}
-                                region={bounds}
-                                showsMyLocationButton={true}
-                                zoomEnabled={true}
-                                scrollEnabled={false}
-                                showsCompass={true}
-                                showsScale={true}
-                                zoomControlEnabled={true}
-                                showsUserLocation={true}
-                            >
-                                <Polygon
-                                    coordinates={polygonCoords}
-                                    strokeWidth={2}
-                                    strokeColor="#FF0000"
-                                    fillColor="rgba(255,0,0,0.2)"
-                                />
-                            </MapView>
-                        </View>
-                    )
-
-                } else if (field.type === 'image') {
-
-                    const imageFileName = parsedFormData[field.name];
-                    const imageUri = getImageUri(imageFileName);
-
-                    if (imageUri) {
-                        inputContent = (
-                            <View style={[
-                                styles.mapContainer,
-                                {
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    backgroundColor: theme.colors.inputBackground,
-                                },]}>
-                                <Image
-                                    source={{ uri: imageUri }}
-                                    style={[{ width: 165, height: 165, borderRadius: 4 }, styles.noLocation]}
-                                    contentFit='contain'
-                                    onError={(e) => {
-                                        console.log('Image failed to load from URI:', imageUri);
-                                    }}
-                                    onLoad={() => {
-                                        // console.log('Image loaded successfully:', imageUri);
-                                    }}
-                                />
-                            </View>
-                        )
-
-                    } else {
-                        // Show placeholder
-                        inputContent = (
-                            <View key={`${pageIndex}-${groupIndex}-${colName}`} style={{ marginBottom: 15 }}>
-                                <Text style={[styles.label, { fontSize: 14 }]}>{field.label}</Text>
-                                <View style={[
-                                    styles.mapContainer,
-                                    {
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        backgroundColor: theme.colors.inputBackground,
-                                        padding: 20,
-                                    }]}>
-                                    <Ionicons name="image-outline" size={40} color={theme.colors.text} />
-                                    <Text style={[styles.textInput, { fontStyle: 'italic', textAlign: 'center', marginTop: 10 }]}>
-                                        {!imageFileName ? 'No image captured' : 'Image not available'}
-                                    </Text>
-                                    {imageFileName && (
-                                        <Text style={[styles.textInput, { fontSize: 12, textAlign: 'center', marginTop: 5 }]}>
-                                            File: {imageFileName}
-                                        </Text>
-                                    )}
-                                    {!Paths.document && (
-                                        <Text style={[styles.textInput, { fontSize: 10, textAlign: 'center', marginTop: 5, color: 'orange' }]}>
-                                            Document directory not available
-                                        </Text>
-                                    )}
-                                </View>
-                            </View>
-                        )
-                    }
-                } else if (field.type === 'select_multiple') {
-
-
-                    let value = parsedFormData[field.name]
-                    let currentField = field
-
-                    const selectedItems = value === '' || value === 'NA' ? [] : Array.isArray(value) ? value : JSON.parse(value || '[]');
-                    let tmp = []
-                    if (currentField['options']) {
-                        for (const option in currentField['options']) {
-                            if (selectedItems.includes(currentField['options'][option].name)) {
-
-                                tmp.push(
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }} key={option}>
-                                        <Ionicons name="chevron-forward-outline" size={14} color={theme.colors.text} />
-                                        <Text style={[styles.textInput, { fontSize: 14 }]}>
-                                            {getLabel(currentField['options'][option], 'label', language, schemaLanguage)}
-                                        </Text>
-                                    </View>
-                                )
-                            }
-                        }
-                    }
-
-                    inputContent = tmp
-                } else if (field.type === 'select_one') {
-                    let value = parsedFormData[field.name]
-                    let currentField = field
-                    let displayValue = value;
-
-                    if (currentField['options']) {
-                        for (const option in currentField['options']) {
-                            if (currentField['options'][option].name === value) {
-                                displayValue = currentField['options'][option]['label::Default'] || value;
-                                break;
-                            }
-                        }
-                    }
-                    inputContent = <Text style={[styles.textInput, { fontSize: 14 }]}>{displayValue}</Text>;
-                } else {
-                    inputContent = <Text style={[styles.bodyText, { marginTop: 4 }]}>{value || '—'}</Text>;
-                }
-
-                //console.log('text label color', JSON.stringify(field, null, 4))
-
-                field_holder.push(
-                    <View key={`${groupId}-${colName}`} style={{ marginBottom: 20 }}>
-                        <Text style={[styles.tiny, { textTransform: 'uppercase', fontWeight: 'bold' }]}>
-                            {label}
-                        </Text>
-                        {inputContent}
-                    </View>
-                );
-            }
-
-            if (field_holder.length > 0) {
-                group_holder.push(
-                    <View key={groupId} style={{ marginBottom: 5 }}>
-                        {/* Group Header / Toggle Button */}
-                        <TouchableOpacity
-                            onPress={() => toggleGroup(groupId)}
-                            activeOpacity={0.7}
-                            style={[
-                                styles.card,
-                                {
-                                    flexDirection: 'row',
-                                    alignItems: 'center',
-                                    // backgroundColor: isExpanded ? theme.colors.primary + '08' : theme.colors.inputBackground,
-                                    // borderColor: isExpanded ? theme.colors.primary : theme.colors.inputBorder,
-                                    backgroundColor: theme.colors.inputBackground,
-                                    borderColor: theme.colors.inputBorder,
-                                    borderWidth: 1,
-                                    marginBottom: 0,
-                                    borderBottomLeftRadius: isExpanded ? 0 : 8,
-                                    borderBottomRightRadius: isExpanded ? 0 : 8,
-                                }
-                            ]}
-                        >
-                            <MaterialIcons
-                                name={isExpanded ? "keyboard-arrow-up" : "keyboard-arrow-down"}
-                                size={24}
-                                color={theme.colors.hint}
-                            />
-                            <Text style={[styles.label, { flex: 1, marginLeft: 10, fontSize: 15 }]}>
-                                {getLabel(page, 'label', language, schemaLanguage) || `Page ${parseInt(pageIndex) + 1}`}
-                            </Text>
-                        </TouchableOpacity>
-
-                        {/* Collapsible Field Holder */}
-                        {isExpanded && (
-                            <View style={{
-                                padding: 16,
-                                backgroundColor: theme.colors.background,
-                                borderLeftWidth: 1,
-                                borderRightWidth: 1,
-                                borderBottomWidth: 1,
-                                borderColor: theme.colors.inputBorder,
-                                borderBottomLeftRadius: 8,
-                                borderBottomRightRadius: 8,
-                            }}>
-                                {field_holder}
-                            </View>
-                        )}
-                    </View>
-                );
-            }
-        }
-
-        if (group_holder.length > 0) {
-            page_holder.push(
-                <View key={pageIndex} style={{ marginBottom: 14 }}>
-                    {group_holder}
-                </View>
-            );
-        }
-    }
 
     return (
         <>
@@ -567,23 +318,260 @@ const FormDataView = ({ formData }) => {
                         ))}
                     </View>
                 )}
-                <View style={{ paddingHorizontal: 16, paddingBottom: 40 }}>
-                    {page_holder}
+                <View style={{ paddingHorizontal: 16, marginBottom: 20 }}>
+                    <CurrentDataView formData={formData} />
                 </View>
-
-
 
             </ScrollView>
 
+
             <TouchableOpacity
-                style={[styles.fab]}
-                onPress={() => {
-                    setCurrentData(null)
-                    router.push(`/Main/`)
-                }}
+                style={[
+                    styles.inputBase,
+                    {
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        alignSelf: 'flex-end',
+                        gap: 10,
+                        borderRadius: 10,
+                        paddingVertical: 10,   // Specific padding
+                        paddingHorizontal: 20,
+                        margin: 16,            // Consistent margin
+                    }
+                ]}
+                onPress={() => setWorkflowModalVisible(true)}
             >
-                <MaterialIcons name="home-filled" size={24} color="lightgray" />
+                <Ionicons name="flash-outline" size={16} color={theme.colors.primary} />
+                <Text style={[styles.label, { color: theme.colors.primary, fontSize: 14 }]}>
+                    OPTIONS
+                </Text>
             </TouchableOpacity>
+
+
+
+            <Modal
+                visible={workflowModalVisible}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() =>
+                    setWorkflowModalVisible(false)
+                }
+            >
+                <Pressable
+                    style={{
+                        flex: 1,
+                        backgroundColor: 'rgba(0,0,0,0.4)',
+                        justifyContent: 'flex-end',
+                    }}
+                    onPress={() =>
+                        setWorkflowModalVisible(false)
+                    }
+                >
+
+                    <Pressable
+                        style={{
+                            backgroundColor: theme.colors.background,
+                            borderTopLeftRadius: 20,
+                            borderTopRightRadius: 20,
+                            padding: 20,
+                            paddingBottom: 50,
+                            maxHeight: '70%',
+                        }}
+                    >
+
+                        {/* HEADER */}
+
+                        <View
+                            style={{
+                                flexDirection: 'row',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginBottom: 20,
+                            }}
+                        >
+                            <Text style={[styles.label, { fontSize: 18 }]} > Options </Text>
+
+                            <TouchableOpacity onPress={() => setWorkflowModalVisible(false)} >
+                                <Ionicons name="close" size={24} color={theme.colors.text} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* CURRENT STATE */}
+
+                        {workflowRuntime && (
+
+                            <View
+                                style={{
+                                    marginBottom: 20,
+                                    padding: 14,
+                                    borderRadius: 10,
+                                    backgroundColor: theme.colors.inputBackground,
+                                }}
+                            >
+
+                                <Text style={[styles.tiny, { marginBottom: 4 }]} > CURRENT STATE </Text>
+                                <View style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    gap: 8,
+                                }}
+                                >
+                                    <MaterialCommunityIcons name="source-branch" size={18} color={theme.colors.primary} />
+                                    <Text style={styles.label} > {workflowRuntime.workflow_state} </Text>
+                                </View>
+                            </View>
+                        )}
+
+                        <ScrollView
+                            showsVerticalScrollIndicator={false}
+                            contentContainerStyle={{ flexGrow: 1, paddingBottom: 20, paddingLeft: 15 }}
+                        >
+                            {/* AVAILABLE ACTIONS */}
+
+                            {formChildrenData.length > 0 && (
+                                <Text style={[styles.tiny]} > ADD NEW </Text>
+                            )}
+
+                            {formChildrenData.map((form, index) => (
+                                <TouchableOpacity
+                                    key={`child-${form.id || index}`}
+                                    style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        paddingVertical: 12,
+                                        gap: 12,
+                                    }}
+                                    onPress={() => {
+                                        setWorkflowModalVisible(false);
+                                        router.push({
+                                            pathname: `/Form/New`,
+                                            params: {
+                                                fdefn_id: `${form.id}`,
+                                                parent_uuid: formData.uuid,
+                                            }
+                                        });
+                                    }}
+                                >
+                                    <MaterialIcons name="add-circle-outline" size={24} color={theme.colors.primary} />
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.label}>{form.title || form.short_title}</Text>
+                                    </View>
+                                    <Ionicons name="chevron-forward" size={18} color={theme.colors.hint} />
+                                </TouchableOpacity>
+                            ))}
+
+
+                            {/* AVAILABLE ACTIONS */}
+
+                            {availableWorkflowActions.length > 0 && (
+                                <Text style={[styles.tiny, { marginTop: 20 }]} > ACTIONS </Text>
+                            )}
+
+                            {availableWorkflowActions.map(
+                                (action, index) => (
+
+                                    <TouchableOpacity
+                                        key={index}
+                                        style={{
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            paddingVertical: 10,
+                                            gap: 12,
+                                        }}
+                                        onPress={async () => {
+
+                                            setWorkflowModalVisible(false);
+
+                                            // Transition form
+                                            if (action.transition_form_id) {
+                                                const fdefn_id = await select('form_defn', 'form_id = ?', [action.transition_form_id], 'id');
+                                                console.log('action transition form', fdefn_id[0].id, JSON.stringify(action, null, 4))
+                                                router.push({
+                                                    pathname: `/Form/New`,
+                                                    params: {
+                                                        fdefn_id: `${fdefn_id[0].id}`,
+                                                        parent_uuid: formData.uuid,
+                                                        workflow_action: action.action,
+                                                    }
+                                                });
+
+                                            }
+                                        }}
+                                    >
+
+                                        <FormIcons iconName={action.icon_name || 'materialicons:play-circle-outline'} size={24} color={action.icon_color || theme.colors.primary} />
+                                        <View style={{ flex: 1 }} >
+                                            <Text style={styles.label} > {action.label} </Text>
+                                        </View>
+                                        <Ionicons name="chevron-forward" size={18} color={theme.colors.hint} />
+                                    </TouchableOpacity>
+                                )
+                            )}
+
+                            {/* WORKFLOW LOGS */}
+
+                            {workflowLogs.length > 0 && (
+
+                                <TouchableOpacity
+                                    style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        paddingVertical: 16,
+                                        gap: 12,
+                                    }}
+                                    onPress={() => {
+
+                                        setWorkflowModalVisible(false);
+
+                                        router.push({
+                                            pathname:
+                                                '/Workflow/Logs',
+                                            params: {
+                                                form_data_uuid:
+                                                    formData.uuid
+                                            }
+                                        });
+                                    }}
+                                >
+
+                                    <MaterialCommunityIcons name="history" size={22} color={theme.colors.text} />
+                                    <Text style={styles.label} > View Workflow Logs </Text>
+                                </TouchableOpacity>
+                            )}
+
+
+
+
+
+                        </ScrollView>
+                        <TouchableOpacity
+                            style={[
+                                styles.inputBase,
+                                lstyles.actionItem,
+                            ]}
+                            onPress={() => {
+                                setWorkflowModalVisible(false);
+                                setCurrentData(null);
+                                router.push(`/Main/`);
+                            }}
+                        >
+
+                            <Ionicons
+                                name="home-outline"
+                                size={22}
+                                color={theme.colors.text}
+                            />
+
+                            <Text
+                                style={styles.label}
+                            >
+                                Back To Project Home
+                            </Text>
+                        </TouchableOpacity>
+                    </Pressable>
+                </Pressable>
+            </Modal>
+
         </>
     );
 };
@@ -608,5 +596,14 @@ const lstyles = StyleSheet.create({
         width: 190,
         elevation: 5,
         zIndex: 101,
+    },
+
+    actionItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderTopWidth: 1,
+        paddingVertical: 16,
+        gap: 12,
     },
 });

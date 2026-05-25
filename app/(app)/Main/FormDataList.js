@@ -55,7 +55,7 @@ export default function FormDataList() {
     try {
       let results = []
       if (currentData) {
-        results = await getFormData(user?.globalUsername, currentProject?.project, currentData.original_uuid);
+        results = await getFormData(user?.globalUsername, currentProject?.project, currentData.original_uuid, false);
       } else {
         results = await getFormData(user?.globalUsername, currentProject?.project, false);
       }
@@ -247,9 +247,15 @@ export default function FormDataList() {
   }, []);
 
 
+
   useEffect(() => {
     let tempData = [...data];
 
+    // 1. Normalize the tag to lowercase to avoid 'All' vs 'all' bugs
+    const currentTag = selectedTag ? selectedTag.toLowerCase() : '';
+    const archivedTranslation = t('common:archived')?.toLowerCase();
+
+    // Search filter
     if (searchQuery) {
       const sq = searchQuery.toLowerCase();
       tempData = tempData.filter((item) =>
@@ -257,27 +263,29 @@ export default function FormDataList() {
       );
     }
 
-    if (selectedTag && selectedTag === t('common:archived')) {
+    // Archived tag filter
+    if (currentTag && currentTag === archivedTranslation) {
       tempData = tempData.filter((item) => item.archived);
     }
 
-    if (selectedTag && selectedTag !== t('common:archived') && selectedTag !== 'All') {
-      const tq = selectedTag.toLowerCase();
+    // Specific status filter (e.g., 'sent', 'pending')
+    // Excludes 'all' and the 'archived' tag
+    if (currentTag && currentTag !== archivedTranslation && currentTag !== 'all') {
       tempData = tempData.filter((item) =>
-        item.status && item.status.toLowerCase() === tq
+        item.status && item.status.toLowerCase() === currentTag
       );
     }
 
-    if (selectedTag && selectedTag === 'All') {
+    // 'All' tag filter
+    if (currentTag === 'all') {
+      //console.log('Filtering for All - showing all non-archived data');
+      // If you want to HIDE archived items when 'All' is selected:
       tempData = tempData.filter((item) => !item.archived);
     }
 
     setFilteredData(tempData);
 
-    return () => {
-      // Optional cleanup when the screen loses focus
-    };
-  }, [data, searchQuery, selectedTag]);
+  }, [data, searchQuery, selectedTag, t]);
 
   return (
     <View style={[styles.pageContainer, { paddingBottom: insets.bottom, paddingTop: insets.top }]}>

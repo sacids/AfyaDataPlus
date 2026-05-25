@@ -26,8 +26,8 @@ const ListEmptyForms = () => {
             if (currentData) {
                 const currentDataForm = await select('form_defn', 'form_id = ?', [currentData.form]);
 
-                const childrenString = currentDataForm[0]?.children || '201';
-                childCodes = childrenString.split(',').map(code => Number(code.trim()));
+                const childrenString = currentDataForm[0]?.children ;
+                childCodes = childrenString ? childrenString.split(',').map(code => Number(code.trim())) : [];
             }
 
             const results = await getFormDefns(currentProject?.project, childCodes);

@@ -18,7 +18,7 @@ import { insert, select } from '../../../utils/database';
 
 
 export default function NewForm() {
-  const { fdefn_id, fdata_id, parent_uuid } = useLocalSearchParams();
+  const { fdefn_id, fdata_id, parent_uuid, workflow_action } = useLocalSearchParams();
 
   const initForm = useFormStore(state => state.initForm);
   const currentPage = useFormStore(state => state.currentPage);
@@ -84,6 +84,7 @@ export default function NewForm() {
     async function load() {
       try {
         // 1. Fetch Schema from DB
+        //console.log('new form params', { fdefn_id, fdata_id, parent_uuid })
         const schemaData = await select('form_defn', 'id = ?', [fdefn_id]);
         if (!schemaData || schemaData.length === 0) throw new Error("Schema not found");
 
@@ -107,7 +108,7 @@ export default function NewForm() {
         }
 
         // 3. Initialize the global store
-        initForm(parsedSchema, existingData, existingUUID, parent_uuid);
+        initForm(parsedSchema, existingData, existingUUID, parent_uuid, workflow_action);
 
       } catch (error) {
         console.error("Initialization Error:", error);

@@ -28,10 +28,10 @@ const useAuthStore = create(
 
             instances: {},
 
-            setInstanceSession: (url, token, username) => set((state) => ({
+            setInstanceSession: (url, token, username, userInstance) => set((state) => ({
                 instances: {
                     ...state.instances,
-                    [url]: { token, username }
+                    [url]: { token, username, userInstance }
                 }
             })),
 

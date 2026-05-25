@@ -8,11 +8,20 @@ import { useFormStore } from '../../../store/useFormStore';
 const NoteField = ({ element }) => {
 
 
+
   const formData = useFormStore(state => state.formData);
   const language = useFormStore(state => state.language);
 
   const theme = useTheme();
   const styles = getStyles(theme);
+
+  // Helper to replace ${var} with values from the store
+  const interpolateText = (text) => {
+    if (!text) return null;
+    return text.replace(/\${(\w+)}/g, (_, varName) => {
+      return formData[varName] !== undefined ? formData[varName] : `[${varName}]`;
+    });
+  };
 
   const label = useMemo(() => {
     const rawLabel = getLabel(element, 'label', language);
@@ -24,13 +33,7 @@ const NoteField = ({ element }) => {
     return interpolateText(rawHint);
   }, [element, language, formData]);
 
-  // Helper to replace ${var} with values from the store
-  const interpolateText = (text) => {
-    if (!text) return null;
-    return text.replace(/\${(\w+)}/g, (_, varName) => {
-      return formData[varName] !== undefined ? formData[varName] : `[${varName}]`;
-    });
-  };
+
 
   return (
     <View style={styles.container}>

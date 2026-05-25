@@ -68,9 +68,9 @@ api.interceptors.request.use(
 
         if (token) {
           req.headers.Authorization = `Bearer ${token}`;
-          //console.log('Added auth token for origin:', targetOrigin);
+          console.log('Added auth token for origin:', targetOrigin);
         } else {
-          //console.log('No token found for origin:', targetOrigin);
+          console.log('No token found for origin:', targetOrigin);
         }
       } catch (e) {
         console.warn('Could not get token for origin:', e);
@@ -127,13 +127,14 @@ api.interceptors.response.use(
         password: user.password,
       });
 
-      const { access } = loginResponse.data;
+
+      console.log('Auto-login successful, obtained new token for origin:', targetOrigin, JSON.stringify(loginResponse.data.user));
 
       // Update store with new token for this origin
-      setInstanceSession(targetOrigin, access, user.globalUsername);
+      setInstanceSession(targetOrigin, loginResponse.data.access, user.globalUsername, loginResponse.data.user);
 
       // Retry original request with new token
-      originalRequest.headers.Authorization = `Bearer ${access}`;
+      originalRequest.headers.Authorization = `Bearer ${loginResponse.data.access}`;
       return api(originalRequest);
 
     } catch (authError) {

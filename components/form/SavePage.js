@@ -146,6 +146,7 @@ const SavePage = () => {
 
             await insert("form_data", {
                 form: schema.form_id,
+                form_role: schema.form_role,
                 project: schema.project,
                 uuid: formUUID,
                 parent_uuid: parentUUID,
@@ -162,6 +163,8 @@ const SavePage = () => {
                 form_data: JSON.stringify(main_formData),
                 gps: finalGps ? JSON.stringify(finalGps) : null,
             });
+
+
 
 
 
@@ -208,7 +211,30 @@ const SavePage = () => {
                         });
                     }
                 }
+
+
+                // if (schema.form_defn?.workflow?.enabled) {
+                //     await insert('tb_form_data_workflow', {
+                //         form_data_uuid: parentUUID,
+                //         workflow_state: schema.form_defn.workflow.initial_state || 'initial',
+                //         project_id: schema.project,
+                //         created_on: new Date().toISOString(),
+                //         updated_on: new Date().toISOString()
+                //     });
+                // }
+
+                if (schema.workflowAction !== null && schema.workflowAction !== undefined) {
+                    await insert('tb_form_data_workflow', {
+                        form_data_uuid: parentUUID,
+                        workflow_state: schema.workflowAction,
+                        project_id: schema.project,
+                        sync_status: 0,
+                        updated_on: new Date().toISOString()
+                    });
+                }
             }
+
+
 
 
             router.replace('/Main');

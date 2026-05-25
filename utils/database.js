@@ -41,6 +41,7 @@ let FORM_DEFN_SQL = `CREATE TABLE IF NOT EXISTS form_defn (
   icon TEXT,
   form_type TEXT, 
   is_root INTEGER DEFAULT 1,
+  form_role TEXT DEFAULT 'ROOT',
   form_actions TEXT, 
   form_category TEXT, 
   form_defn TEXT, 
@@ -62,7 +63,8 @@ let FORM_DATA_SQL = `CREATE TABLE IF NOT EXISTS form_data (
   parent_uuid TEXT,
   gps TEXT,
   deleted INTEGER DEFAULT 0, 
-  archived INTEGER DEFAULT 0, 
+  archived INTEGER DEFAULT 0,
+  form_role TEXT default 'ROOT', 
   form_data TEXT NOT NULL, 
   created_by TEXT NOT NULL,
   created_by_name TEXT NOT NULL,  
@@ -160,6 +162,45 @@ const LAST_SYNC_SQL = `CREATE TABLE IF NOT EXISTS last_sync (
 );`;
 
 // Add to createTables function
+let FORM_DATA_WORKFLOW_SQL = `CREATE TABLE IF NOT EXISTS tb_form_data_workflow (
+
+    id TEXT PRIMARY KEY,
+    form_data_uuid TEXT UNIQUE NOT NULL,
+    project_id TEXT NOT NULL,
+    workflow_definition_code TEXT,
+    workflow_state TEXT NOT NULL,
+    assigned_group TEXT,
+    assigned_to TEXT,
+    last_action TEXT,
+    is_locked INTEGER DEFAULT 0,
+    is_closed INTEGER DEFAULT 0,
+    escalation_level INTEGER DEFAULT 0,
+    reopened_count INTEGER DEFAULT 0,
+    due_at TEXT,
+    metadata TEXT,
+    sync_status INTEGER DEFAULT 0,
+    created_at TEXT,
+    updated_at TEXT
+); `;
+//let FORM_DATA_WORKFLOW_SQL = `DROP TABLE IF EXISTS tb_form_data_workflow;`;
+
+let WORKFLOW_ACTION_LOGS_SQL = `CREATE TABLE IF NOT EXISTS tb_workflow_action_logs (
+
+    id TEXT PRIMARY KEY,
+    form_data_uuid TEXT NOT NULL,
+    project_id TEXT NOT NULL,
+    workflow_definition_code TEXT,
+    transition_action TEXT,
+    from_state TEXT,
+    to_state TEXT,
+    action_by TEXT,
+    comment TEXT,
+    transition_form_uuid TEXT,
+    metadata TEXT,
+    sync_status INTEGER DEFAULT 0,
+    created_at TEXT
+); `;
+//let WORKFLOW_ACTION_LOGS_SQL = `DROP TABLE IF EXISTS tb_workflow_action_logs; 
 
 
 
@@ -172,6 +213,8 @@ export const createTables = async () => {
         await db.execAsync(MESSAGES_SQL);
         await db.execAsync(PROJECT_SQL);
         await db.execAsync(LAST_SYNC_SQL);
+        await db.execAsync(FORM_DATA_WORKFLOW_SQL);
+        await db.execAsync(WORKFLOW_ACTION_LOGS_SQL);
 
         // New First Aid Tables
         await db.execAsync(FORM_REACTIONS_SQL);
@@ -495,59 +538,31 @@ export const select = async (tableName, whereClause = '', whereArgs = [], fields
 
 
 
-export const getFormData1 = async (user_id, project_id, currentData_uuid = false) => {
-    try {
-        let query = '';
-        let params = [0, project_id, user_id];
-        let result = [];
-        if (currentData_uuid) {
-            params = [...params, currentData_uuid]
-            query = `SELECT fd.*, is_root, fdef.title AS form_title, fdef.icon 
-                     FROM form_data fd 
-                     JOIN form_defn fdef ON fd.form = CAST(fdef.form_id AS TEXT) 
-                     WHERE fd.deleted = ?
-                     AND fd.project = ?
-                     AND fd.created_by = ?
-                     AND parent_uuid = ?
-                     ORDER BY id DESC`;
-        } else {
-            query = `SELECT fd.*, is_root, fdef.title AS form_title, fdef.icon 
-                     FROM form_data fd 
-                     JOIN form_defn fdef ON fd.form = CAST(fdef.form_id AS TEXT) 
-                     WHERE fd.deleted = ?
-                     AND fd.project = ?
-                     AND fd.created_by = ?
-                     AND fdef.is_root = 1
-                     ORDER BY id DESC`;
-            //console.log('query', query)
-        }
-        //console.log('query', query, params)
-        result = await db.getAllAsync(query, params);
-        //console.log('results', JSON.stringify(result, null, 5))
-        return result;
-    } catch (error) {
-        console.error('Error getting form data:', error);
-        return [];
-    }
-};
-
-
-export const getFormData = async (user_id, project_id, currentData_uuid = false) => {
+export const getFormData = async (user_id, project_id, currentData_uuid = false, workflow = false) => {
     try {
         let query = '';
         let params = [];
-        
+        let workflow_condition = 'AND fdef.form_role != "WORKFLOW"'; // Default condition to exclude workflow forms
+
+        if (workflow) {
+            console.log('Including workflow forms in getFormData query');
+            workflow_condition = 'AND fdef.form_role = "WORKFLOW"'; // If workflow is true, include only workflow forms
+        }
+
+        console.log('set workflow condition', workflow_condition)
+
         // Use a more efficient JSON-like approach if usernames have no commas
         // This assumes usernames don't contain commas
-        const hasSeenCondition = user_id 
+        const hasSeenCondition = user_id
             ? `, (fd.seen_by IS NOT NULL AND fd.seen_by LIKE '%${user_id}%') as has_seen`
             : ', 0 as has_seen';
-        
+
         if (currentData_uuid) {
             query = `
                 SELECT 
                     fd.*, 
                     fdef.is_root, 
+                    fdef.form_role, 
                     fdef.title AS form_title, 
                     fdef.icon
                     ${hasSeenCondition}
@@ -557,6 +572,7 @@ export const getFormData = async (user_id, project_id, currentData_uuid = false)
                 AND fd.project = ?
                 AND fd.created_by = ?
                 AND fd.parent_uuid = ?
+                ${workflow_condition}
                 ORDER BY fd.id DESC
             `;
             params = [0, project_id, user_id, currentData_uuid];
@@ -565,6 +581,7 @@ export const getFormData = async (user_id, project_id, currentData_uuid = false)
                 SELECT 
                     fd.*, 
                     fdef.is_root, 
+                    fdef.form_role,
                     fdef.title AS form_title, 
                     fdef.icon
                     ${hasSeenCondition}
@@ -574,13 +591,16 @@ export const getFormData = async (user_id, project_id, currentData_uuid = false)
                 AND fd.project = ?
                 AND fd.created_by = ?
                 AND fdef.is_root = 1
+                AND fdef.form_role = 'ROOT'
                 ORDER BY fd.id DESC
             `;
             params = [0, project_id, user_id];
         }
-        
+
+        console.log('Executing getFormData with query:', query, 'and params:', params);
+
         const result = await db.getAllAsync(query, params);
-        
+
         // For larger datasets, you might want to add a secondary check
         // to ensure exact username matching (prevents partial matches)
 
@@ -591,9 +611,9 @@ export const getFormData = async (user_id, project_id, currentData_uuid = false)
         //             (record.seen_by?.split(',').includes(currentUsername) ? 1 : 0) : 0
         //     }));
         // }
-        
+
         return result;
-        
+
     } catch (error) {
         console.error('Error getting form data:', error);
         return [];
@@ -616,6 +636,7 @@ export const getFormDefns = async (project_id, codes = null) => {
                      FROM form_defn fdef
                      WHERE active = ? 
                      AND project = ?
+                     AND (form_role = 'CHILD' OR form_role = 'ROOT')
                      AND fdef.code IN (${placeholders});`;
 
             // Combine all parameters
@@ -630,7 +651,8 @@ export const getFormDefns = async (project_id, codes = null) => {
             query = `SELECT * 
                      FROM form_defn fdef 
                      WHERE active = ? 
-                     AND project = ? AND is_root = 1;`;
+                     AND project = ? 
+                     AND form_role = 'ROOT';`;
 
 
             //console.log('q1', query, params)
@@ -746,7 +768,7 @@ export const insert = async (tableName, data) => {
 
         const sql = `INSERT OR REPLACE INTO ${tableName} (${filteredKeys.join(', ')}) VALUES (${placeholders});`;
         //console.log('sql')
-        console.log('Inserting sql:', sql, values);
+        //console.log('Inserting sql:', sql, values);
         const result = await db.runAsync(sql, values);
         return result;
     } catch (error) {

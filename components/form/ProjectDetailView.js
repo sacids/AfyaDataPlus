@@ -10,7 +10,7 @@ import { useAuthStore } from '../../store/authStore'
 import { useFilterStore } from '../../store/filterStore'
 import useProjectStore from '../../store/projectStore'
 import { select, update } from '../../utils/database'
-import { getProjfectForms, submitProjectData, syncProjectReactions } from '../../utils/services'
+import { getProjectForms, getProjfectForms, submitProjectData, syncProjectReactions, syncWorkflowData } from '../../utils/services'
 import { AppHeader } from '../layout/AppHeader'
 
 const ProjectDetailView = ({ project }) => {
@@ -225,9 +225,11 @@ const ProjectDetailView = ({ project }) => {
                 setSyncLogs('Starting form sync...');
                 setIsSyncing(true);
                 try {
-                  await getProjfectForms(currentProject.project, appendLog);
+                  await getProjectForms(currentProject.project, appendLog);
                   appendLog('Syncing reactions...');
                   await syncProjectReactions(currentProject.project, appendLog);
+                  appendLog('Syncing workflow data...');
+                  await syncWorkflowData(currentProject?.project, appendLog);
                   appendLog('Refresh complete.');
                   await refreshProjectData();
                 } catch (e) { appendLog('Error: ' + e.message); } finally { setIsSyncing(false); }

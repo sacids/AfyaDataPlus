@@ -1,12 +1,59 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { useTheme } from '../../../context/ThemeContext';
 import useProjectStore from '../../../store/projectStore';
 
 export default function TabLayout() {
     const { colors } = useTheme();
-    const { currentData, currentFormChildren } = useProjectStore();
-    //console.log('current form', currentFormChildren,'dd', ( (currentFormChildren !== '') ))
+    const { currentData, getCurrentFormDef, hasChildren, currentFormChildren } = useProjectStore();
+    const [workflowEnabled, setWorkflowEnabled] = useState(false);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchFormDef = async () => {
+            setLoading(true);
+            try {
+                const formDef = await getCurrentFormDef();
+
+                // 1. Identify which column holds your JSON payload string
+                // Based on common database setups and your logs, check these candidates:
+                const rawJsonString = formDef?.form_data || formDef?.form || formDef?.form_defn;
+
+                if (!rawJsonString) {
+                    console.warn('Could not find a valid JSON string column on formDef:', formDef);
+                    setWorkflowEnabled(false);
+                    return;
+                }
+
+                // 2. Parse the target JSON payload string safely
+                const parsedForm = JSON.parse(rawJsonString);
+                const workflow = parsedForm?.workflow || null;
+
+                setWorkflowEnabled(!!workflow?.enabled);
+                console.log('Workflow status updated successfully. Enabled:', !!workflow?.enabled);
+
+            } catch (error) {
+                console.error('Error fetching form definition:', error);
+                setWorkflowEnabled(false);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchFormDef();
+    }, [currentData]);
+
+
+
+    if (loading) {
+        return (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+        );
+    }
 
     return (
         <Tabs
@@ -29,8 +76,7 @@ export default function TabLayout() {
                 }}
             />
 
-
-            {(!currentData || (currentData && currentFormChildren !== null && currentFormChildren !== '')) ? (
+            {(!currentData || (currentData && currentFormChildren !== null && currentFormChildren !== '') || hasChildren) ? (
                 <Tabs.Screen
                     name="FormDataList"
                     options={{
@@ -48,6 +94,38 @@ export default function TabLayout() {
                         href: null,
                         tabBarIcon: ({ color, size }) => (
                             <Ionicons name="list" size={size} color={color} />
+                        ),
+                    }}
+                />
+            )}
+
+            {workflowEnabled ? (
+                <Tabs.Screen
+                    name="workflow"
+                    options={{
+                        title: 'Workflow',
+                        tabBarIcon: ({ color, size }) => (
+                            <MaterialCommunityIcons
+                                name="source-branch"
+                                size={size}
+                                color={color}
+                            />
+                        ),
+                    }}
+                />
+            ) : (
+                <Tabs.Screen
+                    name="workflow"
+                    options={{
+                        title: 'Workflow',
+                        href: null,
+                        tabBarIcon: ({ color, size }) => (
+                            <MaterialCommunityIcons
+                                name="source-branch"
+                                size={size}
+                                color={color}
+                            />
+
                         ),
                     }}
                 />
@@ -84,6 +162,12 @@ export default function TabLayout() {
                     }}
                 />
             )}
+
+
+
+
+
+
 
             {!currentData ? (
                 <Tabs.Screen
