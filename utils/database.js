@@ -549,7 +549,7 @@ export const getFormData = async (user_id, project_id, currentData_uuid = false,
             workflow_condition = 'AND fdef.form_role = "WORKFLOW"'; // If workflow is true, include only workflow forms
         }
 
-        console.log('set workflow condition', workflow_condition)
+        //console.log('set workflow condition', workflow_condition)
 
         // Use a more efficient JSON-like approach if usernames have no commas
         // This assumes usernames don't contain commas
@@ -597,7 +597,7 @@ export const getFormData = async (user_id, project_id, currentData_uuid = false,
             params = [0, project_id, user_id];
         }
 
-        console.log('Executing getFormData with query:', query, 'and params:', params);
+        //console.log('Executing getFormData with query:', query, 'and params:', params);
 
         const result = await db.getAllAsync(query, params);
 

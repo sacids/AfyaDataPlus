@@ -32,7 +32,7 @@ export default function TabLayout() {
                 const workflow = parsedForm?.workflow || null;
 
                 setWorkflowEnabled(!!workflow?.enabled);
-                console.log('Workflow status updated successfully. Enabled:', !!workflow?.enabled);
+                //console.log('Workflow status updated successfully. Enabled:', !!workflow?.enabled);
 
             } catch (error) {
                 console.error('Error fetching form definition:', error);

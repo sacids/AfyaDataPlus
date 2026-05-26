@@ -168,7 +168,7 @@ const FormDataView = ({ formData }) => {
                             const userGroups = userData?.groups || [];
                             const allowedActions = transitions.filter(
                                 transition => {
-                                    console.log('checking transition', transition.action, 'from', transition.icon, 'user groups', userData, 'transition groups', transition.groups)
+                                    //console.log('checking transition', transition.action, 'from', transition.icon, 'user groups', userData, 'transition groups', transition.groups)
                                     // State match
                                     if (!transition.from.includes(currentState)) {
                                         return false;
@@ -193,7 +193,7 @@ const FormDataView = ({ formData }) => {
 
                     }
 
-                    console.log('currentFormChildren', currentFormChildren)
+                    //console.log('currentFormChildren', currentFormChildren)
                     if (currentFormChildren && currentFormChildren.trim().length > 0) {
                         const childCodes = currentFormChildren.split(',').filter(code => code.trim() !== '');
 
