@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.mchizani.afyadataplus"
+      "bundleIdentifier": "tz.co.kamili.afyadata"
     },
     "assetBundlePatterns": [
       "assets/i18n/*.json"
@@ -24,7 +24,7 @@
           "apiKey": "AIzaSyA4EErQHgvFvFPtfqXiOHXdA0UU3XXn1U0"
         }
       },
-      "package": "com.mchizani.afyadataplus"
+      "package": "tz.co.kamili.afyadata"
     },
     "web": {
       "bundler": "metro",
