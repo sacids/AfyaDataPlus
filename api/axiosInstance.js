@@ -68,9 +68,9 @@ api.interceptors.request.use(
 
         if (token) {
           req.headers.Authorization = `Bearer ${token}`;
-          console.log('Added auth token for origin:', targetOrigin);
+          //onsole.log('Added auth token for origin:', targetOrigin);
         } else {
-          console.log('No token found for origin:', targetOrigin);
+          //console.log('No token found for origin:', targetOrigin);
         }
       } catch (e) {
         console.warn('Could not get token for origin:', e);

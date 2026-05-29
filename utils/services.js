@@ -47,7 +47,7 @@ export const getForms = async (project_id, setStatus) => {
         }, 100);
 
         // Retrieve local forms
-        updateStatus(setStatus, 'Retrieving local forms...');
+        setStatus('Retrieving local forms...');
         const localForms = {};
         const sql = await select('form_defn', 'project = ?', [project_id]);
         for (const form of sql) {
@@ -55,50 +55,50 @@ export const getForms = async (project_id, setStatus) => {
         }
 
         // Get all forms meta data
-        updateStatus(setStatus, 'Retrieving metadata...');
+        setStatus('Retrieving metadata...');
         const metaResponse = await api.post(`api/v1/form-defn-meta/${project_id}`);
         const metaForms = metaResponse.data;
 
         if (!Array.isArray(metaForms)) {
-            updateStatus(setStatus, 'Invalid metadata response');
+            setStatus('Invalid metadata response');
             console.warn('Invalid metadata response');
             return;
         }
 
         // Check for updates
-        updateStatus(setStatus, 'Checking for updates...');
+        setStatus('Checking for updates...');
         for (const remoteForm of metaForms) {
             const { id, version, short_title } = remoteForm;
 
             if (!localForms[id] || localForms[id] !== version) {
                 // Download form
-                updateStatus(setStatus, `Downloading form: ${short_title}...`);
+                setStatus(`Downloading form: ${short_title}...`);
 
                 try {
                     const formResponse = await api.get(`api/v1/form-definition/detail/${id}`);
                     const form = formResponse.data;
 
                     if (!form || typeof form !== 'object') {
-                        updateStatus(setStatus, `Invalid form data for: ${short_title}`);
+                        setStatus(`Invalid form data for: ${short_title}`);
                         console.warn(`Invalid form data for ID ${id}:`, form);
                         continue;
                     }
 
                     // Save form to database
                     await insert('form_defn', { ...form, project: project_id, form_id: id });
-                    updateStatus(setStatus, `Downloaded: ${short_title} (v${version})`);
+                    setStatus(`Downloaded: ${short_title} (v${version})`);
                 } catch (error) {
-                    updateStatus(setStatus, `Failed to download: ${short_title}`);
+                    setStatus(`Failed to download: ${short_title}`);
                     console.error(`Error downloading form ${id}:`, error);
                 }
             } else {
-                updateStatus(setStatus, `Up to date: ${short_title} (v${version})`);
+                setStatus(`Up to date: ${short_title} (v${version})`);
             }
         }
 
-        updateStatus(setStatus, 'Sync completed successfully!');
+        setStatus('Sync completed successfully!');
     } catch (error) {
-        updateStatus(setStatus, 'Sync failed - see console for details');
+        setStatus('Sync failed - see console for details');
         console.error('Error getting forms:', error);
     } finally {
         // Clear activity indicator
@@ -177,20 +177,21 @@ export const getProjectForms = async (project_id, setStatus) => {
 
 
 export const getProjectData = async (project_id, setStatus, options = {}) => {
-    
+
     const {
         pageSize = 50,
         maxPages = null,
         onProgress = null,
         incrementalSync = true,  // Enable incremental sync by default
-        forceFullSync = false,    // Force full sync even if incremental is available
-        syncMode = 'modified'     // 'modified', 'missing', 'all'
+        forceFullSync = true,    // Force full sync even if incremental is available
+        syncMode = 'all'     // 'modified', 'missing', 'all'
     } = options;
 
     let activityCounter = 0;
     let activityInterval = null;
 
     try {
+        console.log('Starting data sync for project', project_id, 'with options', options);
         setStatus(prev => prev || 'Starting data sync...');
 
         // Start activity indicator
@@ -213,7 +214,7 @@ export const getProjectData = async (project_id, setStatus, options = {}) => {
         const localCount = localRecords.length;
         const lastSyncTime = await getLastSyncTime(project_id);
 
-        updateStatus(setStatus, `Local records: ${localCount}`);
+        setStatus(`Local records: ${localCount}`);
 
         // Determine sync strategy
         let syncStrategy = 'full';
@@ -228,7 +229,7 @@ export const getProjectData = async (project_id, setStatus, options = {}) => {
                 // Fetch only records modified after last sync
                 queryParams.append('modified_after', lastSyncTime);
                 syncStrategy = 'incremental_modified';
-                updateStatus(setStatus, `Fetching records modified since ${new Date(lastSyncTime).toLocaleString()}...`);
+                setStatus(`Fetching records modified since ${new Date(lastSyncTime).toLocaleString()}...`);
             } else if (syncMode === 'missing') {
                 // Fetch only missing UUIDs
                 const localUuids = localRecords.map(r => r.uuid);
@@ -242,15 +243,15 @@ export const getProjectData = async (project_id, setStatus, options = {}) => {
                     if (missingResponse.data.missing_uuids?.length > 0) {
                         queryParams.append('uuids', missingResponse.data.missing_uuids.join(','));
                         syncStrategy = 'incremental_missing';
-                        updateStatus(setStatus, `Fetching ${missingResponse.data.missing_uuids.length} missing records...`);
+                        setStatus(`Fetching ${missingResponse.data.missing_uuids.length} missing records...`);
                     } else {
-                        updateStatus(setStatus, 'All records are already synced!');
+                        setStatus('All records are already synced!');
                         return { success: true, message: 'Already up to date', fetched: 0 };
                     }
                 }
             }
         } else if (!incrementalSync || forceFullSync || !lastSyncTime) {
-            updateStatus(setStatus, `Performing full sync...`);
+            setStatus(`Performing full sync...`);
         }
 
         // For missing sync with many UUIDs, use batch approach
@@ -266,11 +267,11 @@ export const getProjectData = async (project_id, setStatus, options = {}) => {
             const countResponse = await api.head(`api/v1/form-data/`, { params: Object.fromEntries(queryParams) });
             const serverCount = parseInt(countResponse.headers['x-total-count'] || '0');
             if (serverCount === 0 && syncStrategy !== 'full') {
-                updateStatus(setStatus, 'No new records to sync');
+                setStatus('No new records to sync');
                 return { success: true, message: 'Already up to date', fetched: 0 };
             }
             if (serverCount > 0) {
-                updateStatus(setStatus, `Found ${serverCount} records to sync`);
+                setStatus(`Found ${serverCount} records to sync`);
             }
         } catch (e) {
             // HEAD request not supported, continue without count
@@ -278,7 +279,7 @@ export const getProjectData = async (project_id, setStatus, options = {}) => {
 
         // Fetch paginated data
         do {
-            updateStatus(setStatus, `Fetching page ${currentPage}...`);
+            setStatus(`Fetching page ${currentPage}...`);
 
             const response = await api.get(`api/v1/form-data/`, {
                 params: Object.fromEntries(queryParams)
@@ -308,7 +309,7 @@ export const getProjectData = async (project_id, setStatus, options = {}) => {
                     onProgress(totalFetched, null);
                 }
 
-                updateStatus(setStatus, `Synced ${totalFetched} records (${totalInserted} new, ${totalUpdated} updated)...`);
+                setStatus(`Synced ${totalFetched} records (${totalInserted} new, ${totalUpdated} updated)...`);
             }
 
             // Update pagination
@@ -319,7 +320,7 @@ export const getProjectData = async (project_id, setStatus, options = {}) => {
             next = nextUrl;
 
             if (maxPages && currentPage >= maxPages) {
-                updateStatus(setStatus, `Reached maximum page limit (${maxPages})`);
+                setStatus(`Reached maximum page limit (${maxPages})`);
                 break;
             }
 
@@ -333,7 +334,7 @@ export const getProjectData = async (project_id, setStatus, options = {}) => {
         }
 
         const finalMessage = `Sync complete! Fetched: ${totalFetched}, New: ${totalInserted}, Updated: ${totalUpdated}`;
-        updateStatus(setStatus, finalMessage);
+        setStatus(finalMessage);
 
         return {
             success: true,
@@ -345,7 +346,7 @@ export const getProjectData = async (project_id, setStatus, options = {}) => {
 
     } catch (error) {
         const errorMessage = `Sync failed: ${error.message}`;
-        updateStatus(setStatus, errorMessage);
+        setStatus(errorMessage);
         console.error('Error syncing form data:', error);
 
         return {
@@ -403,10 +404,12 @@ const processFormDataBatch = async (records, project_id) => {
                 created_by: record.created_by,
                 created_by_name: record.created_by_name || record.created_by,
                 created_on: record.created_on || record.created_at,
-                status: record.status || 'finalized',
+                status: record.status || 'sent',
                 status_date: record.status_date || record.updated_at,
                 synced: 1
             };
+
+            //console.log('formdata record', formDataRecord);
 
             if (isExisting) {
                 const result = await update('form_data', formDataRecord, 'uuid = ?', [record.uuid]);
@@ -457,14 +460,14 @@ export const syncProjectReactions = async (project_id, setStatus) => {
  */
 export const syncFormReactions = async (formId, setStatus) => {
     try {
-        updateStatus(setStatus, `Fetching decision rules for form ${formId}...`);
+        setStatus(`Fetching decision rules for form ${formId}...`);
 
         // 1. Fetch from Django API using your axios instance
         const response = await api.get(`api/v1/form-reactions/${formId}`);
         const reactions = response.data;
 
         if (reactions && Array.isArray(reactions)) {
-            updateStatus(setStatus, `Processing ${reactions.length} logic rules...`);
+            setStatus(`Processing ${reactions.length} logic rules...`);
 
             // 2. Clear existing rules for this specific form to prevent duplicates
             // Uses the 'remove' helper from your database.js
@@ -481,16 +484,16 @@ export const syncFormReactions = async (formId, setStatus) => {
                 });
             }
 
-            updateStatus(setStatus, `Successfully updated ${reactions.length} reactions.`);
+            setStatus(`Successfully updated ${reactions.length} reactions.`);
             return { success: true, count: reactions.length };
         } else {
-            updateStatus(setStatus, `No specific reactions found for this form.`);
+            setStatus(`No specific reactions found for this form.`);
             return { success: true, count: 0 };
         }
 
     } catch (error) {
         console.error("Failed to sync form reactions:", error);
-        updateStatus(setStatus, `Error syncing reactions: ${error.message}`);
+        setStatus(`Error syncing reactions: ${error.message}`);
         return { success: false, error: error.message };
     }
 };
@@ -1057,14 +1060,14 @@ export const syncWorkflowData = async (projectId, setStatus) => {
         // ---------------------------------------------------------
         // 1. UPSYNC: Push local project changes to Server
         // ---------------------------------------------------------
-        updateStatus(setStatus, `Checking for unsynced updates in project ${projectId}...`);
+        setStatus(`Checking for unsynced updates in project ${projectId}...`);
 
         // Filter local selection by both sync_status AND project_id
         const unsyncedWorkflows = await select('tb_form_data_workflow', 'sync_status = ? AND project_id = ?', [0, projectId]);
         const unsyncedLogs = await select('tb_workflow_action_logs', 'sync_status = ? AND project_id = ?', [0, projectId]);
 
         if (unsyncedWorkflows.length > 0 || unsyncedLogs.length > 0) {
-            updateStatus(setStatus, `Uploading ${unsyncedWorkflows.length} states and ${unsyncedLogs.length} logs...`);
+            setStatus(`Uploading ${unsyncedWorkflows.length} states and ${unsyncedLogs.length} logs...`);
 
             // The 'api' instance should be configured with the project's specific Token/BaseURL before this call
             await api.post('api/v1/workflow-sync/', {
@@ -1077,13 +1080,13 @@ export const syncWorkflowData = async (projectId, setStatus) => {
             await update('tb_form_data_workflow', { sync_status: 1 }, 'sync_status = ? AND project_id = ?', [0, projectId]);
             await update('tb_workflow_action_logs', { sync_status: 1 }, 'sync_status = ? AND project_id = ?', [0, projectId]);
 
-            updateStatus(setStatus, "Project updates uploaded successfully.");
+            setStatus("Project updates uploaded successfully.");
         }
 
         // ---------------------------------------------------------
         // 2. DOWNSYNC: Fetch project updates from Server
         // ---------------------------------------------------------
-        updateStatus(setStatus, "Fetching latest workflow updates...");
+        setStatus("Fetching latest workflow updates...");
 
         // Get the latest update timestamp for this specific project
         const lastUpdateResult = await select(
@@ -1096,7 +1099,7 @@ export const syncWorkflowData = async (projectId, setStatus) => {
 
         // Include project_id in the query params if your backend requires it for filtering
         let nextUrl = `api/v1/workflow-sync/?project_id=${projectId}&last_update=${lastUpdate}`;
-        console.log('Initial workflow sync URL:', nextUrl);
+        //console.log('Initial workflow sync URL:', nextUrl);
         let totalDownloaded = 0;
 
         while (nextUrl) {
@@ -1108,7 +1111,7 @@ export const syncWorkflowData = async (projectId, setStatus) => {
             const next = data.next || null; // Arrays won't have a .next property
 
             if (results.length > 0) {
-                updateStatus(setStatus, `Downloading ${results.length} records...`);
+                setStatus(`Downloading ${results.length} records...`);
 
                 for (const record of results) {
                     // Update current workflow runtime state
@@ -1150,12 +1153,12 @@ export const syncWorkflowData = async (projectId, setStatus) => {
             nextUrl = next;
             if (Array.isArray(data)) nextUrl = null;
         }
-        updateStatus(setStatus, `Sync complete for project ${projectId}. ${totalDownloaded} records updated.`);
+        setStatus(`Sync complete for project ${projectId}. ${totalDownloaded} records updated.`);
         return { success: true, count: totalDownloaded };
 
     } catch (error) {
         console.error(`Workflow sync failed for project ${projectId}:`, error);
-        updateStatus(setStatus, `Sync error: ${error.message}`);
+        setStatus(`Sync error: ${error.message}`);
         return { success: false, error: error.message };
     }
 };

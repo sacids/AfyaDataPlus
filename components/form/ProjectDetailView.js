@@ -228,15 +228,15 @@ const ProjectDetailView = ({ project }) => {
                   await getProjectForms(currentProject.project, appendLog);
                   appendLog('Syncing reactions...');
                   await syncProjectReactions(currentProject.project, appendLog);
+                  appendLog('Syncing Project Data.');
+                  await getProjectData(currentProject.project, appendLog);
                   appendLog('Syncing workflow data...');
                   await syncWorkflowData(currentProject?.project, appendLog);
-                  appendLog('Refresh complete.');
-                  await refreshProjectData();
-                  appendLog('Project data refreshed.');
-                  await getProjectData(currentProject.project, appendLog);
                   appendLog('Project data fetched.');
                   await refreshCredentials();
                   appendLog('Credentials refreshed.');
+                  await refreshProjectData();
+                  appendLog('Project data refreshed.');
                 } catch (e) { appendLog('Error: ' + e.message); } finally { setIsSyncing(false); }
               }}
               style={[styles.card, localStyles.gridBox]}

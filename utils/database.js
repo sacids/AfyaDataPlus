@@ -570,12 +570,11 @@ export const getFormData = async (user_id, project_id, currentData_uuid = false,
                 JOIN form_defn fdef ON fd.form = CAST(fdef.form_id AS TEXT) 
                 WHERE fd.deleted = ?
                 AND fd.project = ?
-                AND fd.created_by = ?
                 AND fd.parent_uuid = ?
                 ${workflow_condition}
                 ORDER BY fd.id DESC
             `;
-            params = [0, project_id, user_id, currentData_uuid];
+            params = [0, project_id, currentData_uuid];
         } else {
             query = `
                 SELECT 
@@ -589,12 +588,11 @@ export const getFormData = async (user_id, project_id, currentData_uuid = false,
                 JOIN form_defn fdef ON fd.form = CAST(fdef.form_id AS TEXT) 
                 WHERE fd.deleted = ?
                 AND fd.project = ?
-                AND fd.created_by = ?
                 AND fdef.is_root = 1
                 AND fdef.form_role = 'ROOT'
                 ORDER BY fd.id DESC
             `;
-            params = [0, project_id, user_id];
+            params = [0, project_id];
         }
 
         //console.log('Executing getFormData with query:', query, 'and params:', params);

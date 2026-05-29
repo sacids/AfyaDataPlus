@@ -103,7 +103,7 @@ const useProjectStore = create(
             // Optional: Add method to get form definition with caching
             getCurrentFormDef: async () => {
                 const { currentFormId, formDefCache } = get();
-                console.log('Fetching form definition for form ID:', currentFormId);
+                //console.log('Fetching form definition for form ID:', currentFormId);
                 if (!currentFormId) return null;
 
                 // Check cache first
