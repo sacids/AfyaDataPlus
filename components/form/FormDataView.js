@@ -159,12 +159,16 @@ const FormDataView = ({ formData }) => {
                             [formData.uuid]
                         );
 
+                        //console.log('Fetched workflow runtime data for form_data_uuid:', formData.uuid, 'Result:', workflowData);
+
                         if (workflowData?.length > 0) {
 
                             setWorkflowRuntime(workflowData[0]);
 
                             const currentState = workflowData[0].workflow_state;
+                            //console.log('Current workflow state:', currentState);
                             const transitions = parsedSchema.form_defn.workflow.transitions || [];
+                            //console.log('All workflow transitions from schema:', JSON.stringify(transitions, null, 4))
                             const userGroups = userData?.groups || [];
                             const allowedActions = transitions.filter(
                                 transition => {

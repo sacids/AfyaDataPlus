@@ -103,6 +103,7 @@ const useProjectStore = create(
             // Optional: Add method to get form definition with caching
             getCurrentFormDef: async () => {
                 const { currentFormId, formDefCache } = get();
+                console.log('Fetching form definition for form ID:', currentFormId);
                 if (!currentFormId) return null;
 
                 // Check cache first
@@ -114,6 +115,7 @@ const useProjectStore = create(
                 const formData = await select('form_defn', 'form_id = ?', [currentFormId]);
                 const formDef = formData?.[0];
 
+                //console.log('Fetched form definition from database for form ID:', currentFormId, 'Result:', formDef);
                 // Cache with size limit (LRU would be better, but simple limit for now)
                 if (formDef && formDefCache.size < 10) {
                     formDefCache.set(currentFormId, formDef);

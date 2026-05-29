@@ -20,7 +20,7 @@ export default function TabLayout() {
                 // 1. Identify which column holds your JSON payload string
                 // Based on common database setups and your logs, check these candidates:
                 const rawJsonString = formDef?.form_data || formDef?.form || formDef?.form_defn;
-
+                //console.log('Raw JSON string extracted from form definition:', rawJsonString);
                 if (!rawJsonString) {
                     console.warn('Could not find a valid JSON string column on formDef:', formDef);
                     setWorkflowEnabled(false);

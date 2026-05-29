@@ -3,14 +3,14 @@ import { router } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import api from '../../api/axiosInstance'
+import api, { refreshCredentials } from '../../api/axiosInstance'
 import { getStyles } from '../../constants/styles'
 import { useTheme } from '../../context/ThemeContext'
 import { useAuthStore } from '../../store/authStore'
 import { useFilterStore } from '../../store/filterStore'
 import useProjectStore from '../../store/projectStore'
 import { select, update } from '../../utils/database'
-import { getProjectForms, getProjfectForms, submitProjectData, syncProjectReactions, syncWorkflowData } from '../../utils/services'
+import { getProjectData, getProjectForms, getProjfectForms, submitProjectData, syncProjectReactions, syncWorkflowData } from '../../utils/services'
 import { AppHeader } from '../layout/AppHeader'
 
 const ProjectDetailView = ({ project }) => {
@@ -232,6 +232,11 @@ const ProjectDetailView = ({ project }) => {
                   await syncWorkflowData(currentProject?.project, appendLog);
                   appendLog('Refresh complete.');
                   await refreshProjectData();
+                  appendLog('Project data refreshed.');
+                  await getProjectData(currentProject.project, appendLog);
+                  appendLog('Project data fetched.');
+                  await refreshCredentials();
+                  appendLog('Credentials refreshed.');
                 } catch (e) { appendLog('Error: ' + e.message); } finally { setIsSyncing(false); }
               }}
               style={[styles.card, localStyles.gridBox]}

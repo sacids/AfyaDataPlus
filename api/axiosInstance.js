@@ -185,4 +185,83 @@ export const absoluteRequest = async (absoluteUrl, options = {}) => {
   return api(config);
 };
 
+// Helper method to refresh credentials for current instance
+export const refreshCredentials = async () => {
+  try {
+    const { currentProject } = useProjectStore.getState();
+    const { user, setInstanceSession } = useAuthStore.getState();
+
+    // Check if we have a current project with instance_url
+    if (!currentProject?.instance_url) {
+      throw new Error('No active project instance URL found');
+    }
+
+    // Check if we have global credentials
+    if (!user?.globalUsername || !user?.password) {
+      throw new Error('No global credentials found for refresh');
+    }
+
+    const targetOrigin = getOriginFromUrl(currentProject.instance_url);
+    
+    console.log(`Refreshing credentials for origin: ${targetOrigin}`);
+
+    // Call token endpoint on the instance
+    const loginResponse = await axios.post(`${targetOrigin}/api/v1/token/`, {
+      username: user.globalUsername,
+      password: user.password,
+    });
+
+    console.log('Credentials refresh successful for origin:', targetOrigin);
+
+    // Update store with new token for this origin
+    setInstanceSession(
+      targetOrigin, 
+      loginResponse.data.access, 
+      user.globalUsername, 
+      loginResponse.data.user
+    );
+
+    return {
+      success: true,
+      token: loginResponse.data.access,
+      user: loginResponse.data.user,
+      origin: targetOrigin
+    };
+
+  } catch (error) {
+    console.error('Credentials refresh failed:', error);
+    
+    // Clear any stale tokens if refresh fails
+    const { currentProject } = useProjectStore.getState();
+    if (currentProject?.instance_url) {
+      const targetOrigin = getOriginFromUrl(currentProject.instance_url);
+      useAuthStore.getState().clearInstanceToken(targetOrigin);
+    }
+    
+    return {
+      success: false,
+      error: error.message || 'Failed to refresh credentials'
+    };
+  }
+};
+
+// Optional: Auto-refresh credentials periodically
+export const startAutoRefresh = (intervalMinutes = 30) => {
+  const intervalMs = intervalMinutes * 60 * 1000;
+  
+  const refreshInterval = setInterval(async () => {
+    console.log(`Auto-refreshing credentials (every ${intervalMinutes} minutes)...`);
+    const result = await refreshCredentials();
+    
+    if (!result.success) {
+      console.warn('Auto-refresh failed:', result.error);
+      // Optionally stop auto-refresh on failure
+      // clearInterval(refreshInterval);
+    }
+  }, intervalMs);
+  
+  // Return cleanup function
+  return () => clearInterval(refreshInterval);
+};
+
 export default api;
