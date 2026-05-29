@@ -29,7 +29,7 @@
       "developmentClient": true
     },
     "production": {
-      "submitProfile": "production",
+      "submit": "production",
       "android": {
         "buildType": "app-bundle"
       },
