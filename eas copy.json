@@ -29,14 +29,10 @@
       "developmentClient": true
     },
     "production": {
-      "submitProfile": "production",
-      "android": {
-        "buildType": "app-bundle"
-      },
       "env": {
         "SENTRY_AUTH_TOKEN": "a4ae4aacff006742d304b4f14b0a996c508a3affe5ac8681a0d3f13c6399213d"
       }
-    }
+    },
   },
   "submit": {
     "production": {
