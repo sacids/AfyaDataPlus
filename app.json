@@ -24,7 +24,8 @@
           "apiKey": "AIzaSyA4EErQHgvFvFPtfqXiOHXdA0UU3XXn1U0"
         }
       },
-      "package": "tz.co.kamili.afyadata"
+      "package": "tz.co.kamili.afyadata",
+      "versionCode": 2
     },
     "web": {
       "bundler": "metro",
