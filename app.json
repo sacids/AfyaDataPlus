@@ -1,48 +1,81 @@
 {
-  "cli": {
-    "appVersionSource": "remote"
-  },
-  "build": {
-    "preview": {
-      "developmentClient": true,
-      "android": {
-        "buildType": "apk"
+  "expo": {
+    "name": "AfyaDataPlus",
+    "slug": "AfyaDataPlus",
+    "version": "4.1.1",
+    "orientation": "portrait",
+    "icon": "./assets/images/AfyaDataLogoIcon.png",
+    "scheme": "afyadataplus",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "tz.co.kamili.afyadata"
+    },
+    "assetBundlePatterns": [
+      "assets/i18n/*.json"
+    ],
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/AfyaDataLogoIcon.png",
+        "backgroundColor": "#ffffff"
       },
-      "env": {
-        "SENTRY_AUTH_TOKEN": "a4ae4aacff006742d304b4f14b0a996c508a3affe5ac8681a0d3f13c6399213d"
-      }
-    },
-    "apk": {
-      "android": {
-        "buildType": "apk"
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyA4EErQHgvFvFPtfqXiOHXdA0UU3XXn1U0"
+        }
       },
-      "env": {
-        "SENTRY_AUTH_TOKEN": "a4ae4aacff006742d304b4f14b0a996c508a3affe5ac8681a0d3f13c6399213d"
-      }
+      "package": "tz.co.kamili.afyadata",
+      "versionCode": 12
     },
-    "preview2": {
-      "android": {
-        "gradleCommand": ":app:assembleRelease"
-      }
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
     },
-    "preview3": {
-      "developmentClient": true
+    "plugins": [
+      "expo-router",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "allowNativeHeapPointerTagging": false
+          }
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/AfyaDataLogoIcon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ],
+      "expo-sqlite",
+      "expo-secure-store",
+      "expo-localization",
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "react-native",
+          "organization": "kamili-technologies-kx"
+        }
+      ],
+      "@sentry/react-native",
+      "expo-build-properties",
+      "@react-native-community/datetimepicker",
+      "expo-font",
+      "expo-image"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "tsconfigPaths": true
     },
-    "production": {
-      "submit": "production",
-      "android": {
-        "buildType": "app-bundle"
-      },
-      "env": {
-        "SENTRY_AUTH_TOKEN": "a4ae4aacff006742d304b4f14b0a996c508a3affe5ac8681a0d3f13c6399213d"
-      }
-    }
-  },
-  "submit": {
-    "production": {
-      "android": {
-        "serviceAccountKeyPath": "/Users/ericbeda/eb/code/playstore/kamiliApps/kamili-apps-226b74602d4a.json",
-        "track": "internal"
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "4652aaf8-8dce-43d1-8840-6f21d984d2c7"
       }
     }
   }

@@ -29,7 +29,6 @@
       "developmentClient": true
     },
     "production": {
-      "submit": "production",
       "android": {
         "buildType": "app-bundle"
       },
