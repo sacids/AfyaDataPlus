@@ -61,7 +61,7 @@ const CurrentDataView = ({ formData }) => {
 
                     const parsedSchema = {
                         ...schemaData[0],
-                        form_defn: JSON.parse(schemaData[0].form_defn)
+                        form_defn: JSON.parse(schemaData[0]?.form_defn)
                     };
                     const existingData = JSON.parse(formData.form_data);
 
@@ -127,11 +127,51 @@ const CurrentDataView = ({ formData }) => {
         } catch (error) { return null; }
     };
 
+    // 1. Define a reusable, optimized formatter outside your component render loop
+    const shortDateFormatter = new Intl.DateTimeFormat('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true // Set to false if you prefer 24-hour time format
+    });
+
+    // 2. Add a defensive formatting helper function
+    const formatTimestamp = (dateValue) => {
+        if (!dateValue) return 'N/A';
+        const parsed = new Date(dateValue);
+        // Returns 'N/A' safely if the timestamp string can't be parsed correctly
+        return isNaN(parsed.getTime()) ? 'N/A' : shortDateFormatter.format(parsed);
+    };
 
     let page_holder = [];
+    let page_meta = (
+        <View
+            style={[
+                styles.card,
+                {
+                    backgroundColor: theme.colors.inputBackground,
+                    borderColor: theme.colors.inputBorder,
+                    borderWidth: 1,
+                    marginBottom: 0,
+                    borderRadius: 10,
+                }
+            ]}>
+            <View style={{ flexDirection: 'row' }}>
+                <Text style={[styles.tiny, { color: theme.colors.inputBorder }]} >Title: </Text><Text style={[styles.tiny,]}>{formData.title}</Text>
+            </View>
+            <View style={{ flexDirection: 'row' }}>
+                <Text style={[styles.tiny, { color: theme.colors.inputBorder }]}>Created By: </Text><Text style={styles.tiny}>{formData.created_by_name}</Text>
+            </View>
+            <View style={{ flexDirection: 'row' }}>
+                <Text style={[styles.tiny, { color: theme.colors.inputBorder }]}>Created On: </Text><Text style={styles.tiny}>{formatTimestamp(formData?.created_on)}</Text>
+            </View>
+        </View>
+    )
 
     // --- LOOP 1: PAGES ---
-    for (const [pageIndex, page] of Object.entries(schema.form_defn.pages)) {
+    for (const [pageIndex, page] of Object.entries(schema?.form_defn?.pages)) {
 
         if (!isRelevant(page)) continue
 
@@ -362,50 +402,61 @@ const CurrentDataView = ({ formData }) => {
 
             if (field_holder.length > 0) {
                 group_holder.push(
-                    <View key={groupId} style={{ marginBottom: 5 }}>
-                        {/* Group Header / Toggle Button */}
-                        <TouchableOpacity
-                            onPress={() => toggleGroup(groupId)}
-                            activeOpacity={0.7}
-                            style={[
-                                styles.card,
-                                {
-                                    flexDirection: 'row',
-                                    alignItems: 'center',
-                                    backgroundColor: theme.colors.inputBackground,
-                                    borderColor: theme.colors.inputBorder,
-                                    borderWidth: 1,
-                                    marginBottom: 0,
-                                    borderBottomLeftRadius: !isExpanded ? 0 : 8,
-                                    borderBottomRightRadius: !isExpanded ? 0 : 8,
-                                }
-                            ]}
-                        >
-                            <MaterialIcons
-                                name={isExpanded ? "keyboard-arrow-up" : "keyboard-arrow-down"}
-                                size={24}
-                                color={theme.colors.hint}
-                            />
-                            <Text style={[styles.label, { flex: 1, marginLeft: 10, fontSize: 15 }]}>
-                                {getLabel(page, 'label', language, schemaLanguage) || `Page ${parseInt(pageIndex) + 1}`}
-                            </Text>
-                        </TouchableOpacity>
-
-                        {/* Collapsible Field Holder */}
-                        {!isExpanded && (
-                            <View style={{
-                                padding: 16,
-                                backgroundColor: theme.colors.background,
+                    <View key={groupId}>
+                        <View
+                            key={groupId + '_sep'}
+                            style={{
                                 borderLeftWidth: 1,
-                                borderRightWidth: 1,
-                                borderBottomWidth: 1,
                                 borderColor: theme.colors.inputBorder,
-                                borderBottomLeftRadius: 8,
-                                borderBottomRightRadius: 8,
+                                marginLeft: 20,
                             }}>
-                                {field_holder}
-                            </View>
-                        )}
+                            <Text style={[styles.tiny, { color: theme.colors.inputBorder, paddingHorizontal: 15, paddingVertical: 6 }]}>Page {parseInt(pageIndex) + 1}</Text>
+                        </View>
+                        <View >
+                            {/* Group Header / Toggle Button */}
+                            <TouchableOpacity
+                                onPress={() => toggleGroup(groupId)}
+                                activeOpacity={0.7}
+                                style={[
+                                    styles.card,
+                                    {
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        backgroundColor: theme.colors.inputBackground,
+                                        borderColor: theme.colors.inputBorder,
+                                        borderWidth: 1,
+                                        marginBottom: 0,
+                                        borderBottomLeftRadius: !isExpanded ? 0 : 10,
+                                        borderBottomRightRadius: !isExpanded ? 0 : 10,
+                                    }
+                                ]}
+                            >
+                                <MaterialIcons
+                                    name={isExpanded ? "keyboard-arrow-up" : "keyboard-arrow-down"}
+                                    size={24}
+                                    color={theme.colors.hint}
+                                />
+                                <Text style={[styles.label, { flex: 1, marginLeft: 10, fontSize: 15 }]}>
+                                    {getLabel(page, 'label', language, schemaLanguage) || `Page ${parseInt(pageIndex) + 1}`}
+                                </Text>
+                            </TouchableOpacity>
+
+                            {/* Collapsible Field Holder */}
+                            {!isExpanded && (
+                                <View style={{
+                                    padding: 16,
+                                    backgroundColor: theme.colors.background,
+                                    borderLeftWidth: 1,
+                                    borderRightWidth: 1,
+                                    borderBottomWidth: 1,
+                                    borderColor: theme.colors.inputBorder,
+                                    borderBottomLeftRadius: 8,
+                                    borderBottomRightRadius: 8,
+                                }}>
+                                    {field_holder}
+                                </View>
+                            )}
+                        </View>
                     </View>
                 );
             }
@@ -413,7 +464,7 @@ const CurrentDataView = ({ formData }) => {
 
         if (group_holder.length > 0) {
             page_holder.push(
-                <View key={pageIndex} style={{ marginBottom: 14 }}>
+                <View key={pageIndex}>
                     {group_holder}
                 </View>
             );
@@ -422,6 +473,7 @@ const CurrentDataView = ({ formData }) => {
 
     return (
         <View style={{}}>
+            {page_meta}
             {page_holder}
         </View>
     );

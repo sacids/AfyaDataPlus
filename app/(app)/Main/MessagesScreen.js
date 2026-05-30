@@ -18,11 +18,12 @@ import { useAuthStore } from '../../../store/authStore';
 import useProjectStore from '../../../store/projectStore';
 import { insert, select } from '../../../utils/database';
 import { initChat, submitSingleForm, syncMessages } from '../../../utils/services';
+import { router } from 'expo-router';
 
 export default function MessagesScreen() {
   const theme = useTheme();
   const styles = getStyles(theme);
-  const { currentData } = useProjectStore();
+  const { currentData, setCurrentData } = useProjectStore();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [conversationId, setConversationId] = useState(null);
@@ -321,6 +322,7 @@ export default function MessagesScreen() {
     };
   }, [currentData, isDataSent, conversationId]); // Add conversationId to dependencies
 
+
   return (
 
     <ScreenWrapper>
@@ -332,6 +334,12 @@ export default function MessagesScreen() {
 
         <AppHeader
           title={currentData?.title || t('messages:title')}
+          backLink={
+            () => {
+              setCurrentData(null);
+              router.replace('/(app)/Main/');
+            }
+          }
           searchEnabled={false}
         />
 

@@ -542,14 +542,12 @@ export const getFormData = async (user_id, project_id, currentData_uuid = false,
     try {
         let query = '';
         let params = [];
-        let workflow_condition = 'AND fdef.form_role != "WORKFLOW"'; // Default condition to exclude workflow forms
+        let workflow_condition = ''; // Default condition to exclude workflow forms
 
         if (workflow) {
-            console.log('Including workflow forms in getFormData query');
+            //console.log('Including workflow forms in getFormData query');
             workflow_condition = 'AND fdef.form_role = "WORKFLOW"'; // If workflow is true, include only workflow forms
         }
-
-        //console.log('set workflow condition', workflow_condition)
 
         // Use a more efficient JSON-like approach if usernames have no commas
         // This assumes usernames don't contain commas

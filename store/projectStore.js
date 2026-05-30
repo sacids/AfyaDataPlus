@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import { select } from '../utils/database';
+import { hasChildren, select } from '../utils/database';
 import { useAuthStore } from './authStore';
 
 const useProjectStore = create(
@@ -131,12 +131,22 @@ const useProjectStore = create(
         {
             name: 'project-storage',
             storage: createJSONStorage(() => AsyncStorage),
+            // Explicitly force non-serializable fields to clean states on start
+            onRehydrateStorage: (state) => {
+                return (hydratedState, error) => {
+                    if (!error && hydratedState) {
+                        // Securely initialize your Map instance post-hydration
+                        hydratedState.formDefCache = new Map();
+                    }
+                };
+            },
             partialize: (state) => ({
-                // Only persist what's necessary
                 currentProject: state.currentProject,
                 currentData: state.currentData,
                 currentFormId: state.currentFormId,
-                // Don't persist the cache
+                userData: state.userData,
+                currentFormChildren: state.currentFormChildren,
+                hasChildren: state.hasChildren,
             }),
         }
     )

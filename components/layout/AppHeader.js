@@ -8,6 +8,7 @@ import { useTheme } from '../../context/ThemeContext';
 
 export const AppHeader = ({
     title,
+    backLink = false,
     subTitle = false,
     rightActions = [],
     searchEnabled = false, // New prop to toggle search capability
@@ -41,10 +42,14 @@ export const AppHeader = ({
 
     return (
         <View style={[styles.headerContainer]}>
-            <TouchableOpacity style={[{ flexDirection: 'row' }]} onPress={() => router.back()}>
-                <MaterialIcons name="keyboard-arrow-left" size={24} color={theme.colors.pageTitle} />
+            {backLink ? (
+                <TouchableOpacity style={[{ flexDirection: 'row' }]} onPress={backLink}>
+                    <MaterialIcons name="keyboard-arrow-left" size={24} color={theme.colors.pageTitle} />
+                    <Text style={styles.pageTitle} numberOfLines={1}>{title}</Text>
+                </TouchableOpacity>
+            ): (
                 <Text style={styles.pageTitle} numberOfLines={1}>{title}</Text>
-            </TouchableOpacity>
+            )}
             <View style={styles.headerActions}>
                 {/* Only render search icon if searchEnabled is true */}
                 {searchEnabled && (

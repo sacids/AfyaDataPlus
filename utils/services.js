@@ -552,50 +552,6 @@ export const sendMessageToServer = async (conversationId, messageData) => {
     }
 };
 
-/**
- * Syncs messages and ensures all local messages for this form 
- * are linked to the newly created/retrieved conversation_id.
- */
-export const syncMessages1 = async (convId, uuid) => {
-    try {
-
-        // 2. Fetch remote messages and insert them
-        const msgResponse = await api.get(`api/v1/chat/conversations/${convId}/messages`);
-
-        for (const msg of msgResponse.data) {
-            await insert_into_messages({
-                remote_id: msg.id,
-                local_id: msg.external_id,
-                conversation_id: convId,
-                formDataUUID: uuid,
-                text: msg.text,
-                sender_id: msg.sender.id,
-                sender_name: msg.sender.username,
-                sync_status: 'synced',
-                created_at: msg.created_at
-            });
-        }
-
-        // 3. Automatically push any messages that are still 'pending' for this conversation
-        const pendingMessages = await select('messages',
-            'conversation_id = ? AND sync_status = ?',
-            [convId, 'pending']
-        );
-
-        for (const localMsg of pendingMessages) {
-            try {
-                await sendMessageToServer(convId, localMsg);
-            } catch (err) {
-                console.warn("Failed to push pending message during sync", localMsg.local_id);
-            }
-        }
-
-        return convId;
-    } catch (error) {
-        console.error("Sync failed, using offline mode", error);
-        return null;
-    }
-};
 
 // In services.js, update the syncMessages function:
 
@@ -1077,8 +1033,8 @@ export const syncWorkflowData = async (projectId, setStatus) => {
             });
 
             // Mark only this project's records as synced
-            await update('tb_form_data_workflow', { sync_status: 1 }, 'sync_status = ? AND project_id = ?', [0, projectId]);
-            await update('tb_workflow_action_logs', { sync_status: 1 }, 'sync_status = ? AND project_id = ?', [0, projectId]);
+            await update('tb_form_data_workflow', { sync_status: 1, updated_at: new Date().toISOString() }, 'sync_status = ? AND project_id = ?', [0, projectId]);
+            await update('tb_workflow_action_logs', { sync_status: 1, updated_at: new Date().toISOString() }, 'sync_status = ? AND project_id = ?', [0, projectId]);
 
             setStatus("Project updates uploaded successfully.");
         }

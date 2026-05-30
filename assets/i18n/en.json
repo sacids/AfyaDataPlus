@@ -34,6 +34,7 @@
     "no": "No",
     "ok": "OK",
     "draft": "Draft",
+    "new": "New",
     "final": "Final",
     "sent": "Sent",
     "archived": "Archived",
@@ -150,7 +151,7 @@
     "projectForms": "Project Forms",
     "projectData": "Project Data",
     "syncSurveys": "Sync Surveys",
-    "syncForms": "Sync Forms"
+    "syncForms": "Sync"
   },
   
   "forms": {
@@ -193,7 +194,7 @@
     "clearSelection": "Clear Selection",
     "bulkArchive": "Bulk Archive",
     "bulkDelete": "Bulk Delete",
-    "bulkSubmit": "Bulk Submit",
+    "bulkSubmit": "Submit",
     "confirmAction": "Confirm Action",
     "confirmDelete": "Are you sure you want to delete this item?",
     "confirmArchive": "Are you sure you want to archive this item?",

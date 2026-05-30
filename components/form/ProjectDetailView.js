@@ -10,7 +10,7 @@ import { useAuthStore } from '../../store/authStore'
 import { useFilterStore } from '../../store/filterStore'
 import useProjectStore from '../../store/projectStore'
 import { select, update } from '../../utils/database'
-import { getProjectData, getProjectForms, getProjfectForms, submitProjectData, syncProjectReactions, syncWorkflowData } from '../../utils/services'
+import { getProjectData, getProjectForms, submitProjectData, syncProjectReactions, syncWorkflowData } from '../../utils/services'
 import { AppHeader } from '../layout/AppHeader'
 
 const ProjectDetailView = ({ project }) => {
@@ -41,7 +41,7 @@ const ProjectDetailView = ({ project }) => {
     { icon: 'settings', onPress: () => router.push('Project/Settings') }
   ], []);
 
-  const getProjectStats = async (project_uuid) => {
+  const getProjectStats1 = async (project_uuid) => {
     try {
       const select_str = `
                       COUNT(*) as total,
@@ -59,6 +59,55 @@ const ProjectDetailView = ({ project }) => {
       };
     } catch (error) {
       return { total: 0, draft: 0, finalized: 0, sent: 0, archived: 0 };
+    }
+  };
+
+  const getProjectStats = async (project_uuid) => {
+    try {
+      const current_user = user?.globalUsername;
+
+      if (!current_user) {
+        return { total: 0, draft: 0, finalized: 0, sent: 0, archived: 0, unseen: 0 };
+      }
+
+      // Escape single quotes in username to prevent SQL injection vulnerabilities
+      const sanitizedUser = current_user.replace(/'/g, "''");
+
+      // Inject the string directly into INSTR to keep select parameters clean
+      const select_str = `
+                      COUNT(*) as total,
+                      SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END) as draft,
+                      SUM(CASE WHEN status = 'finalized' THEN 1 ELSE 0 END) as finalized,
+                      SUM(CASE WHEN status = 'submitted' OR status = 'sent' THEN 1 ELSE 0 END) as sent,
+                      SUM(CASE WHEN status = 'archived' THEN 1 ELSE 0 END) as archived,
+                      SUM(CASE 
+                        WHEN seen_by IS NULL OR seen_by = '' THEN 1
+                        WHEN INSTR(',' || seen_by || ',', ',${sanitizedUser},') = 0 THEN 1 
+                        ELSE 0 
+                      END) as unseen`;
+
+      // Now there are exactly 2 parameters, perfectly mapping to:
+      // 1. project = ?
+      // 2. created_by = ?
+      const result = await select(
+        'form_data',
+        'project = ? and parent_uuid is null',
+        [project_uuid],
+        select_str
+      );
+
+
+      return {
+        total: result[0]?.total || 0,
+        draft: result[0]?.draft || 0,
+        finalized: result[0]?.finalized || 0,
+        sent: result[0]?.sent || 0,
+        unseen: result[0]?.unseen || 0,
+        archived: result[0]?.archived || 0
+      };
+    } catch (error) {
+      console.error("Error fetching project stats:", error);
+      return { total: 0, draft: 0, finalized: 0, sent: 0, archived: 0, unseen: 0 };
     }
   };
 
@@ -191,7 +240,7 @@ const ProjectDetailView = ({ project }) => {
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={() => { setTag('Finalized'); router.push('(app)/Main/FormDataList') }}
+              onPress={() => { setTag('finalized'); router.push('(app)/Main/FormDataList') }}
               style={[styles.card, localStyles.gridBox]}
             >
               <Text style={[styles.pageTitle, { fontSize: 18 }]}>{curProjectStats.finalized || 0}</Text>
@@ -205,8 +254,8 @@ const ProjectDetailView = ({ project }) => {
               onPress={() => { setTag('Draft'); router.push('(app)/Main/FormDataList') }}
               style={[styles.card, localStyles.gridBox]}
             >
-              <Text style={[styles.pageTitle, { fontSize: 18 }]}>{curProjectStats.draft || 0}</Text>
-              <Text style={styles.tiny}>{t('common:draft')}</Text>
+              <Text style={[styles.pageTitle, { fontSize: 18, color: curProjectStats.unseen ? '#78A083' : theme.color.primary }]}>{curProjectStats.unseen || 0}</Text>
+              <Text style={[styles.tiny, {color: curProjectStats.unseen ? '#78A083' : theme.color.primary}]}>{t('common:new')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -252,6 +301,8 @@ const ProjectDetailView = ({ project }) => {
                 try {
                   await submitProjectData(currentProject?.project, appendLog);
                   appendLog('Submission finished.');
+                  await syncWorkflowData(currentProject?.project, appendLog);
+                  appendLog('Workflow data synced.');
                   await refreshProjectData();
                 } catch (e) { appendLog('Submission failed.'); } finally { setIsSyncing(false); }
               }}

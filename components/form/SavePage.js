@@ -36,6 +36,7 @@ const SavePage = () => {
 
     const formData = useFormStore(state => state.formData);
     const schema = useFormStore(state => state.schema);
+    const workflowAction = useFormStore(state => state.workflowAction);
     const formUUID = useFormStore(state => state.formUUID);
     const parentUUID = useFormStore(state => state.parentUUID);
 
@@ -223,14 +224,17 @@ const SavePage = () => {
                 //     });
                 // }
 
-                if (schema.workflowAction !== null && schema.workflowAction !== undefined) {
+                //console.log('Workflow state set to:', { workflow_state: 'finalized' });
+                //console.log(workflowAction, 'workflowAction')
+                if (workflowAction !== null && workflowAction !== undefined) {
                     await insert('tb_form_data_workflow', {
                         form_data_uuid: parentUUID,
-                        workflow_state: schema.workflowAction,
+                        workflow_state: workflowAction,
                         project_id: schema.project,
                         sync_status: 0,
                         updated_on: new Date().toISOString()
                     });
+                    //console.log('Workflow state set to:', { workflow_state: workflowAction });
                 }
             }
 

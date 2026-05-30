@@ -170,14 +170,14 @@ const FormDataView = ({ formData }) => {
                             const transitions = parsedSchema.form_defn.workflow.transitions || [];
                             //console.log('All workflow transitions from schema:', JSON.stringify(transitions, null, 4))
                             const userGroups = userData?.groups || [];
+                            //console.log('User groups:', userData, userGroups);
                             const allowedActions = transitions.filter(
                                 transition => {
-                                    //console.log('checking transition', transition.action, 'from', transition.icon, 'user groups', userData, 'transition groups', transition.groups)
+                                    // //console.log('checking transition action', transition.action, 'from', transition.from, ' current state', currentState, 'transition groups', transition.groups)
                                     // State match
                                     if (!transition.from.includes(currentState)) {
                                         return false;
                                     }
-
                                     //Group match
                                     if (transition.groups && transition.groups.length > 0) {
                                         const hasGroup = transition.groups.some(g => userGroups.includes(g));
@@ -252,11 +252,17 @@ const FormDataView = ({ formData }) => {
 
     if (!ready) return <ActivityIndicator style={{ flex: 1 }} />;
 
-
     return (
         <>
             <AppHeader
                 title={currentProject.title}
+
+                backLink={
+                    () => {
+                        setCurrentData(null);
+                        router.replace('/Main/');
+                    }
+                }
                 subTitle={currentData?.title}
                 rightActions={showMenu}
             />
@@ -299,7 +305,10 @@ const FormDataView = ({ formData }) => {
             )}
 
 
-            <ScrollView>
+            <ScrollView
+                contentContainerStyle={{ flexGrow: 1, paddingBottom: 60 }}
+                showsVerticalScrollIndicator={false}
+            >
                 {breadCrumb && breadCrumb.length > 0 && (
                     <View style={styles.scrollContent}>
 
@@ -333,13 +342,16 @@ const FormDataView = ({ formData }) => {
                 style={[
                     styles.inputBase,
                     {
+                        position: 'absolute',
+                        right: 0,
+                        bottom: 0,
                         flexDirection: 'row',
                         alignItems: 'center',
                         alignSelf: 'flex-end',
-                        gap: 10,
-                        borderRadius: 10,
+                        gap: 20,
+                        borderRadius: 30,
                         paddingVertical: 10,   // Specific padding
-                        paddingHorizontal: 20,
+                        paddingHorizontal: 30,
                         margin: 16,            // Consistent margin
                     }
                 ]}
@@ -377,6 +389,8 @@ const FormDataView = ({ formData }) => {
                             backgroundColor: theme.colors.background,
                             borderTopLeftRadius: 20,
                             borderTopRightRadius: 20,
+                            borderColor: theme.colors.borderColor,
+                            borderWidth: 1,
                             padding: 20,
                             paddingBottom: 50,
                             maxHeight: '70%',

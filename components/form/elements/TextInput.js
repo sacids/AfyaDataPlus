@@ -7,17 +7,13 @@ import { useFormStore } from '../../../store/useFormStore';
 
 const TextInputField = ({ element, globalValue }) => {
 
-  //console.log('in text input')
   // 1. SELECTORS: Isolate this component from other form changes
-  //const globalValue = useFormStore(state => state.formData[element.name]);
   const language = useFormStore(state => state.language);
   const schemaLanguage = useFormStore(state => state.schema.form_defn.languages);
 
-
-  // 1. STORE SELECTORS
+  // STORE SELECTORS
   const updateField = useFormStore(state => state.updateField);
   const fieldError = useFormStore(state => state.errors[element.name]);
-
 
   const theme = useTheme();
   const styles = getStyles(theme);
@@ -26,15 +22,15 @@ const TextInputField = ({ element, globalValue }) => {
   const [localValue, setLocalValue] = useState(globalValue || '');
   const debounceTimer = useRef(null);
 
+  // Determine appearance flags
+  const isNumeric = element.appearance?.includes('numbers');
+  const isMultiline = element.appearance?.includes('multiline');
+
   // Sync local state if global data changes (e.g., external calculation or reset)
   useEffect(() => {
     if (globalValue !== localValue) {
       setLocalValue(globalValue || '');
     }
-
-    return () => {
-      // Optional cleanup when the screen loses focus
-    };
   }, [globalValue]);
 
   // 3. SYNC FUNCTION: The "Final Source of Truth" update
@@ -44,18 +40,25 @@ const TextInputField = ({ element, globalValue }) => {
   };
 
   const handleChangeText = (text) => {
-    setLocalValue(text); // Instant UI update
+    // If it's a number field, optionally enforce numeric characters only at the UI level
+    let processedText = text;
+    if (isNumeric) {
+      // Replaces anything that isn't a digit, a comma, or a period
+      processedText = text.replace(/[^0-9.,-]/g, '');
+    }
 
-    // 4. DEBOUNCE: Update global store after 1.5 seconds of no typing
+    setLocalValue(processedText); // Instant UI update
+
+    // 4. DEBOUNCE: Update global store after 800ms of no typing
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
 
     debounceTimer.current = setTimeout(() => {
-      syncWithStore(text);
-    }, 800); // Longer timeout for stability
+      syncWithStore(processedText);
+    }, 800); 
   };
 
   const handleBlur = () => {
-    // 5. IMMEDIATE SYNC: If user leaves field or clicks "Save", sync now!
+    // 5. IMMEDIATE SYNC: If user leaves field, sync now!
     syncWithStore(localValue);
   };
 
@@ -91,7 +94,11 @@ const TextInputField = ({ element, globalValue }) => {
         onBlur={handleBlur} // The safety net for the "last field"
         placeholder=""
         placeholderTextColor="#999"
-        multiline={element.appearance?.includes('multiline')}
+        
+        // --- NUMERIC CONFIGURATION CONTROLS ---
+        keyboardType={isNumeric ? 'decimal-pad' : 'default'}
+        multiline={isNumeric ? false : isMultiline} // Ensure number inputs are single line
+        returnKeyType={isNumeric ? 'done' : 'default'}
       />
 
       {fieldError && (

@@ -203,7 +203,7 @@ export const refreshCredentials = async () => {
 
     const targetOrigin = getOriginFromUrl(currentProject.instance_url);
     
-    console.log(`Refreshing credentials for origin: ${targetOrigin}`);
+    //console.log(`Refreshing credentials for origin: ${targetOrigin}`);
 
     // Call token endpoint on the instance
     const loginResponse = await axios.post(`${targetOrigin}/api/v1/token/`, {
@@ -211,7 +211,8 @@ export const refreshCredentials = async () => {
       password: user.password,
     });
 
-    console.log('Credentials refresh successful for origin:', targetOrigin);
+    //console.log('Credentials refresh successful, obtained new token for origin:', targetOrigin, JSON.stringify(loginResponse.data.user));
+    //console.log('Credentials refresh successful for origin:', targetOrigin);
 
     // Update store with new token for this origin
     setInstanceSession(

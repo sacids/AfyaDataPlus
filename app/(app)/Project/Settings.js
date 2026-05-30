@@ -23,6 +23,7 @@ import { useAuthStore } from '../../../store/authStore';
 import useProjectStore from '../../../store/projectStore';
 import { useThemeStore } from '../../../store/ThemeStore';
 import { createTables, dropTables, select } from '../../../utils/database';
+import UserProfileCard from '../../../components/cards/userProfileCard';
 
 const Settings = () => {
     const { t, i18n } = useTranslation();
@@ -208,17 +209,7 @@ const Settings = () => {
                 }
             >
                 {/* User Profile */}
-                <View style={globalStyles.card}>
-                    <Text style={globalStyles.sectionTitle}>{t('settings:userProfile')}</Text>
-                    <View style={localStyles.rowItem}>
-                        <Text style={globalStyles.label}>{t('auth:fullName')}</Text>
-                        <Text style={globalStyles.bodyText}>{user?.first_name || 'User'}</Text>
-                    </View>
-                    <View style={localStyles.rowItem}>
-                        <Text style={globalStyles.label}>{t('auth:phone')}</Text>
-                        <Text style={globalStyles.bodyText}>{user?.username || 'N/A'}</Text>
-                    </View>
-                </View>
+                <UserProfileCard user={user} globalStyles={globalStyles} localStyles={localStyles} t={t} />
 
                 {/* Preferences */}
                 <View style={globalStyles.card}>

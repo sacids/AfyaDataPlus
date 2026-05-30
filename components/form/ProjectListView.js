@@ -170,7 +170,6 @@ const ProjectListView = () => {
             }
           });
 
-          console.log('registration response:', regResponse.data);
 
           // Registration successful (new user created)
           authStore.setInstanceSession(instance_url, regResponse.data.access, authStore.user.globalUsername, regResponse.data.user);
@@ -321,7 +320,17 @@ const ProjectListView = () => {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <AppHeader title={t('projects:myProjects')} searchEnabled={false} rightActions={goToSettings} />
+      <AppHeader
+        title={t('projects:myProjects')}
+        backLink={
+          () => {
+            setCurrentData(null);
+            router.replace('(app)/Main/index');
+          }
+        }
+        searchEnabled={false}
+        rightActions={goToSettings}
+      />
 
       {/* Nav Toggle */}
       <View style={localStyles.navContainer(theme)}>

@@ -2,11 +2,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 
-import FormDataView from '../../../components/form/FormDataView';
 import { getFormData } from '../../../utils/database';
 
 // Import components and styles from List.js
 import { FlashList } from '@shopify/flash-list';
+import { replace } from 'expo-router/build/global-state/routing';
+import CurrentDataView from '../../../components/form/CurrentDataView';
 import { AppHeader } from '../../../components/layout/AppHeader';
 import { FormIcons } from '../../../components/layout/FormIcons';
 import { ScreenWrapper } from '../../../components/layout/ScreenWrapper';
@@ -14,15 +15,13 @@ import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
 import { useAuthStore } from '../../../store/authStore';
 import useProjectStore from '../../../store/projectStore';
-import CurrentDataView from '../../../components/form/CurrentDataView';
+import { router } from 'expo-router';
 
 
 
 export default function WorkFlowScreen() {
-
-    console.log('Workflow screen rendered');
-
-    const { currentData, currentProject } = useProjectStore();
+    
+    const { currentData, currentProject, setCurrentData } = useProjectStore();
     const [workflowData, setWorkflowData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [currentFormDataId, setCurrentFormDataId] = useState(null);
@@ -42,7 +41,7 @@ export default function WorkFlowScreen() {
                 );
                 setWorkflowData(workflowdata);
                 setLoading(false);
-                console.log('Workflow data fetched successfully:', workflowdata);
+                //console.log('Workflow data fetched successfully:', workflowdata);
             } catch (error) {
                 console.error('Error fetching workflow data:', error);
             }
@@ -88,7 +87,7 @@ export default function WorkFlowScreen() {
                 </TouchableOpacity>
 
                 {currentFormDataId === item.id && (
-                    <View style={{borderLeftWidth: 1, borderLeftColor: theme.colors.inputBorder, borderStyle: 'dashed', marginLeft: 10, paddingTop: 15, paddingLeft: 15}}>
+                    <View style={{ borderLeftWidth: 1, borderLeftColor: theme.colors.inputBorder, borderStyle: 'dashed', marginLeft: 10, paddingTop: 15, paddingLeft: 15 }}>
                         <CurrentDataView formData={item} />
                     </View>
                 )}
@@ -109,6 +108,12 @@ export default function WorkFlowScreen() {
 
             <AppHeader
                 title='Workflow'
+                backLink={
+                    () => {
+                        setCurrentData(null);
+                        router.replace('/(app)/Main/');
+                    }
+                }
                 searchEnabled={false}
             />
 
