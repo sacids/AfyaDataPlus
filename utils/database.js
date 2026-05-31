@@ -705,6 +705,7 @@ export const getFormData = async (user_id, project_id, currentData_uuid = false,
         //console.log('query', query, 'params', params)
 
         const result = await db.getAllAsync(query, params);
+        console.log('getFormData result count:', result.length, 'Sample record:', result[0]);
         return result;
 
     } catch (error) {

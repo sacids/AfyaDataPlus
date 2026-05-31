@@ -160,7 +160,9 @@
     "projectForms": "Formulaires du projet",
     "projectData": "Données du projet",
     "syncSurveys": "Synchroniser les enquêtes",
-    "syncForms": "Synchroniser les formulaires"
+    "syncForms": "Synchroniser les formulaires",
+    "fetchForms": "Récupérer les formulaires",
+    "fetchData": "Récupérer les données"
   },
   
   "forms": {

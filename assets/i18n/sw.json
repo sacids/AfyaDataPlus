@@ -159,8 +159,10 @@
     "noFormsAvailable": "Hakuna fomu zinazopatikana kwa mradi huu",
     "projectForms": "Fomu za Mradi",
     "projectData": "Data ya Mradi",
-    "syncSurveys": "Sawazisha Uchunguzi",
-    "syncForms": "Sawazisha Fomu"
+    "syncSurveys": "Sawazisha Fomu",
+    "syncForms": "Sawazisha Fomu",
+    "fetchForms": "Pakua Fomu",
+    "fetchData": "Pakua Data"
   },
   
   "forms": {

@@ -156,7 +156,9 @@
     "projectForms": "Project Forms",
     "projectData": "Project Data",
     "syncSurveys": "Sync Surveys",
-    "syncForms": "Sync"
+    "syncForms": "Sync",
+    "fetchForms": "Fetch Forms",
+    "fetchData": "Fetch Data"
   },
 
   "layout": {

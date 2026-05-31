@@ -42,7 +42,8 @@ export default function FormDataList() {
   const [submittingIds, setSubmittingIds] = useState([]);
   const [showFormStatus, setShowFormStatus] = useState(false);
   const resetSwipeRef = useRef(null);
-  const selectedTag = useFilterStore((state) => state.filter);
+  //const selectedTag = useFilterStore((state) => state.filter);
+  const activeFilter = useFilterStore((state) => state.activeFilter);
   const { currentProject, setCurrentData, currentData } = useProjectStore();
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore()
@@ -248,14 +249,11 @@ export default function FormDataList() {
 
 
 
+
   useEffect(() => {
     let tempData = [...data];
 
-    // 1. Normalize the tag to lowercase to avoid 'All' vs 'all' bugs
-    const currentTag = selectedTag ? selectedTag.toLowerCase() : '';
-    const archivedTranslation = t('common:archived')?.toLowerCase();
-
-    // Search filter
+    // 1. Text Search Filter Processing
     if (searchQuery) {
       const sq = searchQuery.toLowerCase();
       tempData = tempData.filter((item) =>
@@ -263,29 +261,36 @@ export default function FormDataList() {
       );
     }
 
-    // Archived tag filter
-    if (currentTag && currentTag === archivedTranslation) {
-      tempData = tempData.filter((item) => item.archived);
-    }
+    // 2. Dynamic Tag Store Processing 
 
-    // Specific status filter (e.g., 'sent', 'pending')
-    // Excludes 'all' and the 'archived' tag
-    if (currentTag && currentTag !== archivedTranslation && currentTag !== 'all') {
-      tempData = tempData.filter((item) =>
-        item.status && item.status.toLowerCase() === currentTag
-      );
-    }
+    // Inside your data-filtering useEffect hook in FormDataList.js:
+    if (activeFilter) {
+      const { key, value } = activeFilter;
 
-    // 'All' tag filter
-    if (currentTag === 'all') {
-      //console.log('Filtering for All - showing all non-archived data');
-      // If you want to HIDE archived items when 'All' is selected:
-      tempData = tempData.filter((item) => !item.archived);
+      if (key === 'archived' && value === true) {
+        tempData = tempData.filter((item) => item.archived);
+      } else {
+        // For all tags other than 'Archived' itself, implicitly hide archived items
+        tempData = tempData.filter((item) => !item.archived);
+
+        if (key === 'has_seen' && value === 0) {
+          // Isolate items where has_seen is explicitly 0 (Unseen / New)
+          tempData = tempData.filter((item) => item.has_seen === 0);
+        }
+        else if (value !== 'All') {
+          // Fallback to normal column matching for string states (e.g. status)
+          tempData = tempData.filter((item) =>
+            item[key] !== undefined &&
+            item[key] !== null &&
+            String(item[key]).toLowerCase() === String(value).toLowerCase()
+          );
+        }
+      }
     }
 
     setFilteredData(tempData);
+  }, [data, searchQuery, activeFilter]);
 
-  }, [data, searchQuery, selectedTag, t]);
 
   return (
     <View style={[styles.pageContainer, { paddingBottom: insets.bottom, paddingTop: insets.top }]}>

@@ -1,11 +1,18 @@
 import { create } from 'zustand';
 
+export interface FilterPayload {
+  key: string;       // e.g., 'status', 'workflow_state', 'archived'
+  value: any;        // e.g., 'All', 'draft', true, false
+  label: string;      // The display name of the tag
+}
+
 interface FilterState {
-  filter: string;
-  setFilter: (filter: string) => void;
+  activeFilter: FilterPayload;
+  setFilter: (filter: FilterPayload) => void;
 }
 
 export const useFilterStore = create<FilterState>((set) => ({
-  filter: 'All',
-  setFilter: (filter) => set({ filter }),
+  // Default fallback state
+  activeFilter: { key: 'status', value: 'All', label: 'All' },
+  setFilter: (activeFilter) => set({ activeFilter }),
 }));

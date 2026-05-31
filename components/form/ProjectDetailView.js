@@ -1,4 +1,4 @@
-import { MaterialIcons, Octicons } from '@expo/vector-icons'
+import { MaterialCommunityIcons, MaterialIcons, Octicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,7 +16,7 @@ import { AppHeader } from '../layout/AppHeader'
 const ProjectDetailView = ({ project }) => {
 
   const { currentProject, setCurrentProject, setCurrentData } = useProjectStore();
-  const setTag = useFilterStore((state) => state.setFilter);
+  const setFilter = useFilterStore((state) => state.setFilter);
   const { t } = useTranslation();
   const theme = useTheme();
   const styles = getStyles(theme);
@@ -41,26 +41,7 @@ const ProjectDetailView = ({ project }) => {
     { icon: 'settings', onPress: () => router.push('Project/Settings') }
   ], []);
 
-  const getProjectStats1 = async (project_uuid) => {
-    try {
-      const select_str = `
-                      COUNT(*) as total,
-                      SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END) as draft,
-                      SUM(CASE WHEN status = 'finalized' THEN 1 ELSE 0 END) as finalized,
-                      SUM(CASE WHEN status = 'submitted' OR status = 'sent' THEN 1 ELSE 0 END) as sent,
-                      SUM(CASE WHEN status = 'archived' THEN 1 ELSE 0 END) as archived`;
-      const result = await select('form_data', 'project = ? and created_by = ?', [project_uuid, user?.globalUsername], select_str)
-      return {
-        total: result[0].total || 0,
-        draft: result[0].draft || 0,
-        finalized: result[0].finalized || 0,
-        sent: result[0].sent || 0,
-        archived: result[0].archived || 0
-      };
-    } catch (error) {
-      return { total: 0, draft: 0, finalized: 0, sent: 0, archived: 0 };
-    }
-  };
+
 
   const getProjectStats = async (project_uuid) => {
     try {
@@ -76,19 +57,12 @@ const ProjectDetailView = ({ project }) => {
       // Inject the string directly into INSTR to keep select parameters clean
       const select_str = `
                       COUNT(*) as total,
-                      SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END) as draft,
-                      SUM(CASE WHEN status = 'finalized' THEN 1 ELSE 0 END) as finalized,
-                      SUM(CASE WHEN status = 'submitted' OR status = 'sent' THEN 1 ELSE 0 END) as sent,
-                      SUM(CASE WHEN status = 'archived' THEN 1 ELSE 0 END) as archived,
                       SUM(CASE 
                         WHEN seen_by IS NULL OR seen_by = '' THEN 1
                         WHEN INSTR(',' || seen_by || ',', ',${sanitizedUser},') = 0 THEN 1 
                         ELSE 0 
                       END) as unseen`;
 
-      // Now there are exactly 2 parameters, perfectly mapping to:
-      // 1. project = ?
-      // 2. created_by = ?
       const result = await select(
         'form_data',
         'project = ? and parent_uuid is null',
@@ -96,14 +70,11 @@ const ProjectDetailView = ({ project }) => {
         select_str
       );
 
+      console.log("Project Stats Result:", result);
 
       return {
         total: result[0]?.total || 0,
-        draft: result[0]?.draft || 0,
-        finalized: result[0]?.finalized || 0,
-        sent: result[0]?.sent || 0,
         unseen: result[0]?.unseen || 0,
-        archived: result[0]?.archived || 0
       };
     } catch (error) {
       console.error("Error fetching project stats:", error);
@@ -232,38 +203,33 @@ const ProjectDetailView = ({ project }) => {
           <View style={[localStyles.gridRow]}>
 
             <TouchableOpacity
-              onPress={() => { setTag('Sent'); router.push('(app)/Main/FormDataList') }}
+              onPress={() => {
+                setFilter({
+                  key: 'status',
+                  value: 'All',
+                  label: 'All'
+                });
+                router.push('(app)/Main/FormDataList')
+              }}
               style={[styles.card, localStyles.gridBox]}
             >
-              <Text style={[styles.pageTitle, { fontSize: 18 }]}>{curProjectStats.sent || 0}</Text>
-              <Text style={styles.tiny}>{t('common:sent')}</Text>
+              <Text style={[styles.pageTitle, { fontSize: 12, borderRadius: 6, borderWidth: 2, borderColor: theme.colors.primary, paddingHorizontal: 10 }]}>{curProjectStats.total || 0}</Text>
+              <Text style={styles.tiny}>{t('common:total')}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => { setTag('finalized'); router.push('(app)/Main/FormDataList') }}
-              style={[styles.card, localStyles.gridBox]}
-            >
-              <Text style={[styles.pageTitle, { fontSize: 18 }]}>{curProjectStats.finalized || 0}</Text>
-              <Text style={styles.tiny}>{t('common:final')}</Text>
-            </TouchableOpacity>
-
-          </View>
-          <View style={[localStyles.gridRow]}>
 
             <TouchableOpacity
-              onPress={() => { setTag('Draft'); router.push('(app)/Main/FormDataList') }}
+              onPress={() => {
+                setFilter({
+                  key: 'has_seen',
+                  value: 0,
+                  label: 'New'
+                });; router.push('(app)/Main/FormDataList')
+              }}
               style={[styles.card, localStyles.gridBox]}
             >
-              <Text style={[styles.pageTitle, { fontSize: 18, color: curProjectStats.unseen ? '#78A083' : theme.colors.primary }]}>{curProjectStats.unseen || 0}</Text>
-              <Text style={[styles.tiny, {color: curProjectStats.unseen ? '#78A083' : theme.colors.primary}]}>{t('common:new')}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => router.push('/Form/ProjectForms')}
-              style={[styles.card, localStyles.gridBox]}
-            >
-              <Text style={[styles.pageTitle, { fontSize: 18 }]}>{formDefns.length || 0}</Text>
-              <Text style={styles.tiny}>{t('common:forms')}</Text>
+              <Text style={[styles.pageTitle, { fontSize: 12, borderRadius: 6, borderWidth: 2, borderColor: curProjectStats.unseen ? '#78A083' : theme.colors.primary, color: curProjectStats.unseen ? '#78A083' : theme.colors.primary, paddingHorizontal: 10 }]}>{curProjectStats.unseen || 0}</Text>
+              <Text style={[styles.tiny, { color: curProjectStats.unseen ? '#78A083' : theme.colors.primary }]}>{t('common:new')}</Text>
             </TouchableOpacity>
 
           </View>
@@ -278,10 +244,6 @@ const ProjectDetailView = ({ project }) => {
                   appendLog('Syncing reactions...');
                   await syncProjectReactions(currentProject.project, appendLog);
                   appendLog('Syncing Project Data.');
-                  await getProjectData(currentProject.project, appendLog);
-                  appendLog('Syncing workflow data...');
-                  await syncWorkflowData(currentProject?.project, appendLog);
-                  appendLog('Project data fetched.');
                   await refreshCredentials();
                   appendLog('Credentials refreshed.');
                   await refreshProjectData();
@@ -290,8 +252,39 @@ const ProjectDetailView = ({ project }) => {
               }}
               style={[styles.card, localStyles.gridBox]}
             >
-              <MaterialIcons name="refresh" size={28} color={theme.colors.pageTitle} />
-              <Text style={styles.tiny}>{t('projects:syncForms')}</Text>
+              <MaterialCommunityIcons name="file-download-outline" size={28} color={theme.colors.pageTitle} />
+              <Text style={styles.tiny}>{t('projects:fetchForms')}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => router.push('/Form/ProjectForms')}
+              style={[styles.card, localStyles.gridBox]}
+            >
+              <Text style={[styles.pageTitle, { fontSize: 12, borderRadius: 6, borderWidth: 2, borderColor: theme.colors.primary, paddingHorizontal: 10 }]}>{formDefns.length || 0}</Text>
+              <Text style={styles.tiny}>{t('common:forms')}</Text>
+            </TouchableOpacity>
+
+          </View>
+          <View style={[localStyles.gridRow]}>
+
+            <TouchableOpacity
+              onPress={async () => {
+                setSyncLogs('Starting form sync...');
+                setIsSyncing(true);
+                try {
+                  appendLog('Syncing Project Data.');
+                  await getProjectData(currentProject.project, appendLog);
+                  appendLog('Syncing workflow data...');
+                  await syncWorkflowData(currentProject?.project, appendLog);
+                  appendLog('Project data fetched.');;
+                  await refreshProjectData();
+                  appendLog('Project data refreshed.');
+                } catch (e) { appendLog('Error: ' + e.message); } finally { setIsSyncing(false); }
+              }}
+              style={[styles.card, localStyles.gridBox]}
+            >
+              <MaterialCommunityIcons name="database-arrow-down-outline" size={32} color={theme.colors.pageTitle} />
+              <Text style={styles.tiny}>{t('projects:fetchData')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -308,7 +301,7 @@ const ProjectDetailView = ({ project }) => {
               }}
               style={[styles.card, localStyles.gridBox]}
             >
-              <MaterialIcons name="send" size={26} color={theme.colors.pageTitle} />
+              <MaterialCommunityIcons name="receipt-send-outline" size={32} color={theme.colors.pageTitle} />
               <Text style={styles.tiny}>{t('data:bulkSubmit')}</Text>
             </TouchableOpacity>
 
@@ -353,12 +346,16 @@ const ProjectDetailView = ({ project }) => {
         onPress={() => {
           setCurrentData(null);
           setCurrentProject(null);
-          setTag('all');
+          setFilter({
+            key: 'status',
+            value: 'All',
+            label: 'All'
+          });
         }}
       >
         <Octicons name="arrow-switch" size={24} color="lightgray" />
       </TouchableOpacity>
-    </View>
+    </View >
   )
 }
 
