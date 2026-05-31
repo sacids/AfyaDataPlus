@@ -1,6 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, View } from 'react-native';
 import { useTheme } from '../../../context/ThemeContext';
 import useProjectStore from '../../../store/projectStore';
@@ -10,6 +11,7 @@ export default function TabLayout() {
     const { currentData, getCurrentFormDef, hasChildren, currentFormChildren } = useProjectStore();
     const [workflowEnabled, setWorkflowEnabled] = useState(false);
     const [loading, setLoading] = useState(true);
+    const { t, i18n } = useTranslation();
 
     useEffect(() => {
         const fetchFormDef = async () => {
@@ -69,7 +71,7 @@ export default function TabLayout() {
             <Tabs.Screen
                 name="Index"
                 options={{
-                    title: 'Info',
+                    title: t('layout:info'),
                     tabBarIcon: ({ color, size }) => (
                         <MaterialCommunityIcons name="view-dashboard-outline" size={size} color={color} />
                     ),
@@ -80,7 +82,7 @@ export default function TabLayout() {
                 <Tabs.Screen
                     name="FormDataList"
                     options={{
-                        title: 'Data',
+                        title: t('layout:data'),
                         tabBarIcon: ({ color, size }) => (
                             <Ionicons name="list" size={size} color={color} />
                         ),
@@ -90,7 +92,7 @@ export default function TabLayout() {
                 <Tabs.Screen
                     name="FormDataList"
                     options={{
-                        title: 'Data',
+                        title: t('layout:data'),
                         href: null,
                         tabBarIcon: ({ color, size }) => (
                             <Ionicons name="list" size={size} color={color} />
@@ -103,7 +105,7 @@ export default function TabLayout() {
                 <Tabs.Screen
                     name="workflow"
                     options={{
-                        title: 'Workflow',
+                        title: t('layout:activity'),
                         tabBarIcon: ({ color, size }) => (
                             <MaterialCommunityIcons
                                 name="source-branch"
@@ -117,7 +119,7 @@ export default function TabLayout() {
                 <Tabs.Screen
                     name="workflow"
                     options={{
-                        title: 'Workflow',
+                        title: t('layout:activity'),
                         href: null,
                         tabBarIcon: ({ color, size }) => (
                             <MaterialCommunityIcons
@@ -136,7 +138,7 @@ export default function TabLayout() {
                 <Tabs.Screen
                     name="MessagesScreen"
                     options={{
-                        title: 'Message',
+                        title: t('layout:messages'),
                         tabBarIcon: ({ color, size }) => (
                             <Ionicons
                                 name="chatbubble-outline"
@@ -150,7 +152,7 @@ export default function TabLayout() {
                 <Tabs.Screen
                     name="MessagesScreen"
                     options={{
-                        title: 'Message',
+                        title: t('layout:messages'),
                         href: null,
                         tabBarIcon: ({ color, size }) => (
                             <Ionicons
@@ -173,7 +175,7 @@ export default function TabLayout() {
                 <Tabs.Screen
                     name="DiseaseKnowledgeScreen"
                     options={{
-                        title: 'Knowledge',
+                        title: t('layout:knowledge'),
                         tabBarIcon: ({ color, size }) => (
                             <Ionicons
                                 name="library-outline"
@@ -187,7 +189,7 @@ export default function TabLayout() {
                 <Tabs.Screen
                     name="DiseaseKnowledgeScreen"
                     options={{
-                        title: 'Knowledge',
+                        title: t('layout:knowledge'),
                         href: null,
                         tabBarIcon: ({ color, size }) => (
                             <Ionicons

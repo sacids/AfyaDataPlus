@@ -49,7 +49,12 @@
     "download": "Download",
     "upload": "Upload",
     "version": "Version",
-    "clear": "Clear"
+    "clear": "Clear",
+    "currentState": "Current State",
+    "actions": "Actions",
+    "addNew": "Add New",
+    "options": "Options",
+    "backToProjectHome": "Back To Project Home"
   },
   
   "navigation": {
@@ -152,6 +157,14 @@
     "projectData": "Project Data",
     "syncSurveys": "Sync Surveys",
     "syncForms": "Sync"
+  },
+
+  "layout": {
+    "info": "Info",
+    "data": "Data",
+    "knowledge": "Knowledge",
+    "activity": "Activity",
+    "messages": "Messages"
   },
   
   "forms": {

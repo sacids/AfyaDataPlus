@@ -127,6 +127,7 @@ const FormDataView = ({ formData }) => {
     }
 
 
+
     useEffect(() => {
         async function load() {
 
@@ -235,7 +236,7 @@ const FormDataView = ({ formData }) => {
 
                 if (!wasSeen) {
                     await updateSeenBy(formData.id, user.globalUsername);
-                    console.log('Record marked as seen');
+                    //console.log('Record marked as seen');
                 }
             }
         };
@@ -348,7 +349,7 @@ const FormDataView = ({ formData }) => {
                         flexDirection: 'row',
                         alignItems: 'center',
                         alignSelf: 'flex-end',
-                        gap: 20,
+                        gap: 10,
                         borderRadius: 30,
                         paddingVertical: 10,   // Specific padding
                         paddingHorizontal: 30,
@@ -359,7 +360,7 @@ const FormDataView = ({ formData }) => {
             >
                 <Ionicons name="flash-outline" size={16} color={theme.colors.primary} />
                 <Text style={[styles.label, { color: theme.colors.primary, fontSize: 14 }]}>
-                    OPTIONS
+                    {t('common:options')}
                 </Text>
             </TouchableOpacity>
 
@@ -407,7 +408,7 @@ const FormDataView = ({ formData }) => {
                                 marginBottom: 20,
                             }}
                         >
-                            <Text style={[styles.label, { fontSize: 18 }]} > Options </Text>
+                            <Text style={[styles.label, { fontSize: 18, textTransform: 'uppercase' }]} > {t('common:options')} </Text>
 
                             <TouchableOpacity onPress={() => setWorkflowModalVisible(false)} >
                                 <Ionicons name="close" size={24} color={theme.colors.text} />
@@ -427,7 +428,7 @@ const FormDataView = ({ formData }) => {
                                 }}
                             >
 
-                                <Text style={[styles.tiny, { marginBottom: 4 }]} > CURRENT STATE </Text>
+                                <Text style={[styles.tiny, { marginBottom: 4, textTransform: 'uppercase' }]} >{t('common:currentState')} </Text>
                                 <View style={{
                                     flexDirection: 'row',
                                     alignItems: 'center',
@@ -447,7 +448,7 @@ const FormDataView = ({ formData }) => {
                             {/* AVAILABLE ACTIONS */}
 
                             {formChildrenData.length > 0 && (
-                                <Text style={[styles.tiny]} > ADD NEW </Text>
+                                <Text style={[styles.tiny, { textTransform: 'uppercase' }]} > {t('common:addNew')} </Text>
                             )}
 
                             {formChildrenData.map((form, index) => (
@@ -482,7 +483,7 @@ const FormDataView = ({ formData }) => {
                             {/* AVAILABLE ACTIONS */}
 
                             {availableWorkflowActions.length > 0 && (
-                                <Text style={[styles.tiny, { marginTop: 20 }]} > ACTIONS </Text>
+                                <Text style={[styles.tiny, { marginTop: 20, textTransform: 'uppercase' }]} > {t('common:actions')} </Text>
                             )}
 
                             {availableWorkflowActions.map(
@@ -503,13 +504,13 @@ const FormDataView = ({ formData }) => {
                                             // Transition form
                                             if (action.transition_form_id) {
                                                 const fdefn_id = await select('form_defn', 'form_id = ?', [action.transition_form_id], 'id');
-                                                console.log('action transition form', fdefn_id[0].id, JSON.stringify(action, null, 4))
+                                                //console.log('action transition form', fdefn_id[0].id, JSON.stringify(action, null, 4))
                                                 router.push({
                                                     pathname: `/Form/New`,
                                                     params: {
                                                         fdefn_id: `${fdefn_id[0].id}`,
                                                         parent_uuid: formData.uuid,
-                                                        workflow_action: action.action,
+                                                        workflow_action: JSON.stringify(action),
                                                     }
                                                 });
 
@@ -553,7 +554,7 @@ const FormDataView = ({ formData }) => {
                                 >
 
                                     <MaterialCommunityIcons name="history" size={22} color={theme.colors.text} />
-                                    <Text style={styles.label} > View Workflow Logs </Text>
+                                    <Text style={styles.label} > {t('common:viewWorkflowLogs')} </Text>
                                 </TouchableOpacity>
                             )}
 
@@ -583,7 +584,7 @@ const FormDataView = ({ formData }) => {
                             <Text
                                 style={styles.label}
                             >
-                                Back To Project Home
+                                {t('common:backToProjectHome')}
                             </Text>
                         </TouchableOpacity>
                     </Pressable>

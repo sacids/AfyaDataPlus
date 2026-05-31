@@ -49,7 +49,20 @@
     "download": "Pakua",
     "upload": "Pakia",
     "version": "Toleo",
-    "clear": "Safisha"
+    "clear": "Futa",
+    "currentState": "Hatua ya Sasa",
+    "actions": "Vitendo",
+    "addNew": "Ongeza Mpya",
+    "options": "Chaguzi",
+    "backToProjectHome": "Rudi Mwanzo"
+  },
+
+  "layout": {
+    "info": "Taarifa",
+    "data": "Data",
+    "knowledge": "Maarifa",
+    "activity": "Matukio",
+    "messages": "Ujumbe"
   },
   
   "navigation": {

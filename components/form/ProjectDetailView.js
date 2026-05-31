@@ -254,8 +254,8 @@ const ProjectDetailView = ({ project }) => {
               onPress={() => { setTag('Draft'); router.push('(app)/Main/FormDataList') }}
               style={[styles.card, localStyles.gridBox]}
             >
-              <Text style={[styles.pageTitle, { fontSize: 18, color: curProjectStats.unseen ? '#78A083' : theme.color.primary }]}>{curProjectStats.unseen || 0}</Text>
-              <Text style={[styles.tiny, {color: curProjectStats.unseen ? '#78A083' : theme.color.primary}]}>{t('common:new')}</Text>
+              <Text style={[styles.pageTitle, { fontSize: 18, color: curProjectStats.unseen ? '#78A083' : theme.colors.primary }]}>{curProjectStats.unseen || 0}</Text>
+              <Text style={[styles.tiny, {color: curProjectStats.unseen ? '#78A083' : theme.colors.primary}]}>{t('common:new')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity

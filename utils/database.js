@@ -162,7 +162,7 @@ const LAST_SYNC_SQL = `CREATE TABLE IF NOT EXISTS last_sync (
 );`;
 
 // Add to createTables function
-let FORM_DATA_WORKFLOW_SQL = `CREATE TABLE IF NOT EXISTS tb_form_data_workflow (
+let FORM_DATA_WORKFLOW_SQL1 = `CREATE TABLE IF NOT EXISTS tb_form_data_workflow (
 
     id TEXT PRIMARY KEY,
     form_data_uuid TEXT UNIQUE NOT NULL,
@@ -182,6 +182,26 @@ let FORM_DATA_WORKFLOW_SQL = `CREATE TABLE IF NOT EXISTS tb_form_data_workflow (
     created_at TEXT,
     updated_at TEXT
 ); `;
+let FORM_DATA_WORKFLOW_SQL = `CREATE TABLE IF NOT EXISTS tb_form_data_workflow (
+    id TEXT PRIMARY KEY,
+    form_data_uuid TEXT UNIQUE NOT NULL,
+    project_id TEXT NOT NULL,
+    workflow_definition_code TEXT,
+    workflow_state TEXT NOT NULL,
+    assigned_group TEXT,
+    assigned_to TEXT,
+    last_action TEXT,
+    is_locked INTEGER DEFAULT 0,
+    is_closed INTEGER DEFAULT 0,
+    escalation_level INTEGER DEFAULT 0,
+    reopened_count INTEGER DEFAULT 0,
+    due_at TEXT,
+    metadata TEXT,
+    sync_status INTEGER DEFAULT 0,
+    created_at TEXT,
+    updated_at TEXT,
+    FOREIGN KEY (form_data_uuid) REFERENCES form_data (uuid) ON DELETE CASCADE
+);`;
 //let FORM_DATA_WORKFLOW_SQL = `DROP TABLE IF EXISTS tb_form_data_workflow;`;
 
 let WORKFLOW_ACTION_LOGS_SQL = `CREATE TABLE IF NOT EXISTS tb_workflow_action_logs (
@@ -538,7 +558,7 @@ export const select = async (tableName, whereClause = '', whereArgs = [], fields
 
 
 
-export const getFormData = async (user_id, project_id, currentData_uuid = false, workflow = false) => {
+export const getFormData1 = async (user_id, project_id, currentData_uuid = false, workflow = false) => {
     try {
         let query = '';
         let params = [];
@@ -608,6 +628,83 @@ export const getFormData = async (user_id, project_id, currentData_uuid = false,
         //     }));
         // }
 
+        return result;
+
+    } catch (error) {
+        console.error('Error getting form data:', error);
+        return [];
+    }
+};
+
+export const getFormData = async (user_id, project_id, currentData_uuid = false, workflow = false) => {
+    try {
+        let query = '';
+        let params = [];
+        let workflow_condition = ''; // Default condition to exclude workflow forms
+
+        if (workflow) {
+            workflow_condition = 'AND fdef.form_role = "WORKFLOW"';
+        }
+
+        // Use a more efficient JSON-like approach if usernames have no commas
+        const hasSeenCondition = user_id
+            ? `, (fd.seen_by IS NOT NULL AND fd.seen_by LIKE '%${user_id}%') as has_seen`
+            : ', 0 as has_seen';
+
+        // Base SELECT fields to avoid '*' naming collisions (e.g., 'id')
+        // Aliased workflow fields are prefixed with 'wf_' for clarity
+        const selectFields = `
+            fd.*, 
+            fdef.is_root, 
+            fdef.form_role, 
+            fdef.title AS form_title, 
+            fdef.icon,
+            wf.id AS wf_id,
+            wf.workflow_definition_code,
+            wf.workflow_state,
+            wf.assigned_group,
+            wf.assigned_to,
+            wf.last_action,
+            wf.is_locked,
+            wf.is_closed,
+            wf.escalation_level,
+            wf.reopened_count,
+            wf.due_at,
+            wf.metadata AS wf_metadata
+            ${hasSeenCondition}
+        `;
+
+        if (currentData_uuid) {
+            query = `
+                SELECT ${selectFields}
+                FROM form_data fd 
+                JOIN form_defn fdef ON fd.form = CAST(fdef.form_id AS TEXT)
+                LEFT JOIN tb_form_data_workflow wf ON fd.uuid = wf.form_data_uuid
+                WHERE fd.deleted = ?
+                AND fd.project = ?
+                AND fd.parent_uuid = ?
+                ${workflow_condition}
+                ORDER BY fd.id DESC
+            `;
+            params = [0, project_id, currentData_uuid];
+        } else {
+            query = `
+                SELECT ${selectFields}
+                FROM form_data fd 
+                JOIN form_defn fdef ON fd.form = CAST(fdef.form_id AS TEXT)
+                LEFT JOIN tb_form_data_workflow wf ON fd.uuid = wf.form_data_uuid
+                WHERE fd.deleted = ?
+                AND fd.project = ?
+                AND fdef.is_root = 1
+                AND fdef.form_role = 'ROOT'
+                ORDER BY fd.id DESC
+            `;
+            params = [0, project_id];
+        }
+
+        //console.log('query', query, 'params', params)
+
+        const result = await db.getAllAsync(query, params);
         return result;
 
     } catch (error) {

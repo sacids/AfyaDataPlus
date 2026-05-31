@@ -797,6 +797,25 @@ const submitForms = async (data = []) => {
     );
 };
 
+
+export function recursiveJSONParse(input, maxDepth = 5) {
+	let depth = 0;
+	let current = input;
+
+	while (typeof current === 'string' && depth < maxDepth) {
+		try {
+			current = JSON.parse(current);
+			depth += 1;
+		} catch (e) {
+			// Return the last successful parse if failed mid-way
+			break;
+		}
+	}
+
+	return current;
+}
+
+
 // In services.js / submitForms.js
 const handleFormSubmission = async (data, onProgress) => { // Added onProgress
     const successForms = [];

@@ -49,7 +49,20 @@
     "download": "ダウンロード",
     "upload": "アップロード",
     "version": "バージョン",
-    "clear": "クリア"
+    "clear": "クリア",
+    "currentState": "現在の状態",
+    "actions": "アクション",
+    "addNew": "新規追加",
+    "options": "オプション",
+    "backToProjectHome": "プロジェクトのホームへ戻る"
+  },
+
+  "layout": {
+    "info": "情報",
+    "data": "データ",
+    "knowledge": "知識",
+    "activity": "アクティビティ",
+    "messages": "メッセージ"
   },
   
   "navigation": {

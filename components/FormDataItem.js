@@ -12,6 +12,7 @@ import Animated, {
 import { getStyles } from '../constants/styles';
 import { useTheme } from '../context/ThemeContext';
 import { FormIcons } from './layout/FormIcons';
+import { recursiveJSONParse } from '../lib/form/validation';
 
 const { width } = Dimensions.get('window');
 
@@ -96,9 +97,14 @@ export default function FormDataItem({
     const initials = item.status?.charAt(0).toUpperCase() || 'D';
     const statusTheme = getStatusTheme(initials);
 
+    // console.log('item', JSON.stringify(item, null, 5));
     // Check if item has been seen (has_seen is 1 or true)
     const hasBeenSeen = item.has_seen === 1 || item.has_seen === true;
     const isUnseen = !hasBeenSeen && !isSubmitting;
+    const metadata = item.wf_metadata ? recursiveJSONParse(item.wf_metadata) : false;
+
+    
+    //console.log('item', item.title, item.workflow_state,metadata.action, metadata)
 
     return (
         <GestureDetector gesture={combinedGesture}>
@@ -195,21 +201,7 @@ export default function FormDataItem({
 
                                 {/* Badge for unseen items */}
                                 {isUnseen && (
-                                    <View style={{
-                                        backgroundColor: '#4CAF50',
-                                        paddingHorizontal: 8,
-                                        paddingVertical: 2,
-                                        borderRadius: 4,
-                                        marginLeft: 4,
-                                    }}>
-                                        <Text style={{
-                                            color: '#fff',
-                                            fontSize: 10,
-                                            fontWeight: 'bold',
-                                        }}>
-                                            NEW
-                                        </Text>
-                                    </View>
+                                    <MaterialIcons name="new-releases" size={20} color="#4CAF50" />
                                 )}
 
                                 <View style={[styles.badge, { backgroundColor: statusTheme.bg + '20', borderWidth: 1, borderColor: statusTheme.bg }]}>
@@ -217,15 +209,16 @@ export default function FormDataItem({
                                         {statusTheme.label}
                                     </Text>
                                 </View>
-                                <View style={[styles.badge, { backgroundColor: theme.colors.chipBackground + '40', borderWidth: 1, borderColor: theme.colors.chipBackground }]}>
-                                    <Text style={[styles.tiny, { color: theme.colors.chipBackground, fontWeight: '800' }]}>
-                                        {item.form_role.charAt(0).toUpperCase()}
-                                    </Text>
-                                </View>
+                                {metadata && metadata.action && (
+                                    <View style={[styles.badge, { backgroundColor: metadata.icon_color + '40', borderWidth: 1, borderColor: metadata.icon_color }]}>
+                                        <Text style={[styles.tiny, { color: metadata.icon_color, fontWeight: '800' }]}>
+                                            {item.workflow_state}
+                                        </Text>
+                                    </View>
+                                )}
                                 <Text style={styles.tiny}>
                                     {new Date(item.status_date).toLocaleDateString()}
                                 </Text>
-
 
                             </View>
                         </View>

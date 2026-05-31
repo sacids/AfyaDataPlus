@@ -40,6 +40,8 @@ const SavePage = () => {
     const formUUID = useFormStore(state => state.formUUID);
     const parentUUID = useFormStore(state => state.parentUUID);
 
+    const workflowState = JSON.parse(workflowAction)
+
     // Improved: Now returns the location so we can use it immediately
     const getCurrentLocation = async (forceHighAccuracy = false) => {
         setIsGettingLocation(true);
@@ -127,6 +129,7 @@ const SavePage = () => {
             // Optional cleanup when the screen loses focus
         };
     }, [schema, formData]);
+
 
     const saveForm = async (status) => {
         try {
@@ -220,21 +223,23 @@ const SavePage = () => {
                 //         workflow_state: schema.form_defn.workflow.initial_state || 'initial',
                 //         project_id: schema.project,
                 //         created_on: new Date().toISOString(),
-                //         updated_on: new Date().toISOString()
+                //         updated_at: new Date().toISOString()
                 //     });
+                //     console.log('setting workflow state to initial', { workflow_state: schema.form_defn.workflow.initial_state || 'initial' })
                 // }
 
                 //console.log('Workflow state set to:', { workflow_state: 'finalized' });
-                //console.log(workflowAction, 'workflowAction')
+                //console.log('workflow', JSON.stringify(workflowState, null, 2));
                 if (workflowAction !== null && workflowAction !== undefined) {
                     await insert('tb_form_data_workflow', {
                         form_data_uuid: parentUUID,
-                        workflow_state: workflowAction,
+                        workflow_state: workflowState.to,
                         project_id: schema.project,
                         sync_status: 0,
-                        updated_on: new Date().toISOString()
+                        metadata: workflowAction,
+                        updated_at: new Date().toISOString()
                     });
-                    //console.log('Workflow state set to:', { workflow_state: workflowAction });
+                    //console.log('Workflow state set to:', { workflow_state: workflowState.to });
                 }
             }
 

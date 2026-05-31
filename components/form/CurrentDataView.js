@@ -88,7 +88,7 @@ const CurrentDataView = ({ formData }) => {
 
                 if (!wasSeen) {
                     await updateSeenBy(formData.id, user.globalUsername);
-                    console.log('Record marked as seen');
+                    //console.log('Record marked as seen');
                 }
             }
         };
