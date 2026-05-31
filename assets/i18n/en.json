@@ -78,6 +78,7 @@
     "email": "Email",
     "forgotPassword": "Forgot Password?",
     "rememberMe": "Remember Me",
+    "noAccount": "Don't have an account?",
     "createAccount": "Create Account",
     "syncAuth": "Sync Authentication",
     "loginAction": "Login",

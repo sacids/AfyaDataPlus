@@ -83,6 +83,7 @@
     "email": "メールアドレス",
     "forgotPassword": "パスワードをお忘れですか？",
     "rememberMe": "ログイン状態を保持",
+    "noAccount": "アカウントをお持ちでないですか？",
     "createAccount": "アカウント作成",
     "syncAuth": "認証同期",
     "loginAction": "ログイン",

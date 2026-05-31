@@ -20,7 +20,7 @@ const useAuthStore = create(
     persist(
         (set, get) => ({
             user: null,
-            isLoading: true, // Start as true
+            isLoading: true,
 
             setUser: (user) => {
                 set({ user, isLoading: false });
@@ -40,10 +40,41 @@ const useAuthStore = create(
                 return state.instances[url]?.token || null;
             },
 
+            localAuthenticate: async (phoneNumber, password) => {
+                try {
+                    const savedUsername = await SecureStore.getItemAsync('saved_username');
+                    const savedPassword = await SecureStore.getItemAsync('saved_password');
+                    const profileRaw = await SecureStore.getItemAsync('local_user_profile');
+
+                    if (!savedUsername || !savedPassword) {
+                        return { success: false, error: 'No registered user found on this device.' };
+                    }
+
+                    // Strict sanitization matching logic
+                    if (savedUsername.trim() === phoneNumber.trim() && savedPassword === password) {
+                        let consolidatedUser = { phoneNumber: savedUsername, role: 'LOCAL_USER' };
+
+                        if (profileRaw) {
+                            consolidatedUser = JSON.parse(profileRaw);
+                        }
+
+                        // Tag contextual flags cleanly
+                        consolidatedUser.isAuthenticatedOffline = true;
+
+                        set({ user: consolidatedUser, isLoading: false });
+                        return { success: true };
+                    } else {
+                        return { success: false, error: 'Invalid phone number or password.' };
+                    }
+                } catch (error) {
+                    console.error('Local authentication error:', error);
+                    return { success: false, error: 'Internal secure validation failed.' };
+                }
+            },
+
             logout: async () => {
+                // Clear the active session, but do NOT wipe credentials or profile state mapping assets!
                 await SecureStore.deleteItemAsync('auth-storage');
-                await SecureStore.deleteItemAsync('saved_username');
-                await SecureStore.deleteItemAsync('saved_password');
                 set({ user: null, instances: {}, isLoading: false });
             },
 
@@ -54,19 +85,14 @@ const useAuthStore = create(
         {
             name: 'auth-storage',
             storage: createJSONStorage(() => secureStorage),
-            // This runs after rehydration is complete
             onRehydrateStorage: () => (state) => {
-                // State has been restored from storage
                 if (state) {
-                    // You can do any post-rehydration logic here
                     console.log('Auth state rehydrated');
                 }
-                // Return a function to run after rehydration
                 return (state, error) => {
                     if (error) {
                         console.error('Rehydration error:', error);
                     }
-                    // Mark loading as complete after rehydration
                     if (state) {
                         setTimeout(() => {
                             state.finishLoading();

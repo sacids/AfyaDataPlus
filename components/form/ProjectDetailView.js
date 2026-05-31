@@ -70,7 +70,7 @@ const ProjectDetailView = ({ project }) => {
         select_str
       );
 
-      console.log("Project Stats Result:", result);
+      //console.log("Project Stats Result:", result);
 
       return {
         total: result[0]?.total || 0,

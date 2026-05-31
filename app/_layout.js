@@ -9,10 +9,10 @@ import { ActivityIndicator, Image, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
+import i18n from '../i18n/index';
 import LanguageManager from '../i18n/languageManager';
 import { useAuthStore } from '../store/authStore';
 import { createTables } from '../utils/database';
-import i18n from '../i18n/index';
 
 
 Sentry.init({
@@ -112,23 +112,37 @@ export default function RootLayout() {
       try {
 
         const hasCompletedOnboarding = await SecureStore.getItemAsync('onboarding_completed');
-
+        const hasLocalUser = await SecureStore.getItemAsync('saved_username');
         const hasProfile = user && user.globalUsername && user.deviceId;
+
+        // console.log('Navigation Check:', {
+        //   segments,
+        //   hasCompletedOnboarding,
+        //   hasLocalUser,
+        //   hasProfile,
+        // });
 
         if (!hasCompletedOnboarding) {
           if (segments[0] !== '' && segments[0] !== 'onboarding') {
             router.replace('/');
-          } 
+          }
         }
+
+        else if (hasLocalUser && !hasProfile) {
+          if (segments[0] !== '(auth)') {
+            router.replace('/(auth)/login');
+          }
+        }
+
         else if (!hasProfile) {
           if (segments[0] !== '(auth)') {
             router.replace('/(auth)/register');
-          } 
+          }
         }
         else {
           if (segments[0] !== '(app)') {
             router.replace('/(app)/Main');
-          } 
+          }
         }
       } catch (error) {
         console.error('Navigation error details:', error);

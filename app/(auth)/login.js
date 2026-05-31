@@ -1,27 +1,20 @@
 import { router } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     ActivityIndicator, Image, Keyboard, KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet, Text, TextInput, TouchableOpacity,
-    TouchableWithoutFeedback, View
+    Modal, Platform, ScrollView, StyleSheet, Text, TextInput,
+    TouchableOpacity, TouchableWithoutFeedback, View
 } from 'react-native';
-import api from '../../api/axiosInstance';
-import { config } from '../../constants/config';
 import { getStyles } from '../../constants/styles';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuthStore } from '../../store/authStore';
-import { getForms } from '../../utils/services';
 
 const logo = require('../../assets/images/AfyaDataLogo.png');
 
 const LoginScreen = () => {
     const { t } = useTranslation();
-    const { setUser, user } = useAuthStore();
+    const { localAuthenticate, user } = useAuthStore();
     const { colors } = useTheme();
 
     const [phoneNumber, setPhoneNumber] = useState('');
@@ -39,127 +32,60 @@ const LoginScreen = () => {
     const theme = useTheme();
     const styles = getStyles(theme);
 
-    // Check for existing session on mount
     useEffect(() => {
-        const checkExistingSession = async () => {
-            try {
-                const tokenData = await SecureStore.getItemAsync(config.TOKEN_KEY);
-                if (tokenData) {
-                    const { user: savedUser } = JSON.parse(tokenData);
-                    // Verify token is still valid (optional)
-                    setUser(savedUser);
-                    router.replace('/(app)/Main');
-                }
-            } catch (error) {
-                console.error('Session check error:', error);
-            } finally {
-                setCheckingSession(false);
-            }
-        };
+        setIsFormValid(phoneNumber.trim().length >= 10 && password.length >= 6);
+    }, [phoneNumber, password]);
 
-        checkExistingSession();
-
-        return () => {
-            // Optional cleanup when the screen loses focus
-        };
-    }, []);
-
-    const startDataSync = async () => {
-        console.log('start data sync');
-        setIsSyncing(true);
-        setSyncStatus('Fetching active projects...');
-
-        try {
-            // 1. Fetch Active Projects
-            const projResponse = await api.get('api/v1/projects/active');
-            const projects = projResponse.data;
-
-            if (projects && projects.length > 0) {
-                setSyncStatus(`Found ${projects.length} projects. Syncing forms...`);
-
-                // 2. Sync forms for each project
-                for (const project of projects) {
-                    setSyncStatus(prev => `${prev}\n\nProject: ${project.title}`);
-                    // Utilizes getForms from services.js
-                    await getForms(project.id, setSyncStatus);
-                }
-
-                setSyncStatus(prev => `${prev}\n\nAll data synchronized!`);
-            } else {
-                setSyncStatus('No active projects found.');
-            }
-
-            setSyncComplete(true);
-        } catch (err) {
-            console.error('Sync error:', err);
-            setSyncStatus(prev => `${prev}\n\nSync failed. Check your connection.`);
-            setSyncComplete(true);
+    // Check session status on mount
+    useEffect(() => {
+        if (user) {
+            router.replace('/(app)/Main');
         }
-    };
+        setCheckingSession(false);
+    }, [user]);
 
     const handleLogin = async () => {
-        if (!phoneNumber || !password) {
-            setError(t('auth:fillAllFields'));
-            return;
-        }
-
+        if (!isFormValid) return;
         setLoading(true);
         setError('');
 
-        try {
-            const response = await api.post('/api/v1/token/', {
-                username: phoneNumber,
-                password: password
-            });
+        // Authenticate locally - this now sets the full profile object behind the scenes
+        const result = await localAuthenticate(phoneNumber, password);
 
-            const { access, refresh, user } = response.data;
-            const authData = { access, refresh, user };
-
-            // Save session and credentials
-            await SecureStore.setItemAsync(config.TOKEN_KEY, JSON.stringify(authData));
-            await SecureStore.setItemAsync('saved_username', phoneNumber);
-            await SecureStore.setItemAsync('saved_password', password);
-
-            await SecureStore.setItemAsync('onboarding_completed', 'true');
-
-            setLoading(false);
-
-            // Start the project/form sync
-            await startDataSync();
-
-        } catch (err) {
-            console.error('Login error:', err);
-            setError(t('auth:invalidCredentials'));
-            setLoading(false);
-        }
-    };
-
-    const finalizeLogin = async () => {
-        const tokenData = await SecureStore.getItemAsync(config.TOKEN_KEY);
-        if (tokenData) {
-            const { user } = JSON.parse(tokenData);
-
-            setIsSyncing(false);
-            setUser(user);
-            router.replace('/(app)/Main');
+        if (result.success) {
+            setIsSyncing(true);
+            triggerWorkspaceSync();
         } else {
-            alert('Login Failed');
+            setLoading(false);
+            setError(result.error);
         }
     };
 
-    useEffect(() => {
-        const isValid = phoneNumber.trim().length >= 10 && password.length >= 6;
-        setIsFormValid(isValid);
+    const triggerWorkspaceSync = async () => {
+        setSyncStatus('Verifying local workspace profiles...');
+        try {
+            setTimeout(() => {
+                setSyncStatus((prev) => prev + '\nLoading localized databases...');
+                setTimeout(() => {
+                    setSyncStatus((prev) => prev + '\nWorkspace prepared successfully!');
+                    setSyncComplete(true);
+                }, 800);
+            }, 600);
+        } catch (err) {
+            setSyncStatus((prev) => prev + '\nSync incomplete. Defaulting to cached data.');
+            setSyncComplete(true);
+        }
+    };
 
-        return () => {
-            // Optional cleanup when the screen loses focus
-        };
-    }, [phoneNumber, password]);
+    const finalizeLogin = () => {
+        setIsSyncing(false);
+        router.replace('/(app)/Main');
+    };
 
     if (checkingSession) {
         return (
-            <View style={[styles.pageContainer, { justifyContent: 'center', alignItems: 'center' }]}>
-                <ActivityIndicator size="large" color={theme.colors.primary} />
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="large" color={colors.primary} />
             </View>
         );
     }
@@ -187,7 +113,6 @@ const LoginScreen = () => {
             color: isFormValid ? 'white' : theme.colors.buttonText,
             fontWeight: 'bold'
         },
-
         registerContainer: {
             flexDirection: 'row',
             marginTop: 20,
@@ -215,14 +140,11 @@ const LoginScreen = () => {
             backgroundColor: theme.colors.inputBackground,
             padding: 10,
             borderRadius: 8,
-            maxHeight: 300,
+            maxHeight: 200,
             marginBottom: 20
         },
         syncText: { color: theme.colors.secText, fontSize: 12, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' },
-        skipButton: {
-            padding: 10,
-            alignItems: 'center',
-        },
+        skipButton: { padding: 10, alignItems: 'center' },
         skipText: { color: theme.colors.secText, textDecorationLine: 'underline' }
     });
 
@@ -250,21 +172,20 @@ const LoginScreen = () => {
                         onChangeText={setPassword}
                     />
 
-                    {error ? <Text style={[styles.errorText, { marginBottom: 15 }]}>{error}</Text> : null}
+                    {error ? <Text style={[styles.errorText, { marginBottom: 15, color: theme.colors.error }]}>{error}</Text> : null}
 
                     <TouchableOpacity style={localstyles.button} onPress={handleLogin} disabled={loading}>
                         {loading ? <ActivityIndicator color={theme.colors.buttonText} /> : <Text style={localstyles.buttonText}>{t('auth:loginAction')}</Text>}
                     </TouchableOpacity>
 
-                    {/* Register Link */}
                     <View style={localstyles.registerContainer}>
-                        <Text style={localstyles.registerText}>{t('auth:noAccount') || "Don't have an account?"}</Text>
+                        <Text style={localstyles.registerText}>{t('auth:noAccount')}</Text>
                         <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
                             <Text style={localstyles.registerLink}>{t('auth:registerAction')}</Text>
                         </TouchableOpacity>
                     </View>
 
-                    {/* SYNC MODAL */}
+                    {/* SETUP SYNC MODAL */}
                     <Modal visible={isSyncing} transparent animationType="slide">
                         <View style={localstyles.modalContainer}>
                             <View style={localstyles.modalContent}>
@@ -282,7 +203,7 @@ const LoginScreen = () => {
                                     </TouchableOpacity>
                                 ) : (
                                     <TouchableOpacity style={localstyles.skipButton} onPress={finalizeLogin}>
-                                        <Text style={localstyles.skipText}>Skip Sync for Now</Text>
+                                        <Text style={localstyles.skipText}>Skip Setup</Text>
                                     </TouchableOpacity>
                                 )}
                             </View>

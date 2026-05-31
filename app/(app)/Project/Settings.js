@@ -127,7 +127,7 @@ const Settings = () => {
                             await createTables();
 
                             // 2. Clear Project specific storage (AsyncStorage)
-                            await AsyncStorage.clear();
+                            //await AsyncStorage.clear();
 
                             // 3. Clear Auth storage (SecureStore)
                             // This removes the user object, tokens, and "instances"
@@ -135,7 +135,7 @@ const Settings = () => {
 
                             // 4. Reset Zustand Stores in memory
                             setCurrentProject(null);
-                            useAuthStore.getState().logout();
+                            //useAuthStore.getState().logout();
 
                             // 5. Force navigation to onboarding
                             router.replace('/');

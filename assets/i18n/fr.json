@@ -75,6 +75,7 @@
     "email": "E-mail",
     "forgotPassword": "Mot de passe oublié ?",
     "rememberMe": "Se souvenir de moi",
+    "noAccount": "Vous n'avez pas de compte ?",
     "createAccount": "Créer un compte",
     "syncAuth": "Synchroniser l'authentification",
     "loginAction": "Se connecter",

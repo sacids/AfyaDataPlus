@@ -5,6 +5,14 @@ export default function AuthLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
       <Stack.Screen
+        name="login"
+        options={{
+          presentation: 'modal',
+          animation: 'slide_from_right',
+          gestureEnabled: true,
+        }}
+      />
+      <Stack.Screen
         name="register"
         options={{
           presentation: 'modal',
