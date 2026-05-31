@@ -13,6 +13,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuthStore } from '../../store/authStore';
 import { getGlobalUsername } from '../../utils/deviceUtils';
+import { createTables, dropTables } from '../../utils/database';
+import { create } from 'zustand';
 
 const logo = require('../../assets/images/AfyaDataLogo.png');
 
@@ -57,6 +59,7 @@ const RegisterScreen = () => {
       const globalUsername = getGlobalUsername(phoneNumber);
       const cleanPhone = phoneNumber.trim();
 
+
       const userProfile = {
         fullName: fullName.trim(),
         phoneNumber: cleanPhone,
@@ -75,6 +78,11 @@ const RegisterScreen = () => {
 
       // 3. Update active application authentication states
       await setUser(userProfile);
+
+      // reset db and navigate to main app
+      await dropTables();
+      await createTables();
+
       router.replace('/(app)/Main');
     } catch (err) {
       setSubmissionError(t('auth:errorSavingProfile'));
