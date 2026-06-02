@@ -36,7 +36,7 @@ const ProjectListView = () => {
     setLoading(true)
     setViewMode('local')
     try {
-      const localData = await select('projects')
+      const localData = await select('projects', 'active = ?', [1])
       setDisplayList(localData || [])
     } catch (error) {
       console.error("SQLite Error:", error)
@@ -113,8 +113,11 @@ const ProjectListView = () => {
 
         const url = qr_data.url + '?qr_id=' + qr_data.id
 
+        console.log('join project', url)
         const response = await joinProject(url);
         const project_to_save = response.project;
+
+        console.log("Join response:", response);
 
         if (project_to_save) {
           setCurrentData(null);
@@ -237,8 +240,11 @@ const ProjectListView = () => {
 
       // JOIN: Request access to the project (works for both existing and new sessions)
       try {
+        //console.log('joinProject post url', url)
         const response = await api.post(`${url}`);
         const project_to_save = response.data.project;
+
+        //console.log('joinProject: project to save', response.data);
 
         if (!response.data.error && project_to_save) {
           const projectToSave = {
@@ -348,16 +354,23 @@ const ProjectListView = () => {
 
             {/* 2. CameraView - Occupying remaining space */}
             <View style={localStyles.cameraContainer(theme)}>
-              <CameraView
-                style={StyleSheet.absoluteFillObject}
-                onBarcodeScanned={handleBarCodeScanned}
-                barcodeSettings={{ barcodeTypes: ['qr'] }}
-              >
-                <View style={localStyles.cameraOverlay}>
-                  <View style={localStyles.scanFrame} />
-                  <Text style={localStyles.scanText}>{t('projects:alignQrCode')}</Text>
+
+              {isScanning.current ? (
+                <View style={localStyles.loaderOverlay}>
+                  <ActivityIndicator size="large" color={theme.colors.primary} />
                 </View>
-              </CameraView>
+              ) : (
+                <CameraView
+                  style={StyleSheet.absoluteFillObject}
+                  onBarcodeScanned={handleBarCodeScanned}
+                  barcodeSettings={{ barcodeTypes: ['qr'] }}
+                >
+                  <View style={localStyles.cameraOverlay}>
+                    <View style={localStyles.scanFrame} />
+                    <Text style={localStyles.scanText}>{t('projects:alignQrCode')}</Text>
+                  </View>
+                </CameraView>
+              )}
             </View>
 
           </View>

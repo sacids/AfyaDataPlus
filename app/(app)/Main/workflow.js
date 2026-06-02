@@ -62,7 +62,7 @@ export default function WorkFlowScreen() {
 
     const renderWorkflowItem = ({ item, index }) => {
 
-        console.log('rendring workflow item', item);
+        //console.log('rendring workflow item', item);
         return (
 
             <View key={index}>

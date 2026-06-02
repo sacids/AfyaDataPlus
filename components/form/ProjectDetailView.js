@@ -15,12 +15,14 @@ import { AppHeader } from '../layout/AppHeader'
 
 const ProjectDetailView = ({ project }) => {
 
-  const { currentProject, setCurrentProject, setCurrentData } = useProjectStore();
+  const { currentProject, setCurrentProject, setCurrentData, userData } = useProjectStore();
   const setFilter = useFilterStore((state) => state.setFilter);
   const { t } = useTranslation();
   const theme = useTheme();
   const styles = getStyles(theme);
   const { user } = useAuthStore()
+
+  //console.log('userData', userData.groups)
 
   const [showFullDescription, setShowFullDescription] = useState(false);
   const description = currentProject?.description || "";
@@ -110,6 +112,22 @@ const ProjectDetailView = ({ project }) => {
         setCurrentProjetStats(pStats)
         const fDefn = await getProjectFormDefinitions(project)
         setFormDefns(fDefn)
+
+        refreshCredentials();
+        appendLog('Credentials refreshed.');
+        getProjectForms(currentProject.project, appendLog);
+        appendLog('Syncing reactions...');
+        syncProjectReactions(currentProject.project, appendLog);
+        appendLog('Syncing Project Data.');
+
+        appendLog('Syncing Project Data.');
+        getProjectData(currentProject.project, appendLog);
+        appendLog('Syncing workflow data...');
+        syncWorkflowData(currentProject?.project, appendLog);
+        appendLog('Project data fetched.');;
+        refreshProjectData();
+        appendLog('Project data refreshed.');
+
       } catch (error) {
         console.error("Error loading FormDataView:", error);
       } finally {
@@ -131,8 +149,8 @@ const ProjectDetailView = ({ project }) => {
         {/* Top Section (flex: 3) */}
         <View style={[styles.card, { flex: 3, marginHorizontal: 0, marginBottom: 10, paddingVertical: 15 }]}>
           <Text style={styles.pageTitle}>{currentProject?.title}</Text>
-          <Text style={[styles.hint, { color: theme.colors.primary, fontWeight: 'bold' }]}>
-            {currentProject?.code}
+          <Text style={[styles.hint, { fontWeight: 'bold' }]}>
+            {currentProject?.code} | {(userData?.groups || []).join(', ')}
           </Text>
 
           {/* Scrollable area for Description / Logs */}
@@ -281,6 +299,19 @@ const ProjectDetailView = ({ project }) => {
                   appendLog('Project data refreshed.');
                 } catch (e) { appendLog('Error: ' + e.message); } finally { setIsSyncing(false); }
               }}
+
+              onLongPress={async () => {
+                setSyncLogs('Starting full data sync...');
+                setIsSyncing(true);
+                try {
+                  appendLog('Syncing Project Data.');
+                  await getProjectData(currentProject.project, appendLog, { incrementalSync: false, forceFullSync: true });
+                  appendLog('Project data fetched.');;
+                  await refreshProjectData();
+                  appendLog('Project data refreshed.');
+                } catch (e) { appendLog('Error: ' + e.message); } finally { setIsSyncing(false); }
+              }}
+
               style={[styles.card, localStyles.gridBox]}
             >
               <MaterialCommunityIcons name="database-arrow-down-outline" size={32} color={theme.colors.pageTitle} />

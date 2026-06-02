@@ -426,13 +426,13 @@ const CurrentDataView = ({ formData }) => {
                                         borderColor: theme.colors.inputBorder,
                                         borderWidth: 1,
                                         marginBottom: 0,
-                                        borderBottomLeftRadius: !isExpanded ? 0 : 10,
-                                        borderBottomRightRadius: !isExpanded ? 0 : 10,
+                                        borderBottomLeftRadius: isExpanded ? 0 : 10,
+                                        borderBottomRightRadius: isExpanded ? 0 : 10,
                                     }
                                 ]}
                             >
                                 <MaterialIcons
-                                    name={isExpanded ? "keyboard-arrow-up" : "keyboard-arrow-down"}
+                                    name={!isExpanded ? "keyboard-arrow-up" : "keyboard-arrow-down"}
                                     size={24}
                                     color={theme.colors.hint}
                                 />
@@ -442,7 +442,7 @@ const CurrentDataView = ({ formData }) => {
                             </TouchableOpacity>
 
                             {/* Collapsible Field Holder */}
-                            {!isExpanded && (
+                            {isExpanded && (
                                 <View style={{
                                     padding: 16,
                                     backgroundColor: theme.colors.background,

@@ -183,15 +183,15 @@ export const getProjectData = async (project_id, setStatus, options = {}) => {
         maxPages = null,
         onProgress = null,
         incrementalSync = true,  // Enable incremental sync by default
-        forceFullSync = true,    // Force full sync even if incremental is available
-        syncMode = 'all'     // 'modified', 'missing', 'all'
+        forceFullSync = false,    // Force full sync even if incremental is available
+        syncMode = 'modified'     // 'modified', 'missing', 'all'
     } = options;
 
     let activityCounter = 0;
     let activityInterval = null;
 
     try {
-        console.log('Starting data sync for project', project_id, 'with options', options);
+        //console.log('Starting data sync for project', project_id, 'with options', options);
         setStatus(prev => prev || 'Starting data sync...');
 
         // Start activity indicator
@@ -223,6 +223,8 @@ export const getProjectData = async (project_id, setStatus, options = {}) => {
             page_size: pageSize,
             project_id: project_id
         });
+
+        //console.log('parameters', incrementalSync, forceFullSync, lastSyncTime)
 
         if (incrementalSync && !forceFullSync && lastSyncTime) {
             if (syncMode === 'modified') {
@@ -736,8 +738,8 @@ export const updateSeenBy = async (id, username) => {
 
         // Update the record
         const updateResult = await db.runAsync(
-            'UPDATE form_data SET seen_by = ? WHERE id = ?',
-            [newSeenBy, id]
+            'UPDATE form_data SET seen_by = ?, synced = ? WHERE id = ?',
+            [newSeenBy, 0, id]
         );
 
         return updateResult.changes > 0;
@@ -799,20 +801,20 @@ const submitForms = async (data = []) => {
 
 
 export function recursiveJSONParse(input, maxDepth = 5) {
-	let depth = 0;
-	let current = input;
+    let depth = 0;
+    let current = input;
 
-	while (typeof current === 'string' && depth < maxDepth) {
-		try {
-			current = JSON.parse(current);
-			depth += 1;
-		} catch (e) {
-			// Return the last successful parse if failed mid-way
-			break;
-		}
-	}
+    while (typeof current === 'string' && depth < maxDepth) {
+        try {
+            current = JSON.parse(current);
+            depth += 1;
+        } catch (e) {
+            // Return the last successful parse if failed mid-way
+            break;
+        }
+    }
 
-	return current;
+    return current;
 }
 
 
@@ -1052,8 +1054,8 @@ export const syncWorkflowData = async (projectId, setStatus) => {
             });
 
             // Mark only this project's records as synced
-            await update('tb_form_data_workflow', { sync_status: 1, updated_at: new Date().toISOString() }, 'sync_status = ? AND project_id = ?', [0, projectId]);
-            await update('tb_workflow_action_logs', { sync_status: 1, updated_at: new Date().toISOString() }, 'sync_status = ? AND project_id = ?', [0, projectId]);
+            await update('tb_form_data_workflow', { sync_status: 1 }, 'sync_status = ? AND project_id = ?', [0, projectId]);
+            await update('tb_workflow_action_logs', { sync_status: 1 }, 'sync_status = ? AND project_id = ?', [0, projectId]);
 
             setStatus("Project updates uploaded successfully.");
         }

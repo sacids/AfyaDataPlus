@@ -177,29 +177,6 @@ const JoinProjectScreen = () => {
 
   return (
     <ScreenWrapper>
-      {/* <View style={{
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 15,
-        paddingTop: insets.top + 10,
-        paddingBottom: 10
-      }}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}
-        >
-          <MaterialCommunityIcons name={'arrow-left'} size={24} color={theme.colors.text} />
-          <Text style={styles.pageTitle}>{t('projects:availableProjects')}</Text>
-        </TouchableOpacity>
-
-            
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <TouchableOpacity onPress={() => alert(t('alerts:information'))}>
-            <MaterialIcons name={'search'} size={24} color={theme.colors.text} />
-          </TouchableOpacity>
-        </View>
-      </View> */}
 
 
       <AppHeader

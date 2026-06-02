@@ -161,27 +161,7 @@ const LAST_SYNC_SQL = `CREATE TABLE IF NOT EXISTS last_sync (
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );`;
 
-// Add to createTables function
-let FORM_DATA_WORKFLOW_SQL1 = `CREATE TABLE IF NOT EXISTS tb_form_data_workflow (
 
-    id TEXT PRIMARY KEY,
-    form_data_uuid TEXT UNIQUE NOT NULL,
-    project_id TEXT NOT NULL,
-    workflow_definition_code TEXT,
-    workflow_state TEXT NOT NULL,
-    assigned_group TEXT,
-    assigned_to TEXT,
-    last_action TEXT,
-    is_locked INTEGER DEFAULT 0,
-    is_closed INTEGER DEFAULT 0,
-    escalation_level INTEGER DEFAULT 0,
-    reopened_count INTEGER DEFAULT 0,
-    due_at TEXT,
-    metadata TEXT,
-    sync_status INTEGER DEFAULT 0,
-    created_at TEXT,
-    updated_at TEXT
-); `;
 let FORM_DATA_WORKFLOW_SQL = `CREATE TABLE IF NOT EXISTS tb_form_data_workflow (
     id TEXT PRIMARY KEY,
     form_data_uuid TEXT UNIQUE NOT NULL,
@@ -257,6 +237,44 @@ export const createTables = async () => {
         throw e;
     }
 };
+
+
+export const dropTables = async () => {
+    const TABLES_TO_DROP = [
+        'form_defn',
+        'form_data',
+        'projects',
+        'messages',
+        'migration',
+        'form_reactions',
+        'tb_workflow_action_logs',
+        'tb_form_data_workflow',
+        'last_sync'
+    ];
+
+    try {
+        // Disable foreign key enforcement
+        await db.execAsync('PRAGMA foreign_keys = OFF;');
+
+        // Drop triggers first (important)
+        await db.execAsync('DROP TRIGGER IF EXISTS soft_delete_form_data_cascade;');
+
+        // Drop tables
+        for (const table of TABLES_TO_DROP) {
+            await db.execAsync(`DROP TABLE IF EXISTS ${table};`);
+        }
+
+        // Re-enable foreign keys
+        await db.execAsync('PRAGMA foreign_keys = ON;');
+
+        //console.log('All tables and triggers dropped');
+    } catch (e) {
+        console.error('Failed to drop tables:', e);
+        throw e;
+    }
+};
+
+
 
 
 
@@ -557,85 +575,6 @@ export const select = async (tableName, whereClause = '', whereArgs = [], fields
 };
 
 
-
-export const getFormData1 = async (user_id, project_id, currentData_uuid = false, workflow = false) => {
-    try {
-        let query = '';
-        let params = [];
-        let workflow_condition = ''; // Default condition to exclude workflow forms
-
-        if (workflow) {
-            //console.log('Including workflow forms in getFormData query');
-            workflow_condition = 'AND fdef.form_role = "WORKFLOW"'; // If workflow is true, include only workflow forms
-        }
-
-        // Use a more efficient JSON-like approach if usernames have no commas
-        // This assumes usernames don't contain commas
-        const hasSeenCondition = user_id
-            ? `, (fd.seen_by IS NOT NULL AND fd.seen_by LIKE '%${user_id}%') as has_seen`
-            : ', 0 as has_seen';
-
-        if (currentData_uuid) {
-            query = `
-                SELECT 
-                    fd.*, 
-                    fdef.is_root, 
-                    fdef.form_role, 
-                    fdef.title AS form_title, 
-                    fdef.icon
-                    ${hasSeenCondition}
-                FROM form_data fd 
-                JOIN form_defn fdef ON fd.form = CAST(fdef.form_id AS TEXT) 
-                WHERE fd.deleted = ?
-                AND fd.project = ?
-                AND fd.parent_uuid = ?
-                ${workflow_condition}
-                ORDER BY fd.id DESC
-            `;
-            params = [0, project_id, currentData_uuid];
-        } else {
-            query = `
-                SELECT 
-                    fd.*, 
-                    fdef.is_root, 
-                    fdef.form_role,
-                    fdef.title AS form_title, 
-                    fdef.icon
-                    ${hasSeenCondition}
-                FROM form_data fd 
-                JOIN form_defn fdef ON fd.form = CAST(fdef.form_id AS TEXT) 
-                WHERE fd.deleted = ?
-                AND fd.project = ?
-                AND fdef.is_root = 1
-                AND fdef.form_role = 'ROOT'
-                ORDER BY fd.id DESC
-            `;
-            params = [0, project_id];
-        }
-
-        //console.log('Executing getFormData with query:', query, 'and params:', params);
-
-        const result = await db.getAllAsync(query, params);
-
-        // For larger datasets, you might want to add a secondary check
-        // to ensure exact username matching (prevents partial matches)
-
-        // if (currentUsername && result.length > 0) {
-        //     return result.map(record => ({
-        //         ...record,
-        //         has_seen: record.has_seen ? 
-        //             (record.seen_by?.split(',').includes(currentUsername) ? 1 : 0) : 0
-        //     }));
-        // }
-
-        return result;
-
-    } catch (error) {
-        console.error('Error getting form data:', error);
-        return [];
-    }
-};
-
 export const getFormData = async (user_id, project_id, currentData_uuid = false, workflow = false) => {
     try {
         let query = '';
@@ -705,7 +644,7 @@ export const getFormData = async (user_id, project_id, currentData_uuid = false,
         //console.log('query', query, 'params', params)
 
         const result = await db.getAllAsync(query, params);
-        console.log('getFormData result count:', result.length, 'Sample record:', result[0]);
+        //console.log('getFormData result count:', result.length, 'Sample record:', result[0]);
         return result;
 
     } catch (error) {
@@ -937,39 +876,6 @@ export const insert_into_messages = async (message) => {
 
     return db.runAsync(insertSql, insertParams);
 };
-
-export const dropTables = async () => {
-    const TABLES_TO_DROP = [
-        'form_defn',
-        'form_data',
-        'projects',
-        'messages',
-        'migration',
-        'form_reactions'
-    ];
-
-    try {
-        // Disable foreign key enforcement
-        await db.execAsync('PRAGMA foreign_keys = OFF;');
-
-        // Drop triggers first (important)
-        await db.execAsync('DROP TRIGGER IF EXISTS soft_delete_form_data_cascade;');
-
-        // Drop tables
-        for (const table of TABLES_TO_DROP) {
-            await db.execAsync(`DROP TABLE IF EXISTS ${table};`);
-        }
-
-        // Re-enable foreign keys
-        await db.execAsync('PRAGMA foreign_keys = ON;');
-
-        //console.log('All tables and triggers dropped');
-    } catch (e) {
-        console.error('Failed to drop tables:', e);
-        throw e;
-    }
-};
-
 
 
 

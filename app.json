@@ -2,7 +2,7 @@
   "expo": {
     "name": "AfyaDataPlus",
     "slug": "AfyaDataPlus",
-    "version": "4.3.3",
+    "version": "4.3.5",
     "orientation": "portrait",
     "icon": "./assets/images/AfyaDataLogoIcon.png",
     "scheme": "afyadataplus",
@@ -25,7 +25,7 @@
         }
       },
       "package": "tz.co.kamili.afyadata",
-      "versionCode": 17
+      "versionCode": 19
     },
     "web": {
       "bundler": "metro",
