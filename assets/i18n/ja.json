@@ -288,7 +288,32 @@
     "schemaNotLoaded": "フォームスキーマが読み込まれていません",
     "languageDownloadFailed": "言語パックのダウンロードに失敗しました",
     "languageRemoveFailed": "言語の削除に失敗しました",
-    "clearCacheFailed": "キャッシュのクリアに失敗しました"
+    "clearCacheFailed": "キャッシュのクリアに失敗しました",
+    "incorrectPassword": "パスワードが違います",
+    "incorrectPasswordMessage": "このユーザー名のカウントは存在しますが、パスワードが正しくありません。認証情報を確認してください。",
+    "serverUnavailable": "サーバーが利用不可",
+    "serverUnavailableMessage": "{{instance_url}} のサーバーに接続できません。接続状況とサーバーのURLを確認してください。",
+    "serverError": "サーバーエラー",
+    "serverErrorMessage": "{{instance_url}} のサーバーでエラーが発生しました。しばらく経ってからもう一度お試しください。",
+    "permissionDenied": "アクセス権限がありません",
+    "locationPermissionMessage": "この機能を使用するには、位置情報へのアクセスを許可してください。",
+    "locationFetchFailed": "位置情報エラー",
+    "locationFetchFailedMessage": "GPS位置情報を取得できませんでした。GPSがオンになっているか確認してください。",
+    "cameraPermissionMessage": "写真を撮影するには、カメラへのアクセスを許可してください。",
+    "galleryPermissionMessage": "画像を選択するには、ギャラリーへのアクセスを許可してください。"
+  },
+
+  "services": {
+    "confirmSubmission": "送信の確認",
+    "confirmSubmissionMessage": "{{count}}件のフォームを送信してもよろしいですか？",
+    "cancel": "キャンセル",
+    "submit": "送信",
+    "nothingToSubmit": "送信するものがありません",
+    "nothingToSubmitMessage": "このプロジェクトには送信可能な完了済みフォームがありません。",
+    "submissionFailed": "送信失敗",
+    "submissionFailedMessage": "フォームの送信中にエラーが発生しました。もう一度お試しください。",
+    "submissionResults": "送信結果",
+    "ok": "OK"
   },
   
   "alerts": {

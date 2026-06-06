@@ -13,6 +13,7 @@ import { xorDecrypt } from '../../lib/form/utils';
 import { useAuthStore } from '../../store/authStore';
 import useProjectStore from '../../store/projectStore';
 import { insert, select } from '../../utils/database';
+import { cacheProjectImage } from '../../utils/services';
 import { AppHeader } from '../layout/AppHeader';
 
 const ProjectListView = () => {
@@ -37,6 +38,7 @@ const ProjectListView = () => {
     setViewMode('local')
     try {
       const localData = await select('projects', 'active = ?', [1])
+      console.log('Local projects loaded:', localData);
       setDisplayList(localData || [])
     } catch (error) {
       console.error("SQLite Error:", error)
@@ -117,7 +119,7 @@ const ProjectListView = () => {
         const response = await joinProject(url);
         const project_to_save = response.project;
 
-        console.log("Join response:", response);
+        console.log("Join response:", project_to_save);
 
         if (project_to_save) {
           setCurrentData(null);
@@ -147,6 +149,7 @@ const ProjectListView = () => {
 
 
   const joinProject = async (url) => {
+    console.log('join project url', url)
     const instance_url = new URL(url).origin;
     const authStore = useAuthStore.getState();
 
@@ -197,8 +200,8 @@ const ProjectListView = () => {
                   errorData.errors.username[0].includes("different password"))) {
 
                 Alert.alert(
-                  'Incorrect Password',
-                  'An account exists with this username but the password is incorrect. Please check your credentials.',
+                  t('errors:incorrectPassword'),
+                  t('errors:incorrectPasswordMessage'),
                   [{ text: 'OK' }]
                 );
                 return { message: errorData.error_msg, project: false, requiresPasswordCheck: true };
@@ -220,8 +223,8 @@ const ProjectListView = () => {
             // Handle 502 or other server errors
             if (statusCode === 502) {
               Alert.alert(
-                'Server Error',
-                `The server at ${instance_url} is currently unavailable. Please try again later.`
+                t('errors:serverUnavailable'),
+                t('errors:serverUnavailableMessage', { instance_url })
               );
             } else if (statusCode === 400) {
               Alert.alert('Registration Error', errorData?.error_msg || 'Invalid registration data');
@@ -244,15 +247,25 @@ const ProjectListView = () => {
         const response = await api.post(`${url}`);
         const project_to_save = response.data.project;
 
-        //console.log('joinProject: project to save', response.data);
+        const projectImageUrl = project_to_save?.project_image_url;
+        const cachedImage = await cacheProjectImage(projectImageUrl, project_to_save.id);
 
-        if (!response.data.error && project_to_save) {
+
+        console.log('joinProject: project to save', project_to_save);
+
+        if (project_to_save) {
           const projectToSave = {
             ...project_to_save,
             project: project_to_save.id,
             instance_url: instance_url,
+            project_image: projectImageUrl,
+            project_image_local: cachedImage,
+            project_color: project_to_save?.project_color || null,
             tags: typeof project_to_save.tags === 'string' ? project_to_save.tags : JSON.stringify(project_to_save.tags || [])
           };
+
+
+          console.log('insert to db: project to save', projectToSave);
 
           await insert('projects', projectToSave);
           const localProjects = await select('projects', 'project = ?', [project_to_save.id]);
@@ -280,6 +293,8 @@ const ProjectListView = () => {
     }
   };
 
+
+
   const handleProjectPress = async (project) => {
     if (isNavigating.current) return;
 
@@ -304,6 +319,7 @@ const ProjectListView = () => {
           router.replace('/(app)/Main/');
         } else {
           Alert.alert(t('projects:joinFailed'), response.message || t('projects:joinFailedMessage'));
+          isNavigating.current = false;
         }
       }
     } catch (err) {
@@ -311,7 +327,7 @@ const ProjectListView = () => {
       Alert.alert(t('errors:errorTitle'), t('errors:unknown'));
     } finally {
       if (!isNavigating.current) setLoading(false);
-      setTimeout(() => { isNavigating.current = false }, 1000);
+      setTimeout(() => { isNavigating.current = false; setLoading(false) }, 1000);
     }
   };
 

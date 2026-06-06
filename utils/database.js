@@ -24,7 +24,10 @@ let PROJECT_SQL = `CREATE TABLE IF NOT EXISTS projects (
     country TEXT,
     title TEXT NOT NULL,
     code TEXT NOT NULL,
-    description TEXT NULL, 
+    description TEXT NULL,
+    project_image TEXT NULL,
+    project_image_local TEXT NULL,
+    project_color TEXT NULL,
     sort_order INTEGER DEFAULT 0,
     active INTEGER DEFAULT 0
   );`;
@@ -52,6 +55,19 @@ let FORM_DEFN_SQL = `CREATE TABLE IF NOT EXISTS form_defn (
   sort_order INTEGER DEFAULT 0,
   active INTEGER DEFAULT 1
 );`;
+
+let DISEASE_KNOWLEDGE_SQL = `CREATE TABLE IF NOT EXISTS tb_disease_knowledge (
+    id TEXT PRIMARY KEY,
+    knowledge_id TEXT UNIQUE NOT NULL,
+    project_id TEXT,
+    name TEXT,
+    description TEXT,
+    image TEXT,
+    created_at TEXT,
+    updated_at TEXT,
+    created_by TEXT,
+    updated_by TEXT
+);`
 
 let FORM_DATA_SQL = `CREATE TABLE IF NOT EXISTS form_data (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -213,8 +229,10 @@ export const createTables = async () => {
         await db.execAsync(MESSAGES_SQL);
         await db.execAsync(PROJECT_SQL);
         await db.execAsync(LAST_SYNC_SQL);
+
         await db.execAsync(FORM_DATA_WORKFLOW_SQL);
         await db.execAsync(WORKFLOW_ACTION_LOGS_SQL);
+        await db.execAsync(DISEASE_KNOWLEDGE_SQL);
 
         // New First Aid Tables
         await db.execAsync(FORM_REACTIONS_SQL);
@@ -249,7 +267,8 @@ export const dropTables = async () => {
         'form_reactions',
         'tb_workflow_action_logs',
         'tb_form_data_workflow',
-        'last_sync'
+        'last_sync',
+        'tb_disease_knowledge'
     ];
 
     try {
@@ -779,6 +798,8 @@ export const insert = async (tableName, data) => {
                     dbKey = 'reaction_id';
                 } if (tableName === 'projects') {
                     dbKey = 'project';
+                }if (tableName === 'tb_disease_knowledge') {
+                    dbKey = 'knowledge_id';
                 } else {
                     return;
                 }

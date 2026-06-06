@@ -10,6 +10,7 @@ import { getParam } from '../../../lib/form/validation';
 
 
 import { useFormStore } from '../../../store/useFormStore';
+import { t } from 'i18next';
 
 const ImagePickerField = ({ element, globalValue }) => {
 
@@ -48,7 +49,7 @@ const ImagePickerField = ({ element, globalValue }) => {
       : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permission.granted) {
-      Alert.alert('Permission Denied', 'Permission is required.');
+      Alert.alert(t('errors:permissionDenied'), t(fromCamera ? 'errors:cameraPermissionMessage' : 'errors:galleryPermissionMessage') );
       return;
     }
 
@@ -100,7 +101,7 @@ const ImagePickerField = ({ element, globalValue }) => {
 
       } catch (err) {
         console.error('Image processing failed', err);
-        Alert.alert('Error', 'Failed to process image.');
+        Alert.alert(t('errors:failedLoad'), t('errors:failedLoadMessage'));
         setIsProcessing(false);
       }
     }

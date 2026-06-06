@@ -288,7 +288,32 @@
     "schemaNotLoaded": "Schéma du formulaire non chargé",
     "languageDownloadFailed": "Échec du téléchargement du pack linguistique",
     "languageRemoveFailed": "Échec de la suppression de la langue",
-    "clearCacheFailed": "Échec de l'effacement du cache"
+    "clearCacheFailed": "Échec de l'effacement du cache",
+    "incorrectPassword": "Mot de passe incorrect",
+    "incorrectPasswordMessage": "Un compte existe avec ce nom d'utilisateur mais le mot de passe est incorrect. Veuillez vérifier vos identifiants.",
+    "serverUnavailable": "Serveur indisponible",
+    "serverUnavailableMessage": "Impossible de se connecter au serveur à l'adresse {{instance_url}}. Veuillez vérifier votre connexion et l'URL du serveur.",
+    "serverError": "Erreur de serveur",
+    "serverErrorMessage": "Une erreur est survenue sur le serveur à l'adresse {{instance_url}}. Veuillez réessayer plus tard.",
+    "permissionDenied": "Permission refusée",
+    "locationPermissionMessage": "Autorisez l'accès à la localisation pour utiliser cette fonctionnalité.",
+    "locationFetchFailed": "Erreur de localisation",
+    "locationFetchFailedMessage": "Impossible d'obtenir la position GPS. Veuillez vous assurer que le GPS est activé.",
+    "cameraPermissionMessage": "Autorisez l'accès à l'appareil photo pour prendre des photos.",
+    "galleryPermissionMessage": "Autorisez l'accès à la galerie pour choisir des images."
+  },
+
+  "services": {
+    "confirmSubmission": "Confirmer l'envoi",
+    "confirmSubmissionMessage": "Êtes-vous sûr de vouloir envoyer {{count}} formulaire(s) ?",
+    "cancel": "Annuler",
+    "submit": "Envoyer",
+    "nothingToSubmit": "Rien à envoyer",
+    "nothingToSubmitMessage": "Il n'y a aucun formulaire finalisé à envoyer pour ce projet.",
+    "submissionFailed": "Échec de l'envoi",
+    "submissionFailedMessage": "Une erreur est survenue lors de l'envoi des formulaires. Veuillez réessayer.",
+    "submissionResults": "Résultats de l'envoi",
+    "ok": "OK"
   },
   
   "alerts": {

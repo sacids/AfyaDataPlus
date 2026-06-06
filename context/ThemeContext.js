@@ -1,19 +1,83 @@
+// import { createContext, useContext, useMemo } from 'react';
+// import { useThemeStore } from '../store/ThemeStore';
+
+// const ThemeContext = createContext();
+
+// export const ThemeProvider = ({ children }) => {
+//   const { mode, systemMode } = useThemeStore();
+
+//   const theme = useMemo(() => {
+//     const isDark = mode === 'system' ? systemMode === 'dark' : mode === 'dark';
+
+//     return {
+//       isDark,
+//       colors: {
+//         background: isDark ? '#121212' : '#fefefe',
+//         pageTitle: isDark ? '#FF6B6B' : '#C92A2A',
+//         text: isDark ? '#ffffff' : '#000000',
+//         secText: isDark ? '#ddd' : '#222',
+//         label: isDark ? '#eee' : '#111111',
+//         hint: isDark ? '#bbb' : '#666666',
+//         inputBackground: isDark ? '#1e1e1e' : '#f1f1f1',
+//         inputBorder: isDark ? '#555555' : '#cccccc',
+//         buttonBackground: isDark ? '#a72626' : '#fff',
+//         secButtonBackground: isDark ? '#e26e26' : '#e26e26',
+//         buttonText: isDark ? '#ffffff' : '#111111',
+//         navButtonText: isDark ? '#bbb' : '#a72626',
+//         error: isDark ? '#FF6B6B' : '#ff0000',
+//         primary: isDark ? '#FF6B6B' : '#C92A2A',
+//         checkbox: isDark ? '#bb86fc' : '#a72626',
+//         tabBarActiveTintColor: isDark ? '#a72626' : '#a72626',
+//         tabBarInactiveTintColor: isDark ? '#999999' : '#666666',
+//         tagBackground: isDark ? '#1e1e1e' : '#f2f2f2',
+//         tagText: isDark ? '#d4d4d4' : '#999999',
+//         required: isDark ? '#FF6B6B' : '#ff0000',
+//         chipBackground: isDark ? '#555555' : '#cccccc',
+//         chipText: isDark ? '#d4d4d4' : '#000',
+//         //tabBarActiveTintColor: isDark ? '#ab0836' : '#007bff',
+//       },
+//     };
+//   }, [mode, systemMode]);
+
+//   return (
+//     <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>
+//   );
+// };
+
+
+
 import { createContext, useContext, useMemo } from 'react';
 import { useThemeStore } from '../store/ThemeStore';
+//import { useProjectStore } from '../store/projectStore';
+import useProjectStore from '../store/projectStore'
 
 const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
   const { mode, systemMode } = useThemeStore();
 
+  const selectedProject = useProjectStore(
+    (state) => state.selectedProject
+  );
+
   const theme = useMemo(() => {
-    const isDark = mode === 'system' ? systemMode === 'dark' : mode === 'dark';
+    const isDark =
+      mode === 'system'
+        ? systemMode === 'dark'
+        : mode === 'dark';
+
+    const projectPrimaryColor =
+      selectedProject?.project_color;
+
+    const primaryColor =
+      projectPrimaryColor ||
+      (isDark ? '#FF6B6B' : '#C92A2A');
 
     return {
       isDark,
       colors: {
         background: isDark ? '#121212' : '#fefefe',
-        pageTitle: isDark ? '#FF6B6B' : '#C92A2A',
+        pageTitle: primaryColor,
         text: isDark ? '#ffffff' : '#000000',
         secText: isDark ? '#ddd' : '#222',
         label: isDark ? '#eee' : '#111111',
@@ -21,28 +85,35 @@ export const ThemeProvider = ({ children }) => {
         inputBackground: isDark ? '#1e1e1e' : '#f1f1f1',
         inputBorder: isDark ? '#555555' : '#cccccc',
         buttonBackground: isDark ? '#a72626' : '#fff',
-        secButtonBackground: isDark ? '#e26e26' : '#e26e26',
+        secButtonBackground: '#e26e26',
         buttonText: isDark ? '#ffffff' : '#111111',
-        navButtonText: isDark ? '#bbb' : '#a72626',
+        navButtonText: primaryColor,
         error: isDark ? '#FF6B6B' : '#ff0000',
-        primary: isDark ? '#FF6B6B' : '#C92A2A',
-        checkbox: isDark ? '#bb86fc' : '#a72626',
-        tabBarActiveTintColor: isDark ? '#a72626' : '#a72626',
+        primary: primaryColor,
+        checkbox: primaryColor,
+        tabBarActiveTintColor: primaryColor,
         tabBarInactiveTintColor: isDark ? '#999999' : '#666666',
         tagBackground: isDark ? '#1e1e1e' : '#f2f2f2',
         tagText: isDark ? '#d4d4d4' : '#999999',
         required: isDark ? '#FF6B6B' : '#ff0000',
         chipBackground: isDark ? '#555555' : '#cccccc',
         chipText: isDark ? '#d4d4d4' : '#000',
-        //tabBarActiveTintColor: isDark ? '#ab0836' : '#007bff',
       },
     };
-  }, [mode, systemMode]);
+  }, [
+    mode,
+    systemMode,
+    selectedProject?.project_color,
+  ]);
 
   return (
-    <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>
+    <ThemeContext.Provider value={theme}>
+      {children}
+    </ThemeContext.Provider>
   );
 };
+
+
 
 export const useTheme = () => {
   const context = useContext(ThemeContext);

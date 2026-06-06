@@ -165,16 +165,16 @@ export default function FormDataList() {
     try {
 
       Alert.alert(
-        'Confirm Submission',
-        `Are you sure you want to submit ${data.length} form(s)?`,
+        t('alerts:confirmSubmission'),
+        t('alerts:submissionConfirm', { count: data.length }),
         [
           {
-            text: 'Cancel',
+            text: t('common:cancel'),
             style: 'cancel',
             onPress: () => console.log('Submission cancelled')
           },
           {
-            text: 'Submit',
+            text: t('common:submit'),
             onPress: async () => {
               await handleFormSubmission(itemsToSubmit, (id, loading) => {
                 setSubmittingIds(prev =>

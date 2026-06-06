@@ -1,8 +1,8 @@
-import { MaterialCommunityIcons, Octicons } from '@expo/vector-icons'
+import { MaterialCommunityIcons, MaterialIcons, Octicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View, Image} from 'react-native'
 import api, { refreshCredentials } from '../../api/axiosInstance'
 import { getStyles } from '../../constants/styles'
 import { useTheme } from '../../context/ThemeContext'
@@ -10,7 +10,7 @@ import { useAuthStore } from '../../store/authStore'
 import { useFilterStore } from '../../store/filterStore'
 import useProjectStore from '../../store/projectStore'
 import { select, update } from '../../utils/database'
-import { getProjectData, getProjectForms, submitProjectData, syncDiseaseKnowledge, syncProjectReactions, syncWorkflowData } from '../../utils/services'
+import { getProjectData, getProjectForms, submitProjectData, syncProjectReactions, syncWorkflowData } from '../../utils/services'
 import { AppHeader } from '../layout/AppHeader'
 
 const ProjectDetailView = ({ project }) => {
@@ -32,7 +32,6 @@ const ProjectDetailView = ({ project }) => {
   const [ready, setReady] = useState(false);
   const [formDefns, setFormDefns] = useState([]);
   const [curProjectStats, setCurrentProjetStats] = useState({});
-  const afyadatalogo = require('../../assets/images/AfyaDataLogo.png');
 
   const [syncLogs, setSyncLogs] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
@@ -128,8 +127,7 @@ const ProjectDetailView = ({ project }) => {
         getProjectData(currentProject.project, appendLog);
         appendLog('Syncing workflow data...');
         syncWorkflowData(currentProject?.project, appendLog);
-        syncDiseaseKnowledge(currentProject.project, appendLog);
-        appendLog('Disease knowledge synced.');
+        appendLog('Project data fetched.');;
         refreshProjectData();
         appendLog('Project data refreshed.');
 
@@ -146,45 +144,247 @@ const ProjectDetailView = ({ project }) => {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      {
-        currentProject?.project_image_local ? (
-          <Image
-            source={{ uri: currentProject.project_image_local }}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              width: '100%',
-              height: '50%',
-            }}
-            resizeMode="contain"
-          />
-        ) : (
-          <Image
-            source={{ uri: afyadatalogo }}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              width: '100%',
-              height: '50%',
-            }}
-            resizeMode="contain"
-          />
-        )
-      }
-      <AppHeader title={currentProject ? currentProject.title : t('projects:myProjects')} searchEnabled={false} rightActions={goToSettings} />
-      {/* <Text style={[styles.hint, { fontWeight: 'bold', paddingHorizontal: 12, paddingBottom: 8, marginTop: -8 }]}>
-        {currentProject?.code} | {(userData?.groups || []).join(', ')}
-      </Text> */}
 
+      <AppHeader title={currentProject ? currentProject.title : t('projects:myProjects')} searchEnabled={false} rightActions={goToSettings} />
+
+      {currentProject?.project_image_local && (
+        <Image
+          source={{ uri: currentProject.project_image_local }}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            width: '100%',
+            height: '50%',
+          }}
+          resizeMode="cover"
+        />
+      )}
       {/* Main Container - Fills remaining space */}
       <View style={{ flex: 1, paddingHorizontal: 16 }}>
 
+        {/* Top Section (flex: 3) */}
+        {/* 
+        <View 
+          style={[styles.card, { flex: 2, marginHorizontal: 0, marginBottom: 10, paddingVertical: 15 }]}>
+          <Text style={styles.pageTitle}>{currentProject?.title}</Text>
+          <Text style={[styles.hint, { fontWeight: 'bold' }]}>
+            {currentProject?.code} | {(userData?.groups || []).join(', ')}
+          </Text>
 
-        <View style={[{ flex: 2, }]}>
+          <ScrollView
+            style={{ flex: 1, marginTop: 10 }}
+            contentContainerStyle={{ flexGrow: 1 }}
+            showsVerticalScrollIndicator={true}>
+            {!syncLogs ? (
+              <View>
+                <Text
+                  style={[styles.bodyText, { opacity: 0.7 }]}
+                  numberOfLines={showFullDescription ? undefined : 5}
+                  ellipsizeMode="tail"
+                >
+                  {description}
+                </Text>
+                {description.length > 200 && (
+                  <TouchableOpacity onPress={() => setShowFullDescription(!showFullDescription)}>
+                    <Text style={{ color: theme.colors.primary, marginTop: 4, fontWeight: 'bold' }}>
+                      {showFullDescription ? "Show Less" : "Read More"}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {Array.isArray(currentProject?.tags) && (
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 15 }}>
+                    {currentProject?.tags.map((tag, i) => (
+                      <View key={i} style={{ backgroundColor: theme.colors.inputBorder, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 }}>
+                        <Text style={[styles.tiny, { fontSize: 10 }]}>{tag.trim().toUpperCase()}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            ) : (
+              <View style={{ flex: 1 }}>
+                <View style={{ backgroundColor: theme.colors.inputBackground, borderRadius: 8 }}>
+                  <Text style={[styles.hint, { fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }]}>
+                    {syncLogs}
+                  </Text>
+                </View>
+
+                {!isSyncing && (
+                  <TouchableOpacity
+                    onPress={() => setSyncLogs('')}
+                    style={{
+                      marginTop: 10,
+                      alignSelf: 'flex-end',
+                      paddingHorizontal: 20,
+                      paddingVertical: 8,
+                      backgroundColor: theme.colors.primary,
+                      borderRadius: 6
+                    }}
+                  >
+                    <Text style={{ color: '#fff', fontWeight: 'bold' }}>OK</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </ScrollView>
+        </View> */}
+
+        <View
+          style={[
+            styles.card,
+            {
+              flex: 2,
+              marginHorizontal: 0,
+              marginBottom: 10,
+              padding: 0,
+              overflow: 'hidden', // important for background image clipping
+              backgroundColor: 'transparent',
+            },
+          ]}
+        >
+          {/* Background Image */}
+          {/* {currentProject?.project_image_local && (
+            <Image
+              source={{ uri: currentProject.project_image_local }}
+              style={{
+                position: 'absolute',
+                width: '100%',
+                height: '100%',
+                opacity: 0.8, // faint watermark effect
+                resizeMode: 'cover',
+              }}
+            />
+          )} */}
+
+          {/* Optional dark/white overlay for better text readability */}
+          <View
+            style={{
+              position: 'absolute',
+              width: '100%',
+              height: '100%',
+              backgroundColor: theme.isDark
+                ? 'rgba(0,0,0,0.4)'
+                : 'rgba(255,255,255,0.4)',
+            }}
+          />
+
+          {/* Foreground content */}
+          {/* <Text style={styles.pageTitle}>
+            {currentProject?.title}
+          </Text> */}
+
+          <Text style={[styles.hint, { fontWeight: 'bold' }]}>
+            {currentProject?.code} | {(userData?.groups || []).join(', ')}
+          </Text>
+
+          {/* Scrollable area for Description / Logs */}
+          <ScrollView
+            style={{ flex: 1, marginTop: 10 }}
+            contentContainerStyle={{ flexGrow: 1}}
+            showsVerticalScrollIndicator={true}
+          >
+            {!syncLogs ? (
+              <View>
+                <Text
+                  style={[styles.bodyText, { opacity: 0.85 }]}
+                  numberOfLines={showFullDescription ? undefined : 5}
+                  ellipsizeMode="tail"
+                >
+                  {description}
+                </Text>
+
+                {description.length > 200 && (
+                  <TouchableOpacity
+                    onPress={() =>
+                      setShowFullDescription(!showFullDescription)
+                    }
+                  >
+                    <Text
+                      style={{
+                        color: theme.colors.primary,
+                        marginTop: 4,
+                        fontWeight: 'bold',
+                      }}
+                    >
+                      {showFullDescription
+                        ? 'Show Less'
+                        : 'Read More'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {Array.isArray(currentProject?.tags) && (
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      flexWrap: 'wrap',
+                      gap: 6,
+                      marginTop: 15,
+                    }}
+                  >
+                    {currentProject?.tags.map((tag, i) => (
+                      <View
+                        key={i}
+                        style={{
+                          backgroundColor:
+                            theme.colors.inputBorder,
+                          paddingHorizontal: 10,
+                          paddingVertical: 4,
+                          borderRadius: 6,
+                        }}
+                      >
+                        <Text style={[styles.tiny, { fontSize: 10 }]}>
+                          {tag.trim().toUpperCase()}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            ) : (
+              <View style={{ flex: 1 }}>
+                <View
+                  style={{
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.hint,
+                      {
+                        fontFamily:
+                          Platform.OS === 'ios'
+                            ? 'Courier'
+                            : 'monospace',
+                      },
+                    ]}
+                  >
+                    {syncLogs}
+                  </Text>
+                </View>
+
+                {!isSyncing && (
+                  <TouchableOpacity
+                    onPress={() => setSyncLogs('')}
+                    style={{
+                      marginTop: 10,
+                      alignSelf: 'flex-end',
+                      paddingHorizontal: 20,
+                      paddingVertical: 8,
+                      backgroundColor: theme.colors.primary,
+                      borderRadius: 6,
+                    }}
+                  >
+                    <Text style={{ color: '#fff', fontWeight: 'bold' }}>
+                      OK
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </ScrollView>
         </View>
 
         {/* Grid Section (flex: 4) */}
@@ -202,10 +402,10 @@ const ProjectDetailView = ({ project }) => {
                 });
                 router.push('(app)/Main/FormDataList')
               }}
-              style={[styles.card, localStyles.gridBox, { backgroundColor: `${theme.colors.inputBackground}D9` }]}
+              style={[styles.card, localStyles.gridBox]}
             >
               <View style={localStyles.iconBadgeRow}>
-                <MaterialCommunityIcons name="file-eye-outline" size={64} color={theme.colors.primary} />``
+                <MaterialCommunityIcons name="file-eye-outline" size={64} color={theme.colors.primary} />
 
                 {/* Form Count Badge */}
                 <View style={[localStyles.badge, { backgroundColor: theme.colors.primary }]}>
@@ -228,7 +428,7 @@ const ProjectDetailView = ({ project }) => {
                   label: 'New'
                 });; router.push('(app)/Main/FormDataList')
               }}
-              style={[styles.card, localStyles.gridBox, { backgroundColor: `${theme.colors.inputBackground}D9` }]}
+              style={[styles.card, localStyles.gridBox]}
             >
 
               <View style={localStyles.iconBadgeRow}>
@@ -268,7 +468,7 @@ const ProjectDetailView = ({ project }) => {
             >
               <MaterialCommunityIcons name="file-download-outline" size={64} color={theme.colors.primary} />
 
-              <Text style={[styles.tiny, { textAlign: 'center' }]}>{t('projects:fetchForms')}</Text>
+              <Text style={styles.tiny}>{t('projects:fetchForms')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -287,7 +487,7 @@ const ProjectDetailView = ({ project }) => {
                 </View>
               </View>
 
-              <Text style={[styles.tiny, { textAlign: 'center' }]}>{t('common:forms')}</Text>
+              <Text style={styles.tiny}>{t('common:forms')}</Text>
             </TouchableOpacity>
           </View>
           <View style={[localStyles.gridRow]}>
@@ -301,9 +501,7 @@ const ProjectDetailView = ({ project }) => {
                   await getProjectData(currentProject.project, appendLog);
                   appendLog('Syncing workflow data...');
                   await syncWorkflowData(currentProject?.project, appendLog);
-                  appendLog('Project data fetched.');
-                  await syncDiseaseKnowledge(currentProject.project, appendLog);
-                  appendLog('Disease knowledge synced.');
+                  appendLog('Project data fetched.');;
                   await refreshProjectData();
                   appendLog('Project data refreshed.');
                 } catch (e) { appendLog('Error: ' + e.message); } finally { setIsSyncing(false); }
@@ -315,9 +513,7 @@ const ProjectDetailView = ({ project }) => {
                 try {
                   appendLog('Syncing Project Data.');
                   await getProjectData(currentProject.project, appendLog, { incrementalSync: false, forceFullSync: true });
-                  appendLog('Project data fetched.');
-                  await syncDiseaseKnowledge(currentProject.project, appendLog, true);
-                  appendLog('Disease knowledge synced.')
+                  appendLog('Project data fetched.');;
                   await refreshProjectData();
                   appendLog('Project data refreshed.');
                 } catch (e) { appendLog('Error: ' + e.message); } finally { setIsSyncing(false); }
@@ -326,7 +522,7 @@ const ProjectDetailView = ({ project }) => {
               style={[styles.card, localStyles.gridBox]}
             >
               <MaterialCommunityIcons name="file-sync-outline" size={64} color={theme.colors.primary} />
-              <Text style={[styles.tiny, { textAlign: 'center' }]}>{t('projects:fetchData')}</Text>
+              <Text style={styles.tiny}>{t('projects:fetchData')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -353,7 +549,7 @@ const ProjectDetailView = ({ project }) => {
                   </Text>
                 </View>
               </View>
-              <Text style={[styles.tiny, { textAlign: 'center' }]}>{t('data:bulkSubmit')}</Text>
+              <Text style={styles.tiny}>{t('data:bulkSubmit')}</Text>
             </TouchableOpacity>
 
           </View>
@@ -366,40 +562,22 @@ const ProjectDetailView = ({ project }) => {
       <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingBottom: 10 }}>
         <TouchableOpacity
           style={[styles.inputBase, { flexDirection: 'row', flex: 1, borderColor: theme.colors.primary, borderWidth: 2, }]}
-        // onPress={() => {
+          onPress={() => {
 
-        //   Alert.alert(
-        //     t('projects:unsubscribe'),
-        //     t('projects:unsubscribeConfirmation'),
-        //     [
-        //       { text: t('common:no'), style: 'cancel' },
-        //       { text: t('common:yes'), style: 'destructive', onPress: () => handleUnsubscribe(currentProject) }
-        //     ]
-        //   );
-        // }}
+            Alert.alert(
+              t('projects:unsubscribe'),
+              t('projects:unsubscribeConfirmation'),
+              [
+                { text: t('common:no'), style: 'cancel' },
+                { text: t('common:yes'), style: 'destructive', onPress: () => handleUnsubscribe(currentProject) }
+              ]
+            );
+          }}
         >
-          <MaterialCommunityIcons name="account-group-outline" size={20} color={theme.colors.error} />
-          <TouchableOpacity
-            onLongPress={() => {
-              const groupsList = (userData?.groups || []);
-              if (groupsList.length > 0) {
-                Alert.alert(
-                  "User Groups",
-                  groupsList.join('\n'),
-                  [{ text: "OK" }]
-                );
-              }
-            }}
-            activeOpacity={0.7}
-          >
-            <Text
-              style={[styles.label, { color: theme.colors.error, marginLeft: 8, marginBottom: 0 }]}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {(userData?.groups || []).join(', ')}
-            </Text>
-          </TouchableOpacity>
+          <MaterialIcons name="notifications-off" size={20} color={theme.colors.error} />
+          <Text style={[styles.label, { color: theme.colors.error, marginLeft: 8, marginBottom: 0 }]}>
+            {t('projects:unsubscribe')}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -425,12 +603,10 @@ const ProjectDetailView = ({ project }) => {
 
 const localStyles = StyleSheet.create({
 
-
-
   gridBox: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'center'
   },
 
   gridRow: {

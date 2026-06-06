@@ -1,10 +1,9 @@
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import * as SecureStore from 'expo-secure-store';
 import {
     ActivityIndicator, Alert, FlatList, Modal,
     RefreshControl,
@@ -16,25 +15,27 @@ import {
     View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import UserProfileCard from '../../../components/cards/userProfileCard';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
 import LanguageManager from '../../../i18n/languageManager';
 import { useAuthStore } from '../../../store/authStore';
 import useProjectStore from '../../../store/projectStore';
 import { useThemeStore } from '../../../store/ThemeStore';
-import { createTables, dropTables, select } from '../../../utils/database';
-import UserProfileCard from '../../../components/cards/userProfileCard';
+import { createTables, dropTables, select, update } from '../../../utils/database';
+import api from '../../../api/axiosInstance';
+import axios from 'axios';
 
 const Settings = () => {
     const { t, i18n } = useTranslation();
     const { colors, isDark } = useTheme();
     const { toggleMode, mode } = useThemeStore();
-    const { setCurrentProject } = useProjectStore();
+
+    // Read current workspace configuration mapping from Zustand store
+    const { currentProject,setCurrentData, setCurrentProject } = useProjectStore();
 
     // Auth Store for logout and user info
     const { user, logout } = useAuthStore();
-
-    //console.log('user', JSON.stringify(user, null, 4))
 
     const globalStyles = getStyles({ colors });
     const insets = useSafeAreaInsets();
@@ -42,10 +43,20 @@ const Settings = () => {
     const [serverUrl, setServerUrl] = useState('');
     const [projects, setProjects] = useState([]);
     const [isResetting, setIsResetting] = useState(false);
+    const [isSwitchingProject, setIsSwitchingProject] = useState(false); // Spinner flag for project toggle adjustments
     const [availableLanguages, setAvailableLanguages] = useState([]);
     const [downloadedLanguages, setDownloadedLanguages] = useState([]);
     const [showLanguageModal, setShowLanguageModal] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+
+
+    const handleUnsubscribe = async (project) => {
+        const response = await axios.post(project.instance_url + '/api/v1/project/unsubscribe', { "code": project.code });
+        update('projects', { active: 0 }, 'id = ?', [project.id])
+        setCurrentData(null);
+        setCurrentProject(null);
+        alert(response.data.message)
+    };
 
     useEffect(() => {
         loadInitialData();
@@ -90,6 +101,21 @@ const Settings = () => {
 
     const handleThemeToggle = () => {
         toggleMode(isDark ? 'light' : 'dark');
+    };
+
+    // Project selection and switching handler mimicking joinProject operation behavior
+    const handleProjectToggle = async (project) => {
+        // If it's already the active project, do nothing
+
+        Alert.alert(
+            t('projects:unsubscribe'),
+            t('projects:unsubscribeConfirmation'),
+            [
+                { text: t('common:no'), style: 'cancel' },
+                { text: t('common:yes'), style: 'destructive', onPress: () => handleUnsubscribe(currentProject) }
+            ]
+        );
+
     };
 
     const handleLogout = () => {
@@ -211,6 +237,38 @@ const Settings = () => {
                 {/* User Profile */}
                 <UserProfileCard user={user} globalStyles={globalStyles} localStyles={localStyles} t={t} />
 
+                {/* Projects Section */}
+                <View style={globalStyles.card}>
+                    <Text style={globalStyles.sectionTitle}>{t('settings:projects' || 'Projects')}</Text>
+                    {projects.length === 0 ? (
+                        <Text style={[globalStyles.hint, { paddingVertical: 10 }]}>
+                            {t('settings:noProjects' || 'No local workspace profiles loaded.')}
+                        </Text>
+                    ) : (
+                        projects.map((proj) => {
+                            const isActive = proj.active === 0 ? false : true; // Assuming 'active' is stored as 0/1 in the database
+                            return (
+                                <View key={proj.id} style={[localStyles.flexRowSpace, { paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: colors.inputBorder + '30' }]}>
+                                    <View style={{ flex: 1, paddingRight: 10 }}>
+                                        <Text style={[globalStyles.bodyText, isActive && { color: colors.primary, fontWeight: 'bold' }]}>
+                                            {proj.name || proj.title || 'Unnamed Project'}
+                                        </Text>
+                                        <Text style={globalStyles.hint}>
+                                            {isActive ? (t('settings:active' || 'Active Workspace')) : (t('settings:inactive' || 'Inactive'))}
+                                        </Text>
+                                    </View>
+                                    <Switch
+                                        value={isActive}
+                                        onValueChange={() => handleProjectToggle(proj)}
+                                        thumbColor={isActive ? colors.primary : '#f4f3f4'}
+                                        trackColor={{ false: '#767577', true: colors.primary + '80' }}
+                                    />
+                                </View>
+                            );
+                        })
+                    )}
+                </View>
+
                 {/* Preferences */}
                 <View style={globalStyles.card}>
                     <Text style={globalStyles.sectionTitle}>{t('settings:preferences')}</Text>
@@ -282,10 +340,13 @@ const Settings = () => {
                 </View>
             </Modal>
 
-            {isResetting && (
+            {/* Loading Overlays */}
+            {(isResetting || isSwitchingProject) && (
                 <View style={localStyles.loadingOverlay}>
                     <ActivityIndicator size="large" color={colors.primary} />
-                    <Text style={{ color: '#fff', marginTop: 10 }}>{t('settings:resetting')}...</Text>
+                    <Text style={{ color: '#fff', marginTop: 10 }}>
+                        {isResetting ? `${t('settings:resetting')}...` : 'Switching project...'}
+                    </Text>
                 </View>
             )}
         </View>

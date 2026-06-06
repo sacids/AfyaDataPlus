@@ -288,7 +288,32 @@
     "schemaNotLoaded": "Muundo wa fomu haujapakiwa",
     "languageDownloadFailed": "Imeshindwa kupakua kifurushi cha lugha",
     "languageRemoveFailed": "Imeshindwa kuondoa lugha",
-    "clearCacheFailed": "Imeshindwa kusafisha kache"
+    "clearCacheFailed": "Imeshindwa kusafisha kache",
+    "incorrectPassword": "Nenosiri si Sahihi",
+    "incorrectPasswordMessage": "Akaunti ipo kwa jina hili la mtumiaji lakini nenosiri si sahihi. Tafadhali kagua maelezo yako.",
+    "serverUnavailable": "Seva Haipatikani",
+    "serverUnavailableMessage": "Imeshindwa kuunganisha kwenye seva katika {{instance_url}}. Tafadhali kagua muunganisho wako na URL ya seva.",
+    "serverError": "Hitilafu ya Seva",
+    "serverErrorMessage": "Hitilafu imetokea kwenye seva katika {{instance_url}}. Tafadhali jaribu tena baadaye.",
+    "permissionDenied": "Ruhusa Imekataliwa",
+    "locationPermissionMessage": "Ruhusu ufikiaji wa eneo (GPS) ili kutumia kipengele hiki.",
+    "locationFetchFailed": "Hitilafu ya Eneo",
+    "locationFetchFailedMessage": "Imeshindwa kupata eneo la GPS. Tafadhali hakikisha kuwa GPS imewashwa.",
+    "cameraPermissionMessage": "Ruhusu ufikiaji wa kamera ili kupiga picha.",
+    "galleryPermissionMessage": "Ruhusu ufikiaji wa maktaba ya picha ili kuchagua picha."
+  },
+
+  "services": {
+    "confirmSubmission": "Thibitisha Kuwasilisha",
+    "confirmSubmissionMessage": "Je, una uhakika unataka kuwasilisha fomu {{count}}?",
+    "cancel": "Ghairi",
+    "submit": "Wasilisha",
+    "nothingToSubmit": "Hakuna cha Kuwasilisha",
+    "nothingToSubmitMessage": "Hakuna fomu zilizokamilika tayari kuwasilishwa kwa mradi huu.",
+    "submissionFailed": "Uwasilishaji Umeshindikana",
+    "submissionFailedMessage": "Hitilafu imetokea wakati wa kuwasilisha fomu. Tafadhali jaribu tena.",
+    "submissionResults": "Matokeo ya Uwasilishaji",
+    "ok": "Sawa"
   },
   
   "alerts": {

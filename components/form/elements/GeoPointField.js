@@ -6,6 +6,7 @@ import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
 import { getLabel } from '../../../lib/form/utils';
 import { useFormStore } from '../../../store/useFormStore';
+import { t } from 'i18next';
 
 const GeoPointField = ({ element, globalValue }) => {
   const updateField = useFormStore(state => state.updateField);
@@ -60,7 +61,7 @@ const GeoPointField = ({ element, globalValue }) => {
       const { status } = await Location.requestForegroundPermissionsAsync();
 
       if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Allow location access to use this feature.');
+        Alert.alert( t('errors:permissionDenied'), t('errors:locationPermissionMessage') );
         return;
       }
 
@@ -74,7 +75,7 @@ const GeoPointField = ({ element, globalValue }) => {
       // Update store (which triggers the useEffect above via globalValue prop)
       updateField(element.name, geoString);
     } catch (error) {
-      Alert.alert('Error', 'Could not fetch location. Please ensure GPS is on.');
+      Alert.alert( t('errors:locationFetchFailed'), t('errors:locationFetchFailedMessage') );
     } finally {
       setIsLoading(false);
     }
@@ -82,8 +83,8 @@ const GeoPointField = ({ element, globalValue }) => {
 
   const clearGeoPoint = () => {
     Alert.alert(
-      "Clear Location",
-      "Do you want to remove the saved coordinates?",
+      t('alerts:confirmation'),
+      t('alerts:clearLocationConfirm'),
       [
         { text: "Cancel", style: "cancel" },
         { text: "Clear", style: "destructive", onPress: () => updateField(element.name, null) }

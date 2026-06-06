@@ -2,13 +2,13 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, Image } from 'react-native';
 import { useTheme } from '../../../context/ThemeContext';
 import useProjectStore from '../../../store/projectStore';
 
 export default function TabLayout() {
     const { colors } = useTheme();
-    const { currentData, getCurrentFormDef, hasChildren, currentFormChildren } = useProjectStore();
+    const { currentData, currentProject, getCurrentFormDef, hasChildren, currentFormChildren } = useProjectStore();
     const [workflowEnabled, setWorkflowEnabled] = useState(false);
     const [loading, setLoading] = useState(true);
     const { t, i18n } = useTranslation();
@@ -56,6 +56,8 @@ export default function TabLayout() {
             </View>
         );
     }
+
+    
 
     return (
         <Tabs

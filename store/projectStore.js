@@ -48,6 +48,9 @@ const useProjectStore = create(
                     code: project.code,
                     instance_url: project.instance_url,
                     description: project.description,
+                    project_image: project.project_image,
+                    project_image_local: project.project_image_local,
+                    project_color: project.project_color,
                     tags: parsedTags,
                 } : null;
 

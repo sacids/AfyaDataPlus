@@ -1,10 +1,12 @@
 import { Alert } from "react-native";
 import api from "../api/axiosInstance";
+
 import { db, getLastSyncTime, insert, insert_into_messages, remove, select, update, updateLastSyncTime } from "./database";
 
 
-import { Directory, Paths } from "expo-file-system";
+import { Directory, File, Paths } from "expo-file-system";
 import * as ImageManipulator from 'expo-image-manipulator';
+import { t } from "i18next";
 
 
 // Helper function to manage status updates
@@ -175,6 +177,94 @@ export const getProjectForms = async (project_id, setStatus) => {
     }
 };
 
+
+
+export const cacheProjectImage1 = async (
+    imageUrl,
+    projectId,
+    forceRefresh = false
+) => {
+    if (!imageUrl) return null;
+
+    const projectsDir = new Directory(
+        Paths.cache,
+        'projects'
+    );
+
+    if (!projectsDir.exists) {
+        projectsDir.create({ intermediates: true });
+    }
+
+    const extension =
+        imageUrl.split('.').pop()?.split('?')[0] || 'jpg';
+
+    const file = new File(
+        projectsDir,
+        `${projectId}.${extension}`
+    );
+
+    if (!forceRefresh && file.exists) {
+        return file.uri;
+    }
+
+    const response = await fetch(imageUrl);
+
+    if (!response.ok) {
+        throw new Error(
+            `Failed to download image: ${response.status}`
+        );
+    }
+
+    const bytes = await response.bytes();
+
+    file.write(bytes);
+
+    return file.uri;
+};
+
+
+export const cacheProjectImage = async (imageUrl, projectId) => {
+    console.log('cached project image', projectId, imageUrl);
+
+    if (!imageUrl) return null;
+
+    try {
+        const projectsDir = new Directory(Paths.cache, 'projects');
+
+        if (!projectsDir.exists) {
+            projectsDir.create({ intermediates: true });
+        }
+
+        const extension =
+            imageUrl.split('.').pop()?.split('?')[0] || 'jpg';
+
+        const file = new File(
+            projectsDir,
+            `${projectId}.${extension}`
+        );
+
+        const response = await fetch(imageUrl);
+
+        if (!response.ok) {
+            throw new Error(
+                `Failed to download image: ${response.status}`
+            );
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuffer);
+
+        file.write(bytes);
+
+        return file.uri;
+    } catch (error) {
+        console.error(
+            'Failed to cache project image:',
+            error
+        );
+        return null;
+    }
+};
 
 export const getProjectData = async (project_id, setStatus, options = {}) => {
 
@@ -364,7 +454,7 @@ export const getProjectData = async (project_id, setStatus, options = {}) => {
 };
 
 // Helper function to process batch efficiently
-const processFormDataBatch = async (records, project_id) => {
+const processFormDataBatch1 = async (records, project_id) => {
     let inserted = 0;
     let updated = 0;
 
@@ -412,6 +502,121 @@ const processFormDataBatch = async (records, project_id) => {
             };
 
             //console.log('formdata record', formDataRecord);
+
+            if (isExisting) {
+                const result = await update('form_data', formDataRecord, 'uuid = ?', [record.uuid]);
+                if (result > 0) updated++;
+            } else {
+                const result = await insert('form_data', formDataRecord);
+                if (result && result.changes > 0) inserted++;
+            }
+        }
+
+        await db.execAsync('COMMIT;');
+    } catch (error) {
+        await db.execAsync('ROLLBACK;');
+        console.error('Batch processing error:', error);
+        throw error;
+    }
+
+    return { inserted, updated };
+};
+
+
+// Helper function to process batch efficiently
+const processFormDataBatch = async (records, project_id) => {
+    let inserted = 0;
+    let updated = 0;
+
+    // Get existing UUIDs in one query
+    const uuids = records.map(r => r.uuid);
+    const placeholders = uuids.map(() => '?').join(',');
+    const existingRecords = await select(
+        'form_data',
+        `uuid IN (${placeholders})`,
+        uuids,
+        'uuid, status, status_date',
+        false,
+        true
+    );
+
+    const existingUuids = new Set(existingRecords.map(r => r.uuid));
+
+    // Batch insert/update using transaction
+    await db.execAsync('BEGIN TRANSACTION;');
+
+    try {
+        for (const record of records) {
+            const isExisting = existingUuids.has(record.uuid);
+
+            // Parse form_data object if it comes as a string representation
+            let parsedFields = typeof record.form_data === 'string'
+                ? JSON.parse(record.form_data || '{}')
+                : { ...record.form_data };
+
+            // --- MEDIA DOWNLOAD ATTACHMENT SYNC ---
+            if (record.files && Array.isArray(record.files) && record.files.length > 0) {
+                // Determine target instance directory UUID matching CurrentDataView structure
+                const targetFolderUuid = record.original_uuid || record.uuid;
+                const formDirectory = new Directory(Paths.document, targetFolderUuid);
+
+                // Ensure permanent document directory path exists for this unique form entry
+                if (!formDirectory.exists) {
+                    formDirectory.create({ intermediates: true });
+                }
+
+                for (const fileMetadata of record.files) {
+                    // Check if a valid URL pointer and target input field assignment exist
+                    if (!fileMetadata.file_url || !fileMetadata.field_name) continue;
+
+                    // Locate filename from form_data value (which retains the local naming pattern)
+                    // If missing or null, fallback to extracting it from the remote URL string
+                    const targetFileName = parsedFields[fileMetadata.field_name] || 
+                                           fileMetadata.file_url.split('/').pop()?.split('?')[0];
+
+                    if (!targetFileName) continue;
+
+                    try {
+                        const destinationFile = new File(formDirectory, targetFileName);
+
+                        // Download the binary file if it doesn't already exist on local disk storage
+                        if (!destinationFile.exists) {
+                            console.log(`Downloading asset for field "${fileMetadata.field_name}": ${targetFileName}`);
+                            const fileResponse = await fetch(fileMetadata.file_url);
+
+                            if (fileResponse.ok) {
+                                const arrayBuffer = await fileResponse.arrayBuffer();
+                                const bytes = new Uint8Array(arrayBuffer);
+                                destinationFile.write(bytes);
+                            } else {
+                                console.warn(`Failed downloading asset from ${fileMetadata.file_url}. Status: ${fileResponse.status}`);
+                            }
+                        }
+                    } catch (fileDownloadError) {
+                        console.error(`Media download error processing asset file ${targetFileName}:`, fileDownloadError);
+                    }
+                }
+            }
+            // ----------------------------------------
+
+            const formDataRecord = {
+                project: record.project || project_id,
+                form: record.form,
+                title: record.title || '',
+                uuid: record.uuid,
+                original_uuid: record.original_uuid || record.uuid,
+                parent_uuid: record.parent_uuid || null,
+                gps: record.gps || null,
+                deleted: record.deleted || 0,
+                archived: record.archived || 0,
+                form_data: JSON.stringify(parsedFields), // Ensure changes to form_data are saved back to DB
+                created_by: record.created_by,
+                created_by_name: record.created_by_name || record.created_by,
+                created_on: record.created_on || record.created_at,
+                status: record.status || 'sent',
+                status_date: record.status_date || record.updated_at,
+                synced: 1
+            };
 
             if (isExisting) {
                 const result = await update('form_data', formDataRecord, 'uuid = ?', [record.uuid]);
@@ -512,17 +717,16 @@ export const submitProjectData = async (project_id, setStatus) => {
         } else {
             // If no finalized forms, show alert
             Alert.alert(
-                'Nothing to Submit',
-                'There are no finalized forms to submit for this project.',
-                [{ text: 'OK' }]
+                t('services:nothingToSubmit'),
+                t('services:nothingToSubmitMessage')
             );
         }
     } catch (error) {
         // Handle any errors
         console.error('Error submitting forms:', error);
         Alert.alert(
-            'Submission Failed',
-            'An error occurred while submitting forms. Please try again.',
+            t('services:submissionFailed'),
+            t('services:submissionFailedMessage'),
             [{ text: 'OK' }]
         );
     }
@@ -754,7 +958,102 @@ export const updateSeenBy = async (id, username) => {
 
 
 
+/**
+ * Synchronizes disease knowledge data from the API server into the local database.
+ * * @param {string} projectId - The active workspace/project identification key.
+ * @param {boolean} full_sync - If true, appends ?modified_from based on the last updated record.
+ * @param {function} setStatus - Status state setter function for tracking UI logs.
+ */
+export const syncDiseaseKnowledge = async (projectId, setStatus, full_sync = false) => {
+    let activityCounter = 0;
+    
+    try {
+        // Initialize status tracker if empty
+        setStatus(prev => prev || 'Starting disease knowledge sync...');
 
+        // Start context activity loading indicator loop matching pattern
+        activityInterval = setInterval(() => {
+            activityCounter = (activityCounter + 1) % ACTIVITY_INDICATORS.length;
+            setStatus(prevStatus => {
+                if (!prevStatus) return '';
+                const lines = prevStatus.split('\n');
+                if (lines[lines.length - 1].startsWith('Syncing knowledge base')) {
+                    lines[lines.length - 1] = `Syncing knowledge base ${ACTIVITY_INDICATORS[activityCounter]}`;
+                    return lines.join('\n');
+                }
+                return prevStatus;
+            });
+        }, 200);
+
+        setStatus('Checking local timeline parameters...');
+
+        let modifiedFrom = '1970-01-01T00:00:00.000Z'; // Epoch starting point fallback
+
+        if (!full_sync) {
+            // Retrieve the last sync or update time from local records matching this project table
+            const lastTime = await getLastSyncTime(`disease_knowledge_${projectId}`);
+            if (lastTime) {
+                modifiedFrom = lastTime;
+            }
+        }
+
+        setStatus(`Syncing knowledge base ${ACTIVITY_INDICATORS[activityCounter]}`);
+
+        // Construct initial end-point URI dynamically targeting your knowledge resource endpoint
+        // Adjust endpoint routing key string ('/knowledge-base/') to match your exact structural server router map
+        let nextUrl = `/api/v1/project/${projectId}/knowledge-base?modified_from=${encodeURIComponent(modifiedFrom)}`;
+        let totalDownloaded = 0;
+
+        while (nextUrl) {
+            // Query the remote REST server instance
+            console.log('Fetching knowledge data from', nextUrl);
+            const response = await api.get(nextUrl);
+            const data = response.data;
+
+            // Handle standard pagination structures or simple flat JSON arrays
+            const results = Array.isArray(data) ? data : (data.results || []);
+            const next = Array.isArray(data) ? null : data.next;
+
+            if (results.length > 0) {
+                for (const record of results) {
+                    // Normalize backend model payload to map perfectly into database columns
+                    // Handles fallbacks cleanly if title/photo fields match your snippet formats
+                    await insert('tb_disease_knowledge', {
+                        id: record.id,
+                        project_id: record.project || projectId,
+                        name: record.title || '',
+                        description: record.description || '',
+                        image: record.photo_url || record.photo || '',
+                        created_at: record.created_at,
+                        updated_at: record.updated_at,
+                        created_by: record.created_by,
+                        updated_by: record.updated_by
+                    }, true); // Pass true to replace/upsert rows on conflicting IDs
+                }
+                totalDownloaded += results.length;
+            }
+
+            nextUrl = next;
+            if (Array.isArray(data)) nextUrl = null;
+        }
+
+        // Capture current operational timestamp profile to lock time references for next execution pass
+        const currentSyncTimestamp = new Date().toISOString();
+        await updateLastSyncTime(`disease_knowledge_${projectId}`, currentSyncTimestamp);
+
+        // Clear layout update loop intervals cleanly upon normal resolution
+        if (activityInterval) clearInterval(activityInterval);
+
+        setStatus(`Sync complete for knowledge base. ${totalDownloaded} entries processed.`);
+        return { success: true, count: totalDownloaded };
+
+    } catch (error) {
+        if (activityInterval) clearInterval(activityInterval);
+        console.error(`Knowledge base sync routine aborted for project ${projectId}:`, error);
+        setStatus(`Sync error: ${error.message}`);
+        return { success: false, error: error.message };
+    }
+};
 
 
 
@@ -782,16 +1081,16 @@ export const updateSeenBy = async (id, username) => {
 
 const submitForms = async (data = []) => {
     Alert.alert(
-        'Confirm Submission',
-        `Are you sure you want to submit ${data.length} form(s)?`,
+        t('services:confirmSubmission'),
+        t('services:confirmSubmissionMessage', { count: data.length }),
         [
             {
-                text: 'Cancel',
+                text: t('services:cancel'),
                 style: 'cancel',
                 onPress: () => console.log('Submission cancelled')
             },
             {
-                text: 'Submit',
+                text: t('services:submit'),
                 onPress: () => handleFormSubmission(data)
             }
         ],
@@ -1014,11 +1313,11 @@ const showSubmissionResults = async (successForms, failedForms, totalForms) => {
     }
 
     Alert.alert(
-        'Submission Results',
+        t('services:submissionResults'),
         message,
         [
             {
-                text: 'OK',
+                text: t('services:ok'),
             }
         ]
     );
