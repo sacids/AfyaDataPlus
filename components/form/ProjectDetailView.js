@@ -205,9 +205,8 @@ const ProjectDetailView = ({ project }) => {
               style={[styles.card, localStyles.gridBox, { backgroundColor: `${theme.colors.inputBackground}D9` }]}
             >
               <View style={localStyles.iconBadgeRow}>
-                <MaterialCommunityIcons name="file-eye-outline" size={64} color={theme.colors.primary} />``
+                <MaterialCommunityIcons name="file-eye-outline" size={64} color={theme.colors.primary} />
 
-                {/* Form Count Badge */}
                 <View style={[localStyles.badge, { backgroundColor: theme.colors.primary }]}>
                   <Text style={localStyles.badgeText}>
                     {curProjectStats.total || 0}

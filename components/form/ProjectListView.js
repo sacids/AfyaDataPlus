@@ -38,7 +38,6 @@ const ProjectListView = () => {
     setViewMode('local')
     try {
       const localData = await select('projects', 'active = ?', [1])
-      console.log('Local projects loaded:', localData);
       setDisplayList(localData || [])
     } catch (error) {
       console.error("SQLite Error:", error)

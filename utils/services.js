@@ -1006,7 +1006,7 @@ export const syncDiseaseKnowledge = async (projectId, setStatus, full_sync = fal
 
         while (nextUrl) {
             // Query the remote REST server instance
-            console.log('Fetching knowledge data from', nextUrl);
+            //console.log('Fetching knowledge data from', nextUrl);
             const response = await api.get(nextUrl);
             const data = response.data;
 

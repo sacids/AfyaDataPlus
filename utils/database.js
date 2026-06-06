@@ -584,8 +584,12 @@ export const select = async (tableName, whereClause = '', whereArgs = [], fields
         }
 
         const sql = `SELECT ${fields} FROM ${tableName} ${finalWhereClause ? `WHERE ${finalWhereClause}` : ''} ${order_by ? `ORDER BY ${order_by}` : ''};`;
-        //console.log(sql, finalWhereArgs)
+        // if(tableName === 'tb_disease_knowledge') {
+        //     console.log(sql, finalWhereArgs);
+        // }
         const result = await db.getAllAsync(sql, finalWhereArgs);
+
+        //console.log(`Selected from ${tableName}:`, result);
         return result;
     } catch (error) {
         console.error('Error selecting data:', error);
@@ -822,7 +826,7 @@ export const insert = async (tableName, data) => {
 
         const sql = `INSERT OR REPLACE INTO ${tableName} (${filteredKeys.join(', ')}) VALUES (${placeholders});`;
         //console.log('sql')
-        //console.log('Inserting sql:', sql, values);
+        // console.log('Inserting sql:', sql, values);
         const result = await db.runAsync(sql, values);
         return result;
     } catch (error) {

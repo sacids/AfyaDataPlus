@@ -16,6 +16,8 @@ import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
 import { select } from '../../../utils/database';
 
+import useProjectStore from '../../../store/projectStore';
+
 // Helper to strip markdown formatting cleanly for text truncation previews
 const getCleanPreviewText = (markdownText) => {
     if (!markdownText) return '';
@@ -34,12 +36,11 @@ const DiseaseKnowledgeScreen = () => {
     const [showSearchBar, setShowSearchBar] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
+    const { currentProject, setCurrentProject, setCurrentData, userData } = useProjectStore();
     const theme = useTheme();
     const styles = getStyles(theme);
     const insets = useSafeAreaInsets();
 
-    // Placeholder project ID (In your real application, grab this from your Auth/Project Context)
-    const currentProjectId = "6c0de747-805e-4948-a8ae-6d12e8b090f7";
 
     // Fetch data dynamically from SQLite table upon mounting
     useEffect(() => {
@@ -47,11 +48,10 @@ const DiseaseKnowledgeScreen = () => {
             try {
                 setIsLoading(true);
                 // Use the pattern matching your database engine to select records for the current project
-                const localRecords = await select(
-                    'tb_disease_knowledge',
-                    { project_id: currentProjectId }
-                );
+               
+                const localRecords =  await select('tb_disease_knowledge', 'project_id = ?', [currentProject?.project]);
 
+                console.log('Fetched local disease knowledge records:', localRecords);
                 if (localRecords && Array.isArray(localRecords)) {
                     setDiseasesData(localRecords);
                     setFilteredData(localRecords);
@@ -64,7 +64,7 @@ const DiseaseKnowledgeScreen = () => {
         };
 
         fetchLocalKnowledgeBase();
-    }, [currentProjectId]);
+    }, [currentProject?.id]);
 
     const handleSearch = (query) => {
         setSearchQuery(query);
@@ -115,7 +115,7 @@ const DiseaseKnowledgeScreen = () => {
     };
 
     return (
-        <View style={[styles.pageContainer, localStyles.container, { paddingTop: insets.top }]}>
+        <View style={[styles.pageContainer, localStyles.container, { paddingTop: insets.top, paddingHorizontal: 16 }]}>
             {/* Header */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15, paddingVertical: 10 }}>
                 <Text style={[styles.pageTitle, { flexShrink: 1 }]}>Disease Knowledge</Text>
@@ -149,7 +149,7 @@ const DiseaseKnowledgeScreen = () => {
                 <FlatList
                     data={filteredData}
                     renderItem={renderDiseaseItem}
-                    keyExtractor={(item) => item.id.toString()}
+                    keyExtractor={(item) => item.id}
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={localStyles.listContent}
                     style={localStyles.list}
