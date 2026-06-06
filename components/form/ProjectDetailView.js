@@ -105,7 +105,7 @@ const ProjectDetailView = ({ project }) => {
     const response = await api.post('/api/v1/project/unsubscribe', { "code": project.code });
     update('projects', { active: 0 }, 'id = ?', [project.id])
     setCurrentData(null);
-    setCurrentProject(null);
+    setCurrentProject({});
     alert(response.data.message)
   };
 
@@ -406,7 +406,7 @@ const ProjectDetailView = ({ project }) => {
           style={[styles.inputBase, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]}
           onPress={() => {
             setCurrentData(null);
-            setCurrentProject(null);
+            setCurrentProject({});
             setFilter({
               key: 'status',
               value: 'All',
