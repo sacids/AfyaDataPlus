@@ -343,6 +343,7 @@ export const getProjectData = async (project_id, setStatus, options = {}) => {
                 }
             }
         } else if (!incrementalSync || forceFullSync || !lastSyncTime) {
+            //console.log('performing full sync due to settings or missing last sync time');
             setStatus(`Performing full sync...`);
         }
 
@@ -357,6 +358,7 @@ export const getProjectData = async (project_id, setStatus, options = {}) => {
         // Get server record count first (if endpoint supports it)
         try {
             const countResponse = await api.head(`api/v1/form-data/`, { params: Object.fromEntries(queryParams) });
+
             const serverCount = parseInt(countResponse.headers['x-total-count'] || '0');
             if (serverCount === 0 && syncStrategy !== 'full') {
                 setStatus('No new records to sync');
@@ -377,6 +379,7 @@ export const getProjectData = async (project_id, setStatus, options = {}) => {
                 params: Object.fromEntries(queryParams)
             });
 
+            //console.log('fetch page', currentPage, 'response', 'api/v1/form-data/', response.data);
             let results, nextUrl;
             if (response.data.results) {
                 results = response.data.results;
@@ -426,6 +429,7 @@ export const getProjectData = async (project_id, setStatus, options = {}) => {
         }
 
         const finalMessage = `Sync complete! Fetched: ${totalFetched}, New: ${totalInserted}, Updated: ${totalUpdated}`;
+        //console.log(finalMessage);
         setStatus(finalMessage);
 
         return {
@@ -571,8 +575,8 @@ const processFormDataBatch = async (records, project_id) => {
 
                     // Locate filename from form_data value (which retains the local naming pattern)
                     // If missing or null, fallback to extracting it from the remote URL string
-                    const targetFileName = parsedFields[fileMetadata.field_name] || 
-                                           fileMetadata.file_url.split('/').pop()?.split('?')[0];
+                    const targetFileName = parsedFields[fileMetadata.field_name] ||
+                        fileMetadata.file_url.split('/').pop()?.split('?')[0];
 
                     if (!targetFileName) continue;
 
@@ -619,9 +623,12 @@ const processFormDataBatch = async (records, project_id) => {
             };
 
             if (isExisting) {
+                //console.log('update', formDataRecord)
                 const result = await update('form_data', formDataRecord, 'uuid = ?', [record.uuid]);
                 if (result > 0) updated++;
             } else {
+
+                //console.log('insert', formDataRecord)
                 const result = await insert('form_data', formDataRecord);
                 if (result && result.changes > 0) inserted++;
             }
@@ -966,7 +973,7 @@ export const updateSeenBy = async (id, username) => {
  */
 export const syncDiseaseKnowledge = async (projectId, setStatus, full_sync = false) => {
     let activityCounter = 0;
-    
+
     try {
         // Initialize status tracker if empty
         setStatus(prev => prev || 'Starting disease knowledge sync...');

@@ -195,8 +195,7 @@ let FORM_DATA_WORKFLOW_SQL = `CREATE TABLE IF NOT EXISTS tb_form_data_workflow (
     metadata TEXT,
     sync_status INTEGER DEFAULT 0,
     created_at TEXT,
-    updated_at TEXT,
-    FOREIGN KEY (form_data_uuid) REFERENCES form_data (uuid) ON DELETE CASCADE
+    updated_at TEXT
 );`;
 //let FORM_DATA_WORKFLOW_SQL = `DROP TABLE IF EXISTS tb_form_data_workflow;`;
 
@@ -802,7 +801,7 @@ export const insert = async (tableName, data) => {
                     dbKey = 'reaction_id';
                 } if (tableName === 'projects') {
                     dbKey = 'project';
-                }if (tableName === 'tb_disease_knowledge') {
+                } if (tableName === 'tb_disease_knowledge') {
                     dbKey = 'knowledge_id';
                 } else {
                     return;
@@ -826,7 +825,7 @@ export const insert = async (tableName, data) => {
 
         const sql = `INSERT OR REPLACE INTO ${tableName} (${filteredKeys.join(', ')}) VALUES (${placeholders});`;
         //console.log('sql')
-        // console.log('Inserting sql:', sql, values);
+        //console.log('Inserting sql:', sql, values);
         const result = await db.runAsync(sql, values);
         return result;
     } catch (error) {

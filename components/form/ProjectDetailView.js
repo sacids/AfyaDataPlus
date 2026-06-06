@@ -298,6 +298,7 @@ const ProjectDetailView = ({ project }) => {
                 try {
                   appendLog('Syncing Project Data.');
                   await getProjectData(currentProject.project, appendLog);
+                  //await getProjectData(currentProject.project, appendLog, { incrementalSync: false, forceFullSync: true });
                   appendLog('Syncing workflow data...');
                   await syncWorkflowData(currentProject?.project, appendLog);
                   appendLog('Project data fetched.');
