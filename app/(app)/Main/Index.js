@@ -62,7 +62,7 @@ export default function FormDataOrProjectListScreen() {
                 }
             }
 
-            if (currentProject && currentProject.id) {
+            if (currentProject) {
                 dispatch({ type: 'SET_PROJECT_DETAIL', payload: currentProject });
                 return;
             }

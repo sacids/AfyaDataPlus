@@ -48,10 +48,10 @@ const DiseaseKnowledgeScreen = () => {
             try {
                 setIsLoading(true);
                 // Use the pattern matching your database engine to select records for the current project
-               
-                const localRecords =  await select('tb_disease_knowledge', 'project_id = ?', [currentProject?.project]);
 
-                console.log('Fetched local disease knowledge records:', localRecords);
+                const localRecords = await select('tb_disease_knowledge', 'project_id = ?', [currentProject?.project]);
+
+                //console.log('Fetched local disease knowledge records:', localRecords);
                 if (localRecords && Array.isArray(localRecords)) {
                     setDiseasesData(localRecords);
                     setFilteredData(localRecords);

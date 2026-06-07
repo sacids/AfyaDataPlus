@@ -37,6 +37,12 @@ const ProjectDetailView = ({ project }) => {
   const [syncLogs, setSyncLogs] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
 
+  const [syncingStates, setSyncingStates] = useState({
+    forms: false,
+    submit: false,
+    data: false,
+  });
+
   const appendLog = (message) => {
     if (!message) return;
     setSyncLogs((prev) => prev + (prev ? '\n' : '') + message);
@@ -105,7 +111,7 @@ const ProjectDetailView = ({ project }) => {
     const response = await api.post('/api/v1/project/unsubscribe', { "code": project.code });
     update('projects', { active: 0 }, 'id = ?', [project.id])
     setCurrentData(null);
-    setCurrentProject({});
+    setCurrentProject(null);
     alert(response.data.message)
   };
 
@@ -119,16 +125,16 @@ const ProjectDetailView = ({ project }) => {
 
         refreshCredentials();
         appendLog('Credentials refreshed.');
-        getProjectForms(currentProject.project, appendLog);
+        getProjectForms(currentProject?.project, appendLog);
         appendLog('Syncing reactions...');
-        syncProjectReactions(currentProject.project, appendLog);
+        syncProjectReactions(currentProject?.project, appendLog);
         appendLog('Syncing Project Data.');
 
         appendLog('Syncing Project Data.');
-        getProjectData(currentProject.project, appendLog);
+        getProjectData(currentProject?.project, appendLog);
         appendLog('Syncing workflow data...');
         syncWorkflowData(currentProject?.project, appendLog);
-        syncDiseaseKnowledge(currentProject.project, appendLog);
+        syncDiseaseKnowledge(currentProject?.project, appendLog);
         appendLog('Disease knowledge synced.');
         refreshProjectData();
         appendLog('Project data refreshed.');
@@ -149,7 +155,7 @@ const ProjectDetailView = ({ project }) => {
       {
         currentProject?.project_image_local ? (
           <Image
-            source={{ uri: currentProject.project_image_local }}
+            source={{ uri: currentProject?.project_image_local }}
             style={{
               position: 'absolute',
               top: 0,
@@ -162,7 +168,7 @@ const ProjectDetailView = ({ project }) => {
           />
         ) : (
           <Image
-            source={{ uri: afyadatalogo }}
+            source={afyadatalogo}
             style={{
               position: 'absolute',
               top: 0,
@@ -175,7 +181,7 @@ const ProjectDetailView = ({ project }) => {
           />
         )
       }
-      <AppHeader title={currentProject ? currentProject.title : t('projects:myProjects')} searchEnabled={false} rightActions={goToSettings} />
+      <AppHeader title={currentProject ? currentProject?.title : t('projects:myProjects')} searchEnabled={false} rightActions={goToSettings} />
       {/* <Text style={[styles.hint, { fontWeight: 'bold', paddingHorizontal: 12, paddingBottom: 8, marginTop: -8 }]}>
         {currentProject?.code} | {(userData?.groups || []).join(', ')}
       </Text> */}
@@ -229,11 +235,8 @@ const ProjectDetailView = ({ project }) => {
               }}
               style={[styles.card, localStyles.gridBox, { backgroundColor: `${theme.colors.inputBackground}D9` }]}
             >
-
               <View style={localStyles.iconBadgeRow}>
                 <MaterialCommunityIcons name="file-eye-outline" size={64} color={curProjectStats.unseen ? '#78A083' : theme.colors.primary} />
-
-                {/* Form Count Badge */}
                 {curProjectStats.unseen && (
                   <View style={[localStyles.badge, { backgroundColor: '#78A083' }]}>
                     <Text style={localStyles.badgeText}>
@@ -251,23 +254,39 @@ const ProjectDetailView = ({ project }) => {
             <TouchableOpacity
               onPress={async () => {
                 setSyncLogs('Starting form sync...');
+                setSyncingStates(prev => ({ ...prev, ['forms']: true }));
                 setIsSyncing(true);
+
                 try {
-                  await getProjectForms(currentProject.project, appendLog);
+                  await getProjectForms(currentProject?.project, appendLog);
                   appendLog('Syncing reactions...');
-                  await syncProjectReactions(currentProject.project, appendLog);
+                  await syncProjectReactions(currentProject?.project, appendLog);
                   appendLog('Syncing Project Data.');
                   await refreshCredentials();
                   appendLog('Credentials refreshed.');
                   await refreshProjectData();
                   appendLog('Project data refreshed.');
-                } catch (e) { appendLog('Error: ' + e.message); } finally { setIsSyncing(false); }
+                } catch (e) {
+                  appendLog('Error: ' + e.message);
+                } finally {
+                  setIsSyncing(false);
+                  setSyncingStates(prev => ({ ...prev, ['forms']: false }));
+                }
               }}
+              disabled={syncingStates.forms}
               style={[styles.card, localStyles.gridBox]}
             >
-              <MaterialCommunityIcons name="file-download-outline" size={64} color={theme.colors.primary} />
+              {syncingStates.forms ? (
+                <View style={localStyles.loaderContainer}>
+                  <ActivityIndicator size="large" color={theme.colors.primary} />
+                </View>
+              ) : (
+                <>
+                  <MaterialCommunityIcons name="file-download-outline" size={64} color={theme.colors.primary} />
 
-              <Text style={[styles.tiny, { textAlign: 'center' }]}>{t('projects:fetchForms')}</Text>
+                  <Text style={[styles.tiny, { textAlign: 'center' }]}>{t('projects:fetchForms')}</Text>
+                </>
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -295,18 +314,24 @@ const ProjectDetailView = ({ project }) => {
               onPress={async () => {
                 setSyncLogs('Starting form sync...');
                 setIsSyncing(true);
+                setSyncingStates(prev => ({ ...prev, ['data']: true }));
                 try {
                   appendLog('Syncing Project Data.');
-                  await getProjectData(currentProject.project, appendLog);
-                  //await getProjectData(currentProject.project, appendLog, { incrementalSync: false, forceFullSync: true });
+                  await getProjectData(currentProject?.project, appendLog);
+                  //await getProjectData(currentProject?.project, appendLog, { incrementalSync: false, forceFullSync: true });
                   appendLog('Syncing workflow data...');
                   await syncWorkflowData(currentProject?.project, appendLog);
                   appendLog('Project data fetched.');
-                  await syncDiseaseKnowledge(currentProject.project, appendLog);
+                  await syncDiseaseKnowledge(currentProject?.project, appendLog);
                   appendLog('Disease knowledge synced.');
                   await refreshProjectData();
                   appendLog('Project data refreshed.');
-                } catch (e) { appendLog('Error: ' + e.message); } finally { setIsSyncing(false); }
+                } catch (e) {
+                  appendLog('Error: ' + e.message);
+                } finally {
+                  setIsSyncing(false);
+                  setSyncingStates(prev => ({ ...prev, ['data']: false }));
+                }
               }}
 
               onLongPress={async () => {
@@ -314,46 +339,74 @@ const ProjectDetailView = ({ project }) => {
                 setIsSyncing(true);
                 try {
                   appendLog('Syncing Project Data.');
-                  await getProjectData(currentProject.project, appendLog, { incrementalSync: false, forceFullSync: true });
+                  await getProjectData(currentProject?.project, appendLog, { incrementalSync: false, forceFullSync: true });
                   appendLog('Project data fetched.');
-                  await syncDiseaseKnowledge(currentProject.project, appendLog, true);
+                  await syncDiseaseKnowledge(currentProject?.project, appendLog, true);
                   appendLog('Disease knowledge synced.')
                   await refreshProjectData();
                   appendLog('Project data refreshed.');
-                } catch (e) { appendLog('Error: ' + e.message); } finally { setIsSyncing(false); }
+                } catch (e) {
+                  appendLog('Error: ' + e.message);
+                } finally {
+                  setIsSyncing(false);
+                  setSyncingStates(prev => ({ ...prev, ['data']: false }));
+                }
               }}
-
+              disabled={syncingStates.data}
               style={[styles.card, localStyles.gridBox]}
             >
-              <MaterialCommunityIcons name="file-sync-outline" size={64} color={theme.colors.primary} />
-              <Text style={[styles.tiny, { textAlign: 'center' }]}>{t('projects:fetchData')}</Text>
+              {syncingStates.data ? (
+                <View style={localStyles.loaderContainer}>
+                  <ActivityIndicator size="large" color={theme.colors.primary} />
+                </View>
+              ) : (
+                <>
+                  <MaterialCommunityIcons name="file-sync-outline" size={64} color={theme.colors.primary} />
+                  <Text style={[styles.tiny, { textAlign: 'center' }]}>{t('projects:fetchData')}</Text>
+                </>
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={async () => {
                 setSyncLogs('Preparing data for submission...');
                 setIsSyncing(true);
+                setSyncingStates(prev => ({ ...prev, ['submit']: true }));
                 try {
                   await submitProjectData(currentProject?.project, appendLog);
                   appendLog('Submission finished.');
                   await syncWorkflowData(currentProject?.project, appendLog);
                   appendLog('Workflow data synced.');
                   await refreshProjectData();
-                } catch (e) { appendLog('Submission failed.'); } finally { setIsSyncing(false); }
+                } catch (e) {
+                  appendLog('Submission failed.');
+                } finally {
+                  setIsSyncing(false);
+                  setSyncingStates(prev => ({ ...prev, ['submit']: false }));
+                }
               }}
+              disabled={syncingStates.submit}
               style={[styles.card, localStyles.gridBox]}
             >
-              <View style={localStyles.iconBadgeRow}>
-                <MaterialCommunityIcons name="receipt-send-outline" size={64} color={theme.colors.primary} />
-
-                {/* Form Count Badge */}
-                <View style={[localStyles.badge, { backgroundColor: theme.colors.primary }]}>
-                  <Text style={localStyles.badgeText}>
-                    {curProjectStats.finalized || 0}
-                  </Text>
+              {syncingStates.submit ? (
+                <View style={localStyles.loaderContainer}>
+                  <ActivityIndicator size="large" color={theme.colors.primary} />
                 </View>
-              </View>
-              <Text style={[styles.tiny, { textAlign: 'center' }]}>{t('data:bulkSubmit')}</Text>
+              ) : (
+                <>
+                  <View style={localStyles.iconBadgeRow}>
+                    <MaterialCommunityIcons name="receipt-send-outline" size={64} color={theme.colors.primary} />
+
+                    {/* Form Count Badge */}
+                    <View style={[localStyles.badge, { backgroundColor: theme.colors.primary }]}>
+                      <Text style={localStyles.badgeText}>
+                        {curProjectStats.finalized || 0}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.tiny, { textAlign: 'center' }]}>{t('data:bulkSubmit')}</Text>
+                </>
+              )}
             </TouchableOpacity>
 
           </View>
@@ -406,7 +459,7 @@ const ProjectDetailView = ({ project }) => {
           style={[styles.inputBase, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]}
           onPress={() => {
             setCurrentData(null);
-            setCurrentProject({});
+            setCurrentProject(null);
             setFilter({
               key: 'status',
               value: 'All',

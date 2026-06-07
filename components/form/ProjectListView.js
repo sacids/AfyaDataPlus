@@ -250,7 +250,7 @@ const ProjectListView = () => {
         const cachedImage = await cacheProjectImage(projectImageUrl, project_to_save.id);
 
 
-        console.log('joinProject: project to save', project_to_save);
+        //console.log('joinProject: project to save', project_to_save);
 
         if (project_to_save) {
           const projectToSave = {
@@ -264,7 +264,7 @@ const ProjectListView = () => {
           };
 
 
-          console.log('insert to db: project to save', projectToSave);
+          //console.log('insert to db: project to save', projectToSave);
 
           await insert('projects', projectToSave);
           const localProjects = await select('projects', 'project = ?', [project_to_save.id]);

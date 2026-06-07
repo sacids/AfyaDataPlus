@@ -54,7 +54,7 @@ const Settings = () => {
         const response = await axios.post(project.instance_url + '/api/v1/project/unsubscribe', { "code": project.code });
         update('projects', { active: 0 }, 'id = ?', [project.id])
         setCurrentData(null);
-        setCurrentProject({});
+        setCurrentProject(null);
         alert(response.data.message)
     };
 
@@ -160,7 +160,7 @@ const Settings = () => {
                             await SecureStore.deleteItemAsync('auth-storage');
 
                             // 4. Reset Zustand Stores in memory
-                            setCurrentProject({});
+                            setCurrentProject(null);
                             //useAuthStore.getState().logout();
 
                             // 5. Force navigation to onboarding
