@@ -1,15 +1,16 @@
-import { MaterialCommunityIcons, Octicons } from '@expo/vector-icons'
+import { Ionicons, MaterialCommunityIcons, Octicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActivityIndicator, Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import api, { refreshCredentials } from '../../api/axiosInstance'
+// Imported Clipboard directly from 'react-native' to avoid native module missing errors
+import { ActivityIndicator, Alert, Clipboard, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { refreshCredentials } from '../../api/axiosInstance'
 import { getStyles } from '../../constants/styles'
 import { useTheme } from '../../context/ThemeContext'
 import { useAuthStore } from '../../store/authStore'
 import { useFilterStore } from '../../store/filterStore'
 import useProjectStore from '../../store/projectStore'
-import { select, update } from '../../utils/database'
+import { select } from '../../utils/database'
 import { getProjectData, getProjectForms, submitProjectData, syncDiseaseKnowledge, syncProjectReactions, syncWorkflowData } from '../../utils/services'
 import { AppHeader } from '../layout/AppHeader'
 
@@ -22,19 +23,13 @@ const ProjectDetailView = ({ project }) => {
   const styles = getStyles(theme);
   const { user } = useAuthStore()
 
-  //console.log('current project in detail view', JSON.stringify(currentProject,null,5))
-
-  //console.log('userData', userData.groups)
-
-  const [showFullDescription, setShowFullDescription] = useState(false);
-  const description = currentProject?.description || "";
-
   const [ready, setReady] = useState(false);
   const [formDefns, setFormDefns] = useState([]);
   const [curProjectStats, setCurrentProjetStats] = useState({});
+  const [logsModalVisible, showLogsModal] = useState(false);
   const afyadatalogo = require('../../assets/images/AfyaDataLogo.png');
 
-  const [syncLogs, setSyncLogs] = useState('');
+  const [syncLogs, setSyncLogs] = useState(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
   const [syncingStates, setSyncingStates] = useState({
@@ -52,7 +47,19 @@ const ProjectDetailView = ({ project }) => {
     { icon: 'settings', onPress: () => router.push('Project/Settings') }
   ], []);
 
+  // Safe wrapper to close and reset logs
+  const handleCloseModal = () => {
+    setSyncLogs(null);
+    showLogsModal(false);
+  };
 
+  // Uses React Native core Clipboard string setter
+  const copyToClipboard = () => {
+    if (syncLogs) {
+      Clipboard.setString(syncLogs);
+      Alert.alert(t('common:success') || "Copied", t('projects:copiedToClipboard') || "Logs copied to clipboard!");
+    }
+  };
 
   const getProjectStats = async (project_uuid) => {
     try {
@@ -62,10 +69,8 @@ const ProjectDetailView = ({ project }) => {
         return { total: 0, draft: 0, finalized: 0, sent: 0, archived: 0, unseen: 0 };
       }
 
-      // Escape single quotes in username to prevent SQL injection vulnerabilities
       const sanitizedUser = current_user.replace(/'/g, "''");
 
-      // Inject the string directly into INSTR to keep select parameters clean
       const select_str = `
                       COUNT(*) as total,
                       SUM(CASE WHEN status = 'finalized' THEN 1 ELSE 0 END) as finalized,
@@ -81,8 +86,6 @@ const ProjectDetailView = ({ project }) => {
         [project_uuid],
         select_str
       );
-
-      //console.log("Project Stats Result:", result);
 
       return {
         total: result[0]?.total || 0,
@@ -105,14 +108,6 @@ const ProjectDetailView = ({ project }) => {
     setCurrentProjetStats(pStats);
     const fDefn = await getProjectFormDefinitions(project);
     setFormDefns(fDefn);
-  };
-
-  const handleUnsubscribe = async (project) => {
-    const response = await api.post('/api/v1/project/unsubscribe', { "code": project.code });
-    update('projects', { active: 0 }, 'id = ?', [project.id])
-    setCurrentData(null);
-    setCurrentProject(null);
-    alert(response.data.message)
   };
 
   useEffect(() => {
@@ -162,7 +157,7 @@ const ProjectDetailView = ({ project }) => {
               left: 0,
               right: 0,
               width: '100%',
-              height: '50%',
+              height: '60%',
             }}
             resizeMode="contain"
           />
@@ -175,63 +170,80 @@ const ProjectDetailView = ({ project }) => {
               left: 0,
               right: 0,
               width: '100%',
-              height: '50%',
+              height: '60%',
             }}
             resizeMode="contain"
           />
         )
       }
       <AppHeader title={currentProject ? currentProject?.title : t('projects:myProjects')} searchEnabled={false} rightActions={goToSettings} />
-      {/* <Text style={[styles.hint, { fontWeight: 'bold', paddingHorizontal: 12, paddingBottom: 8, marginTop: -8 }]}>
-        {currentProject?.code} | {(userData?.groups || []).join(', ')}
-      </Text> */}
 
-      {/* Main Container - Fills remaining space */}
+      {/* Main Container */}
       <View style={{ flex: 1, paddingHorizontal: 16 }}>
 
-
-        <View style={[{ flex: 2, }]}>
+        <View style={{ flex: 4, justifyContent: 'flex-end' }}>
+          {syncLogs && (
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'flex-start',
+              }}
+            >
+              <TouchableOpacity
+                onPress={() => showLogsModal(true)}
+                style={[styles.inputBase,{
+                  paddingVertical: 10,
+                  paddingHorizontal: 20,
+                  borderRadius:12,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  backgroundColor: theme.colors.primary,
+                  borderColor: theme.colors.primary,
+                }]}
+              >
+                <MaterialCommunityIcons
+                  name="text-box-search-outline"
+                  size={16}
+                  color="white"
+                />
+                <Text
+                  style={{
+                    color: "white",
+                    fontSize: 13,
+                    fontWeight: '600',
+                  }}
+                >
+                  {t('projects:showSyncLogs')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
-
-        {/* Grid Section (flex: 4) */}
-        <View style={{ flex: 4 }}>
-
+        {/* Grid Section */}
+        <View style={{ flex: 5, marginTop: 10 }}>
 
           <View style={[localStyles.gridRow]}>
-
             <TouchableOpacity
               onPress={() => {
-                setFilter({
-                  key: 'status',
-                  value: 'All',
-                  label: 'All'
-                });
+                setFilter({ key: 'status', value: 'All', label: 'All' });
                 router.push('(app)/Main/FormDataList')
               }}
               style={[styles.card, localStyles.gridBox, { backgroundColor: `${theme.colors.inputBackground}D9` }]}
             >
               <View style={localStyles.iconBadgeRow}>
                 <MaterialCommunityIcons name="file-eye-outline" size={64} color={theme.colors.primary} />
-
                 <View style={[localStyles.badge, { backgroundColor: theme.colors.primary }]}>
-                  <Text style={localStyles.badgeText}>
-                    {curProjectStats.total || 0}
-                  </Text>
+                  <Text style={localStyles.badgeText}>{curProjectStats.total || 0}</Text>
                 </View>
               </View>
-
-
               <Text style={styles.tiny}>{t('common:total')}</Text>
             </TouchableOpacity>
 
-
             <TouchableOpacity
               onPress={() => {
-                setFilter({
-                  key: 'has_seen',
-                  value: 0,
-                  label: 'New'
-                });; router.push('(app)/Main/FormDataList')
+                setFilter({ key: 'has_seen', value: 0, label: 'New' });
+                router.push('(app)/Main/FormDataList')
               }}
               style={[styles.card, localStyles.gridBox, { backgroundColor: `${theme.colors.inputBackground}D9` }]}
             >
@@ -239,24 +251,20 @@ const ProjectDetailView = ({ project }) => {
                 <MaterialCommunityIcons name="file-eye-outline" size={64} color={curProjectStats.unseen ? '#78A083' : theme.colors.primary} />
                 {curProjectStats.unseen && (
                   <View style={[localStyles.badge, { backgroundColor: '#78A083' }]}>
-                    <Text style={localStyles.badgeText}>
-                      {curProjectStats.unseen || 0}
-                    </Text>
+                    <Text style={localStyles.badgeText}>{curProjectStats.unseen || 0}</Text>
                   </View>
                 )}
               </View>
               <Text style={[styles.tiny, { color: curProjectStats.unseen ? '#78A083' : theme.colors.primary }]}>{t('common:new')}</Text>
             </TouchableOpacity>
-
           </View>
-          <View style={[localStyles.gridRow]}>
 
+          <View style={[localStyles.gridRow]}>
             <TouchableOpacity
               onPress={async () => {
                 setSyncLogs('Starting form sync...');
                 setSyncingStates(prev => ({ ...prev, ['forms']: true }));
                 setIsSyncing(true);
-
                 try {
                   await getProjectForms(currentProject?.project, appendLog);
                   appendLog('Syncing reactions...');
@@ -283,7 +291,6 @@ const ProjectDetailView = ({ project }) => {
               ) : (
                 <>
                   <MaterialCommunityIcons name="file-download-outline" size={64} color={theme.colors.primary} />
-
                   <Text style={[styles.tiny, { textAlign: 'center' }]}>{t('projects:fetchForms')}</Text>
                 </>
               )}
@@ -293,23 +300,17 @@ const ProjectDetailView = ({ project }) => {
               onPress={() => router.push('/Form/ProjectForms')}
               style={[styles.card, localStyles.gridBox]}
             >
-              {/* Row Container to align Icon and Badge at the baseline */}
               <View style={localStyles.iconBadgeRow}>
                 <MaterialCommunityIcons name="file-document-plus-outline" size={64} color={theme.colors.primary} />
-
-                {/* Form Count Badge */}
                 <View style={[localStyles.badge, { backgroundColor: theme.colors.primary }]}>
-                  <Text style={localStyles.badgeText}>
-                    {formDefns.length || 0}
-                  </Text>
+                  <Text style={localStyles.badgeText}>{formDefns.length || 0}</Text>
                 </View>
               </View>
-
               <Text style={[styles.tiny, { textAlign: 'center' }]}>{t('common:forms')}</Text>
             </TouchableOpacity>
           </View>
-          <View style={[localStyles.gridRow]}>
 
+          <View style={[localStyles.gridRow]}>
             <TouchableOpacity
               onPress={async () => {
                 setSyncLogs('Starting form sync...');
@@ -318,7 +319,6 @@ const ProjectDetailView = ({ project }) => {
                 try {
                   appendLog('Syncing Project Data.');
                   await getProjectData(currentProject?.project, appendLog);
-                  //await getProjectData(currentProject?.project, appendLog, { incrementalSync: false, forceFullSync: true });
                   appendLog('Syncing workflow data...');
                   await syncWorkflowData(currentProject?.project, appendLog);
                   appendLog('Project data fetched.');
@@ -333,10 +333,10 @@ const ProjectDetailView = ({ project }) => {
                   setSyncingStates(prev => ({ ...prev, ['data']: false }));
                 }
               }}
-
               onLongPress={async () => {
                 setSyncLogs('Starting full data sync...');
                 setIsSyncing(true);
+                setSyncingStates(prev => ({ ...prev, ['data']: true }));
                 try {
                   appendLog('Syncing Project Data.');
                   await getProjectData(currentProject?.project, appendLog, { incrementalSync: false, forceFullSync: true });
@@ -396,106 +396,118 @@ const ProjectDetailView = ({ project }) => {
                 <>
                   <View style={localStyles.iconBadgeRow}>
                     <MaterialCommunityIcons name="receipt-send-outline" size={64} color={theme.colors.primary} />
-
-                    {/* Form Count Badge */}
                     <View style={[localStyles.badge, { backgroundColor: theme.colors.primary }]}>
-                      <Text style={localStyles.badgeText}>
-                        {curProjectStats.finalized || 0}
-                      </Text>
+                      <Text style={localStyles.badgeText}>{curProjectStats.finalized || 0}</Text>
                     </View>
                   </View>
                   <Text style={[styles.tiny, { textAlign: 'center' }]}>{t('data:bulkSubmit')}</Text>
                 </>
               )}
             </TouchableOpacity>
-
           </View>
 
         </View>
-
       </View>
 
-      {/* Unsubscribe Action - Fixed at bottom */}
-      <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingBottom: 10 }}>
-        <TouchableOpacity
-          style={[styles.inputBase, { flexDirection: 'row', flex: 1, borderColor: theme.colors.primary, borderWidth: 2, }]}
-        // onPress={() => {
+      {/* Bottom Actions Container */}
+      <View style={{ paddingHorizontal: 16, paddingBottom: 10, gap: 10 }}>
 
-        //   Alert.alert(
-        //     t('projects:unsubscribe'),
-        //     t('projects:unsubscribeConfirmation'),
-        //     [
-        //       { text: t('common:no'), style: 'cancel' },
-        //       { text: t('common:yes'), style: 'destructive', onPress: () => handleUnsubscribe(currentProject) }
-        //     ]
-        //   );
-        // }}
-        >
-          <MaterialCommunityIcons name="account-group-outline" size={20} color={theme.colors.error} />
-          <TouchableOpacity
-            onLongPress={() => {
-              const groupsList = (userData?.groups || []);
-              if (groupsList.length > 0) {
-                Alert.alert(
-                  "User Groups",
-                  groupsList.join('\n'),
-                  [{ text: "OK" }]
-                );
-              }
-            }}
-            activeOpacity={0.7}
-          >
-            <Text
-              style={[styles.label, { color: theme.colors.error, marginLeft: 8, marginBottom: 0 }]}
-              numberOfLines={1}
-              ellipsizeMode="tail"
+        {/* Sync logs pill button, centered, independent of width */}
+
+
+        {/* Group list & Switch Project Row */}
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <TouchableOpacity style={[styles.inputBase, { flexDirection: 'row', flex: 1, borderColor: theme.colors.primary, borderWidth: 2 }]}>
+            <MaterialCommunityIcons name="account-group-outline" size={20} color={theme.colors.error} />
+            <TouchableOpacity
+              onLongPress={() => {
+                const groupsList = (userData?.groups || []);
+                if (groupsList.length > 0) {
+                  Alert.alert("User Groups", groupsList.join('\n'), [{ text: "OK" }]);
+                }
+              }}
+              activeOpacity={0.7}
             >
-              {(userData?.groups || []).join(', ')}
-            </Text>
+              <Text
+                style={[styles.label, { color: theme.colors.error, marginLeft: 8, marginBottom: 0 }]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {(userData?.groups || []).join(', ')}
+              </Text>
+            </TouchableOpacity>
           </TouchableOpacity>
-        </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.inputBase, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]}
-          onPress={() => {
-            setCurrentData(null);
-            setCurrentProject(null);
-            setFilter({
-              key: 'status',
-              value: 'All',
-              label: 'All'
-            });
-          }}
-        >
-          <Octicons name="arrow-switch" size={24} color="white" />
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.inputBase, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]}
+            onPress={() => {
+              setCurrentData(null);
+              setCurrentProject(null);
+              setFilter({ key: 'status', value: 'All', label: 'All' });
+            }}
+          >
+            <Octicons name="arrow-switch" size={24} color="white" />
+          </TouchableOpacity>
+        </View>
       </View>
 
+      {/* Logs Modal View */}
+      <Modal
+        visible={logsModalVisible}
+        animationType="slide"
+        onRequestClose={handleCloseModal}
+      >
+        <View style={{ flex: 1, padding: 20, backgroundColor: theme.colors.background }}>
+          <Text style={{ color: theme.colors.text, fontSize: 20, fontWeight: 'bold', marginBottom: 15 }}>
+            {t('projects:syncLogs')}
+          </Text>
+
+          <ScrollView style={{ flex: 1, backgroundColor: theme.colors.inputBackground, padding: 12, borderRadius: 8, marginBottom: 20 }}>
+            <Text style={{ color: theme.colors.text, fontSize: 14 }}>
+              {syncLogs}
+            </Text>
+          </ScrollView>
+
+          {/* Modal Buttons */}
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <TouchableOpacity
+              onPress={copyToClipboard}
+              style={[styles.inputBase, { flex: 1, backgroundColor: theme.colors.primary, borderColor: theme.colors.primary, flexDirection: 'row', gap: 8, justifyContent: 'center' }]}
+            >
+              <MaterialCommunityIcons name="content-copy" size={20} color="white" />
+              <Text style={{ color: 'white', fontWeight: 'bold' }}>{t('common:copy') || "Copy Logs"}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={handleCloseModal}
+              style={[styles.inputBase, { flex: 1, backgroundColor: 'transparent', borderColor: theme.colors.text, flexDirection: 'row', gap: 8, borderWidth: 1, justifyContent: 'center' }]}
+            >
+              <Ionicons name="close-circle-outline" size={20} color={theme.colors.text} />
+              <Text style={{ color: theme.colors.text, fontWeight: 'bold' }}>{t('common:close') || "Close"}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
     </View >
   )
 }
 
 const localStyles = StyleSheet.create({
-
-
-
   gridBox: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   gridRow: {
     flexDirection: 'row',
     gap: 10,
     justifyContent: 'space-between',
-    flex: 1
+    flex: 1,
   },
-
   iconBadgeRow: {
     flexDirection: 'row',
-    alignItems: 'baseline', // Forces the bottom of the badge to line up with the bottom of the icon
+    alignItems: 'baseline',
   },
   badge: {
     borderRadius: 10,
@@ -504,7 +516,7 @@ const localStyles = StyleSheet.create({
     paddingHorizontal: 4,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 4,          // Gives a little breathing room between the icon and the badge
+    marginLeft: 4,
   },
   badgeText: {
     fontSize: 10,
@@ -512,8 +524,10 @@ const localStyles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
   },
+  loaderContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  }
 });
 
-
-export default ProjectDetailView
-
+export default ProjectDetailView;

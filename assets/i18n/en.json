@@ -159,7 +159,8 @@
     "syncSurveys": "Sync Surveys",
     "syncForms": "Sync",
     "fetchForms": "Fetch Forms",
-    "fetchData": "Fetch Data"
+    "fetchData": "Fetch Data",
+    "showSyncLogs": "Show Logs"
   },
 
   "layout": {

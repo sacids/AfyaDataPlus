@@ -91,6 +91,7 @@ const DiseaseKnowledgeScreen = () => {
 
         return (
             <TouchableOpacity
+                // Removed explicit key attribute here, FlatList handles item keying via keyExtractor
                 style={[styles.card, { flexDirection: 'column', padding: 10, paddingLeft: 10 }]}
                 onPress={() => navigateToDetail(item)}
             >
@@ -149,7 +150,8 @@ const DiseaseKnowledgeScreen = () => {
                 <FlatList
                     data={filteredData}
                     renderItem={renderDiseaseItem}
-                    keyExtractor={(item) => item.id}
+                    // Falls back cleanly to array index appended to ID if records contain duplicate or undefined/null IDs
+                    keyExtractor={(item, index) => item.id ? `disease-${item.id}-${index}` : `disease-idx-${index}`}
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={localStyles.listContent}
                     style={localStyles.list}

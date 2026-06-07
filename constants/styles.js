@@ -28,7 +28,7 @@ export const getStyles = (theme) =>
       paddingVertical: 10,
       // borderBottomWidth: 1,
       // borderBottomColor: theme.colors.inputBorder,
-      backgroundColor: theme.colors.background,
+      backgroundColor: 'transparent', // Let the background color of the page shine through
     },
     scrollContent: {
       padding: 16,

@@ -1025,6 +1025,7 @@ export const syncDiseaseKnowledge = async (projectId, setStatus, full_sync = fal
                 for (const record of results) {
                     // Normalize backend model payload to map perfectly into database columns
                     // Handles fallbacks cleanly if title/photo fields match your snippet formats
+                    //console.log('inserting record', JSON.stringify(record, null, 5))
                     await insert('tb_disease_knowledge', {
                         id: record.id,
                         project_id: record.project || projectId,
