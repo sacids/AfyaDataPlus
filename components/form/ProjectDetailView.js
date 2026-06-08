@@ -176,49 +176,94 @@ const ProjectDetailView = ({ project }) => {
           />
         )
       }
-      <AppHeader title={currentProject ? currentProject?.title : t('projects:myProjects')} searchEnabled={false} rightActions={goToSettings} />
+      <AppHeader title={`${currentProject ? currentProject?.instance_url?.replace(/^https?:\/\//, '').replace(/\/$/, '') : ''}`} searchEnabled={false} rightActions={goToSettings} />
 
       {/* Main Container */}
       <View style={{ flex: 1, paddingHorizontal: 16 }}>
 
-        <View style={{ flex: 4, justifyContent: 'flex-end' }}>
-          {syncLogs && (
-            <View
+        <View style={{ flex: 4, justifyContent: 'center', alignItems: 'flex-start' }}>
+          {/* The container below is now perfectly centered vertically, and pinned to the left */}
+          <View
+            style={[
+              {
+                padding: 16,
+                width: '80%',
+                gap: 10,
+                borderTopLeftRadius: 26,
+                borderBottomRightRadius: 26,
+                backgroundColor: theme.colors.primary + 'E1',
+                //borderColor: darken(0.1, theme.colors.primary),
+                borderColor: theme.colors.primary,
+                borderWidth: 1,
+              },
+            ]}
+          >
+            {/* Top Section: Main Project Detail Trigger Link */}
+            <TouchableOpacity
+              onPress={() => router.push('/(app)/Project/Detail')}
               style={{
                 flexDirection: 'row',
-                justifyContent: 'flex-start',
+                alignItems: 'center',
+                gap: 10,
+                width: '100%',
               }}
             >
-              <TouchableOpacity
-                onPress={() => showLogsModal(true)}
-                style={[styles.inputBase,{
-                  paddingVertical: 10,
-                  paddingHorizontal: 20,
-                  borderRadius:12,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 6,
-                  backgroundColor: theme.colors.primary,
-                  borderColor: theme.colors.primary,
-                }]}
-              >
-                <MaterialCommunityIcons
-                  name="text-box-search-outline"
-                  size={16}
-                  color="white"
-                />
+              <Image
+                source={afyadatalogo}
+                style={[localStyles.logoImage, { backgroundColor: theme.colors.background }]}
+                resizeMode="contain"
+              />
+              <View style={{ flex: 1 }}>
                 <Text
                   style={{
-                    color: "white",
-                    fontSize: 13,
+                    color: 'white',
+                    fontSize: 20,
                     fontWeight: '600',
                   }}
                 >
-                  {t('projects:showSyncLogs')}
+                  {currentProject?.title || 'Project Details'}
                 </Text>
-              </TouchableOpacity>
-            </View>
-          )}
+
+                {currentProject?.instance_url && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <MaterialCommunityIcons name="earth" size={14} color="white" />
+                    <Text style={[styles.hint, { color: 'white' }]}>{currentProject.instance_url.replace(/^https?:\/\//, '').replace(/\/$/, '')}</Text>
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+
+            {/* Bottom Section: Show Logs aligned perfectly to the bottom-right */}
+            {syncLogs && (
+              <View style={{ width: '100%', alignItems: 'flex-end' }}>
+                <TouchableOpacity
+                  onPress={() => showLogsModal(true)}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 6,
+                    paddingVertical: 2,
+                    paddingHorizontal: 4,
+                  }}
+                >
+                  <MaterialCommunityIcons
+                    name="text-box-search-outline"
+                    size={16}
+                    color="white"
+                  />
+                  <Text
+                    style={{
+                      color: 'white',
+                      fontSize: 13,
+                      fontWeight: '600',
+                    }}
+                  >
+                    {t('projects:showSyncLogs')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
         </View>
         {/* Grid Section */}
         <View style={{ flex: 5, marginTop: 10 }}>
@@ -527,7 +572,14 @@ const localStyles = StyleSheet.create({
   loaderContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-  }
+  },
+
+  logoImage: {
+    width: '20',
+    height: 20,
+    resizeMode: 'cover',
+    borderRadius: 10,
+  },
 });
 
 export default ProjectDetailView;

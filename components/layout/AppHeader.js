@@ -45,10 +45,10 @@ export const AppHeader = ({
             {backLink ? (
                 <TouchableOpacity style={[{ flexDirection: 'row' }]} onPress={backLink}>
                     <MaterialIcons name="keyboard-arrow-left" size={24} color={theme.colors.pageTitle} />
-                    <Text style={styles.pageTitle} numberOfLines={1}>{title}</Text>
+                    <Text style={styles.pageTitle} numberOfLines={1} ellipsizeMode='...'>{title}</Text>
                 </TouchableOpacity>
             ): (
-                <Text style={styles.pageTitle} numberOfLines={1}>{title}</Text>
+                <Text style={styles.pageTitle} numberOfLines={1} ellipsizeMode='...'>{title}</Text>
             )}
             <View style={styles.headerActions}>
                 {/* Only render search icon if searchEnabled is true */}
