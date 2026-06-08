@@ -49,7 +49,7 @@
 import { createContext, useContext, useMemo } from 'react';
 import { useThemeStore } from '../store/ThemeStore';
 //import { useProjectStore } from '../store/projectStore';
-import useProjectStore from '../store/projectStore'
+import useProjectStore from '../store/projectStore';
 
 const ThemeContext = createContext();
 
@@ -57,8 +57,9 @@ export const ThemeProvider = ({ children }) => {
   const { mode, systemMode } = useThemeStore();
 
   const selectedProject = useProjectStore(
-    (state) => state.selectedProject
+    (state) => state.currentProject
   );
+
 
   const theme = useMemo(() => {
     const isDark =

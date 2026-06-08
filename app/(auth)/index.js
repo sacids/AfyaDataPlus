@@ -112,7 +112,7 @@ const OnboardingScreen = () => {
   );
 
   const SkipButton = (props) => (
-    <TouchableOpacity {...props} style={{ marginHorizontal: 20 }}>
+    <TouchableOpacity {...props} style={{ marginHorizontal: 20 }} onPress={() => navigateToAuth('/(auth)/login')}>
       <Text style={{ color: colors.primary, fontSize: 16 }}>{t('common:skip')}</Text>
     </TouchableOpacity>
   );

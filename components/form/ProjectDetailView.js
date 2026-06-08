@@ -20,6 +20,7 @@ const ProjectDetailView = ({ project }) => {
   const setFilter = useFilterStore((state) => state.setFilter);
   const { t } = useTranslation();
   const theme = useTheme();
+
   const styles = getStyles(theme);
   const { user } = useAuthStore()
 
@@ -462,8 +463,8 @@ const ProjectDetailView = ({ project }) => {
 
         {/* Group list & Switch Project Row */}
         <View style={{ flexDirection: 'row', gap: 10 }}>
-          <TouchableOpacity style={[styles.inputBase, { flexDirection: 'row', flex: 1, padding:0, paddingLeft:5, justifyContent: 'flex-start', alignItems: 'center'}]}>
-            <EvilIcons name="user" size={35} color={theme.colors.primary}  />
+          <TouchableOpacity style={[styles.inputBase, { flexDirection: 'row', flex: 1, padding: 0, paddingLeft: 5, justifyContent: 'flex-start', alignItems: 'center' }]}>
+            <EvilIcons name="user" size={35} color={theme.colors.primary} />
             <TouchableOpacity
               onLongPress={() => {
                 const groupsList = (userData?.groups || []);
