@@ -289,19 +289,24 @@ const ProjectDetailView = ({ project }) => {
             <TouchableOpacity
               onPress={() => {
                 setFilter({ key: 'has_seen', value: 0, label: 'New' });
-                router.push('(app)/Main/FormDataList')
+                router.push('/(app)/Main/FormDataList');
               }}
-              style={[styles.card, localStyles.gridBox, { backgroundColor: `${theme.colors.inputBackground}D9` }]}
-            >
-              <View style={localStyles.iconBadgeRow}>
-                <MaterialCommunityIcons name="file-eye-outline" size={64} color={curProjectStats.unseen ? '#78A083' : theme.colors.primary} />
-                {curProjectStats.unseen && (
+              style={[styles.card, localStyles.gridBox, { backgroundColor: theme.colors.inputBackground }]}
+            ><View style={localStyles.iconBadgeRow}>
+                <MaterialCommunityIcons
+                  name="file-eye-outline"
+                  size={64}
+                  color={curProjectStats?.unseen ? '#78A083' : theme.colors.primary}
+                />
+                {curProjectStats?.unseen ? (
                   <View style={[localStyles.badge, { backgroundColor: '#78A083' }]}>
-                    <Text style={localStyles.badgeText}>{curProjectStats.unseen || 0}</Text>
+                    <Text style={localStyles.badgeText}>{curProjectStats.unseen}</Text>
                   </View>
-                )}
+                ) : null}
               </View>
-              <Text style={[styles.tiny, { color: curProjectStats.unseen ? '#78A083' : theme.colors.primary }]}>{t('common:new')}</Text>
+              <Text style={[styles.tiny, { color: curProjectStats?.unseen ? '#78A083' : theme.colors.primary }]}>
+                {t('common:new')}
+              </Text>
             </TouchableOpacity>
           </View>
 
