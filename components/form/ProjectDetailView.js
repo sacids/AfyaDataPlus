@@ -192,7 +192,7 @@ const ProjectDetailView = ({ project }) => {
                 gap: 10,
                 borderTopLeftRadius: 26,
                 borderBottomRightRadius: 26,
-                backgroundColor: theme.colors.primary + 'E1',
+                backgroundColor: theme.colors.primary + 'D9',
                 //borderColor: darken(0.1, theme.colors.primary),
                 borderColor: theme.colors.primary,
                 borderWidth: 1,
@@ -275,7 +275,7 @@ const ProjectDetailView = ({ project }) => {
                 setFilter({ key: 'status', value: 'All', label: 'All' });
                 router.push('(app)/Main/FormDataList')
               }}
-              style={[styles.card, localStyles.gridBox, { backgroundColor: `${theme.colors.inputBackground}D9` }]}
+              style={[styles.card, localStyles.gridBox, { backgroundColor: theme.colors.inputBackground + 'ED' }]}
             >
               <View style={localStyles.iconBadgeRow}>
                 <MaterialCommunityIcons name="file-eye-outline" size={64} color={theme.colors.primary} />
@@ -291,7 +291,7 @@ const ProjectDetailView = ({ project }) => {
                 setFilter({ key: 'has_seen', value: 0, label: 'New' });
                 router.push('/(app)/Main/FormDataList');
               }}
-              style={[styles.card, localStyles.gridBox, { backgroundColor: theme.colors.inputBackground }]}
+              style={[styles.card, localStyles.gridBox, { backgroundColor: theme.colors.inputBackground + 'ED' }]}
             ><View style={localStyles.iconBadgeRow}>
                 <MaterialCommunityIcons
                   name="file-eye-outline"
@@ -310,7 +310,7 @@ const ProjectDetailView = ({ project }) => {
             </TouchableOpacity>
           </View>
 
-          <View style={[localStyles.gridRow]}>
+          <View style={[localStyles.gridRow,]}>
             <TouchableOpacity
               onPress={async () => {
                 setSyncLogs('Starting form sync...');
@@ -333,7 +333,7 @@ const ProjectDetailView = ({ project }) => {
                 }
               }}
               disabled={syncingStates.forms}
-              style={[styles.card, localStyles.gridBox]}
+              style={[styles.card, localStyles.gridBox, { backgroundColor: theme.colors.inputBackground + 'ED' }]}
             >
               {syncingStates.forms ? (
                 <View style={localStyles.loaderContainer}>
@@ -349,7 +349,7 @@ const ProjectDetailView = ({ project }) => {
 
             <TouchableOpacity
               onPress={() => router.push('/Form/ProjectForms')}
-              style={[styles.card, localStyles.gridBox]}
+              style={[styles.card, localStyles.gridBox, { backgroundColor: theme.colors.inputBackground + 'ED' }]}
             >
               <View style={localStyles.iconBadgeRow}>
                 <MaterialCommunityIcons name="file-document-plus-outline" size={64} color={theme.colors.primary} />
@@ -404,7 +404,7 @@ const ProjectDetailView = ({ project }) => {
                 }
               }}
               disabled={syncingStates.data}
-              style={[styles.card, localStyles.gridBox]}
+              style={[styles.card, localStyles.gridBox, { backgroundColor: theme.colors.inputBackground + 'ED' }]}
             >
               {syncingStates.data ? (
                 <View style={localStyles.loaderContainer}>
@@ -437,7 +437,7 @@ const ProjectDetailView = ({ project }) => {
                 }
               }}
               disabled={syncingStates.submit}
-              style={[styles.card, localStyles.gridBox]}
+              style={[styles.card, localStyles.gridBox, { backgroundColor: theme.colors.inputBackground + 'ED' }]}
             >
               {syncingStates.submit ? (
                 <View style={localStyles.loaderContainer}>
@@ -468,7 +468,7 @@ const ProjectDetailView = ({ project }) => {
 
         {/* Group list & Switch Project Row */}
         <View style={{ flexDirection: 'row', gap: 10 }}>
-          <TouchableOpacity style={[styles.inputBase, { flexDirection: 'row', flex: 1, padding: 0, paddingLeft: 5, justifyContent: 'flex-start', alignItems: 'center' }]}>
+          <TouchableOpacity style={[styles.inputBase, { flexDirection: 'row', flex: 1, padding: 0, paddingLeft: 5, justifyContent: 'flex-start', alignItems: 'center' },{ backgroundColor: theme.colors.inputBackground + 'ED' }]}>
             <EvilIcons name="user" size={35} color={theme.colors.primary} />
             <TouchableOpacity
               onLongPress={() => {
@@ -499,7 +499,7 @@ const ProjectDetailView = ({ project }) => {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.inputBase, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }]}
+            style={[styles.inputBase, { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary + 'ED' }]}
             onPress={() => {
               setCurrentData(null);
               setCurrentProject(null);
