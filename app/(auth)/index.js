@@ -56,7 +56,7 @@ const OnboardingScreen = () => {
   const [availableLanguages, setAvailableLanguages] = useState([]);
   const [step, setStep] = useState('language');
   const mounted = useRef(true);
-
+  const onboardingRef = useRef(null);
   // Memoize styles to ensure object identity stays the same between renders
   const themedStyles = useMemo(() => createStyles(colors, insets), [colors, insets]);
 
@@ -112,7 +112,10 @@ const OnboardingScreen = () => {
   );
 
   const SkipButton = (props) => (
-    <TouchableOpacity {...props} style={{ marginHorizontal: 20 }} onPress={() => navigateToAuth('/(auth)/login')}>
+    <TouchableOpacity {...props}
+      style={{ marginHorizontal: 20 }}
+      onPress={() => onboardingRef.current?.goPage(3, true)}
+    >
       <Text style={{ color: colors.primary, fontSize: 16 }}>{t('common:skip')}</Text>
     </TouchableOpacity>
   );
@@ -128,9 +131,9 @@ const OnboardingScreen = () => {
       DotComponent={DotComponent}
       SkipButtonComponent={SkipButton}
       DoneButtonComponent={DoneButton}
-      // Fixed: Pass insets to bottomBarHeight to avoid internal SafeAreaView issues
+      ref={onboardingRef}
       bottomBarHeight={60 + insets.bottom}
-      onSkip={() => setStep('walkthrough')}
+      onSkip={() => onboardingRef.current?.goPage(3, true)}
       onDone={() => navigateToAuth('/(auth)/login')}
       pages={[
         {

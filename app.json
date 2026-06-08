@@ -25,7 +25,7 @@
         }
       },
       "package": "tz.co.kamili.afyadata",
-      "versionCode": 27
+      "versionCode": 28
     },
     "web": {
       "bundler": "metro",
