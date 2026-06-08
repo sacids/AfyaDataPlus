@@ -163,7 +163,9 @@
     "syncSurveys": "Synchroniser les enquêtes",
     "syncForms": "Synchroniser les formulaires",
     "fetchForms": "Récupérer les formulaires",
-    "fetchData": "Récupérer les données"
+    "fetchData": "Récupérer les données",
+    "addData": "Saisir données",
+    "submitData": "Envoyer données"
   },
   
   "forms": {

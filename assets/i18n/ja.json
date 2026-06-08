@@ -163,7 +163,9 @@
     "syncSurveys": "調査を同期",
     "syncForms": "フォームを同期",
     "fetchForms": "フォームを取得",
-    "fetchData": "データを取得"
+    "fetchData": "データを取得",
+    "addData": "データを追加",
+    "submitData": "データを送信"
   },
   
   "forms": {

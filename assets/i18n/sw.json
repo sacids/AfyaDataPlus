@@ -163,7 +163,9 @@
     "syncSurveys": "Sawazisha Fomu",
     "syncForms": "Sawazisha Fomu",
     "fetchForms": "Pakua Fomu",
-    "fetchData": "Pakua Data"
+    "fetchData": "Pakua Data",
+    "addData": "Weka Data",
+    "submitData": "Tuma Data"
   },
   
   "forms": {
@@ -172,7 +174,7 @@
     "formData": "Data ya Fomu",
     "saveDraft": "Hifadhi Rasimu",
     "finalize": "Kamilisha",
-    "submitForm": "Wasilisha Fomu",
+    "submitForm": "Tuma Fomu",
     "recordTitle": "Kichwa cha Rekodi",
     "enterTitle": "Ingiza kichwa cha rekodi...",
     "finishRecord": "Maliza Rekodi",

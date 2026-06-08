@@ -1,5 +1,4 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 // Helper function to turn camelCase or snake_case keys into readable titles
 // e.g., "globalUsername" or "global_username" -> "Global Username"
@@ -17,7 +16,10 @@ const formatLabel = (key, translationFn) => {
         .replace(/^\w/, (c) => c.toUpperCase()); // Capitalize first letter
 };
 
+
+
 const UserProfileCard = ({ user, globalStyles, localStyles, t }) => {
+
     // Define keys you strictly want to exclude from the UI
     const excludedKeys = ['password', 'token', 'id', 'secret', 'deviceId', 'original_uuid'];
 
@@ -36,13 +38,13 @@ const UserProfileCard = ({ user, globalStyles, localStyles, t }) => {
             <Text style={[globalStyles.sectionTitle, styles.sectionTitleSpacing]}>
                 {t('settings:userProfile')}
             </Text>
-            
+
             {Object.entries(user)
                 .filter(([key]) => !excludedKeys.includes(key.toLowerCase()))
                 .map(([key, value]) => {
                     // Safe string conversion for rendering text nodes safely
                     let displayValue = 'N/A';
-                    
+
                     if (value !== null && value !== undefined) {
                         if (typeof value === 'object') {
                             displayValue = Array.isArray(value) ? value.join(', ') : JSON.stringify(value);

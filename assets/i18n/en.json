@@ -160,7 +160,9 @@
     "syncForms": "Sync",
     "fetchForms": "Fetch Forms",
     "fetchData": "Fetch Data",
-    "showSyncLogs": "Show Logs"
+    "showSyncLogs": "Show Logs",
+    "addData": "Add Data",
+    "submitData": "Submit Data"
   },
 
   "layout": {

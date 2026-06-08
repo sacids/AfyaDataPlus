@@ -1,4 +1,4 @@
-import { Ionicons, MaterialCommunityIcons, Octicons } from '@expo/vector-icons'
+import { EvilIcons, Ionicons, MaterialCommunityIcons, Octicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -351,7 +351,7 @@ const ProjectDetailView = ({ project }) => {
                   <Text style={localStyles.badgeText}>{formDefns.length || 0}</Text>
                 </View>
               </View>
-              <Text style={[styles.tiny, { textAlign: 'center' }]}>{t('common:forms')}</Text>
+              <Text style={[styles.tiny, { textAlign: 'center' }]}>{t('projects:addData')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -445,7 +445,7 @@ const ProjectDetailView = ({ project }) => {
                       <Text style={localStyles.badgeText}>{curProjectStats.finalized || 0}</Text>
                     </View>
                   </View>
-                  <Text style={[styles.tiny, { textAlign: 'center' }]}>{t('data:bulkSubmit')}</Text>
+                  <Text style={[styles.tiny, { textAlign: 'center' }]}>{t('projects:submitData')}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -462,8 +462,8 @@ const ProjectDetailView = ({ project }) => {
 
         {/* Group list & Switch Project Row */}
         <View style={{ flexDirection: 'row', gap: 10 }}>
-          <TouchableOpacity style={[styles.inputBase, { flexDirection: 'row', flex: 1, borderColor: theme.colors.primary, borderWidth: 2 }]}>
-            <MaterialCommunityIcons name="account-group-outline" size={20} color={theme.colors.error} />
+          <TouchableOpacity style={[styles.inputBase, { flexDirection: 'row', flex: 1, padding:0, paddingLeft:5, justifyContent: 'flex-start', alignItems: 'center'}]}>
+            <EvilIcons name="user" size={35} color={theme.colors.primary}  />
             <TouchableOpacity
               onLongPress={() => {
                 const groupsList = (userData?.groups || []);
@@ -473,13 +473,22 @@ const ProjectDetailView = ({ project }) => {
               }}
               activeOpacity={0.7}
             >
-              <Text
-                style={[styles.label, { color: theme.colors.error, marginLeft: 8, marginBottom: 0 }]}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {(userData?.groups || []).join(', ')}
-              </Text>
+              <View style={{ paddingHorizontal: 5 }}>
+                <Text
+                  style={[styles.tiny, { color: theme.colors.secText }]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {user?.fullName || []}
+                </Text>
+                <Text
+                  style={[styles.tiny, { color: theme.colors.primary }]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  GROUPS: {(userData?.groups || []).join(', ').toUpperCase().replace(/[_-]/g, ' ')}
+                </Text>
+              </View>
             </TouchableOpacity>
           </TouchableOpacity>
 
