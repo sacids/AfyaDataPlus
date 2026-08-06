@@ -12,7 +12,7 @@ import { ThemeProvider, useTheme } from '../context/ThemeContext';
 import i18n from '../i18n/index';
 import LanguageManager from '../i18n/languageManager';
 import { useAuthStore } from '../store/authStore';
-import { createTables } from '../utils/database';
+import { initializeDatabase } from '../utils/database';
 
 
 Sentry.init({
@@ -68,13 +68,14 @@ export default function RootLayout() {
 
   const { user, isLoading, setLoadingComplete } = useAuthStore();
 
-
+  
   // 1. System initialization
   useEffect(() => {
 
     const prepare = async () => {
       try {
-        await createTables();
+        //await createTables(); 
+        await initializeDatabase(); 
         await LanguageManager.initializeDirectories();
         setTimeout(() => {
           useAuthStore.getState().finishLoading();

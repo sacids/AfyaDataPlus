@@ -1,4 +1,5 @@
 import * as SQLite from 'expo-sqlite';
+import { runMigrations, rollbackMigrations, rollbackTo } from "./migrations/migrationRunner";
 
 // Open database connection
 export const openDatabase = () => {
@@ -6,6 +7,17 @@ export const openDatabase = () => {
 };
 
 export const db = openDatabase();
+
+export const initializeDatabase = async () => {
+    try {
+        await db.execAsync("PRAGMA foreign_keys = ON;");
+        await runMigrations();
+        console.log("Database ready");
+    } catch (e) {
+        console.error("Database initialization failed", e);
+        throw e;
+    }
+};
 
 
 const MIGRATION_SQL = `CREATE TABLE IF NOT EXISTS migration (
@@ -292,7 +304,73 @@ export const dropTables = async () => {
     }
 };
 
+export const resetDatabase = async () => {
+    try {
+        console.log("Resetting database...");
 
+        await db.execAsync("PRAGMA foreign_keys = OFF;");
+
+        // Drop trigger first
+        await db.execAsync("DROP TRIGGER IF EXISTS soft_delete_form_data_cascade;");
+
+        // All tables that exist in 001_initial_schema + migrations table
+        const TABLES = [
+            "form_defn",
+            "form_data",
+            "projects",
+            "messages",
+            "last_sync",
+            "tb_form_data_workflow",
+            "tb_workflow_action_logs",
+            "tb_disease_knowledge",
+            "form_reactions",
+            "migrations",
+        ];
+
+        for (const table of TABLES) {
+            await db.execAsync(`DROP TABLE IF EXISTS ${table};`);
+        }
+
+        await db.execAsync("PRAGMA foreign_keys = ON;");
+
+        // Re-run the full migration chain
+        await runMigrations();
+
+        console.log("Database reset complete");
+    } catch (e) {
+        console.error("Failed to reset database", e);
+        throw e;
+    }
+};
+
+/**
+ * Rollback the most recent migration(s).
+ * Useful in development or when a migration goes wrong.
+ */
+export const rollbackDatabase = async (steps = 1) => {
+    try {
+        console.log(`Rolling back ${steps} migration(s)...`);
+        await rollbackMigrations(steps);
+        console.log("Rollback complete");
+    } catch (e) {
+        console.error("Rollback failed", e);
+        throw e;
+    }
+};
+
+/**
+ * Rollback until a specific migration is undone.
+ */
+export const rollbackDatabaseTo = async (migrationId) => {
+    try {
+        console.log(`Rolling back to ${migrationId}...`);
+        await rollbackTo(migrationId);
+        console.log("Rollback complete");
+    } catch (e) {
+        console.error("Rollback failed", e);
+        throw e;
+    }
+};
 
 
 
@@ -900,51 +978,6 @@ export const insert_into_messages = async (message) => {
 
     return db.runAsync(insertSql, insertParams);
 };
-
-
-
-// The rest of your existing functions remain the same (insert, update, remove, etc.)
-// ... [Keep all your existing functions below unchanged] ...
-
-// Example usage in your React Native component:
-/*
-import { 
-  softDeleteFormData, 
-  restoreFormData, 
-  getActiveFormData,
-  getDeletedFormData,
-  purgeDeletedFormData 
-} from './database';
-
-// Soft delete a form and all its children
-const handleDelete = async (uuid) => {
-  try {
-    await softDeleteFormData(uuid);
-    // Refresh your UI
-    const activeForms = await getActiveFormData(projectId);
-    // Update state with activeForms
-  } catch (error) {
-    console.error('Delete failed:', error);
-  }
-};
-
-// View deleted forms
-const viewDeleted = async () => {
-  const deletedForms = await getDeletedFormData(projectId);
-  // Show in UI
-};
-
-// Restore a deleted form
-const handleRestore = async (uuid) => {
-  await restoreFormData(uuid, true); // true = restore with children
-};
-
-// Permanently delete all soft-deleted forms
-const handlePurge = async () => {
-  await purgeDeletedFormData();
-};
-*/
-
 
 
 // Helper function to get last sync time

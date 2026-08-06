@@ -8,15 +8,12 @@ import { useTheme } from '../../../context/ThemeContext';
 import { getLabel } from '../../../lib/form/utils';
 import { useFormStore } from '../../../store/useFormStore';
 
-const DatePickerField = ({ element, globalValue  }) => {
-  // 1. GRANULAR SELECTORS (Fetch own value, ignore others)
-  const updateFormData = useFormStore(state => state.updateFormData);
-  //const globalValue = useFormStore(state => state.formData[element.name]);
-  const fieldError = useFormStore(state =>
-    (state.errors && state.errors[element.name]) ? state.errors[element.name] : null
-  );
+const DatePickerField = ({ element, globalValue }) => {
+  // 1. STORE SELECTORS (Matching SelectOne logic)
+  const updateField = useFormStore(state => state.updateField);
+  const fieldError = useFormStore(state => state.errors[element.name]);
   const language = useFormStore(state => state.language);
-  const schemaLanguage = useFormStore(state => state.schema?.language);
+  const schemaLanguage = useFormStore(state => state.schema?.form_defn?.languages);
 
   const theme = useTheme();
   const styles = getStyles(theme);
@@ -29,10 +26,10 @@ const DatePickerField = ({ element, globalValue  }) => {
     return 'yyyy-MM-dd';
   }, [element.appearance]);
 
-  // 3. LOCAL STATE (Buffer for snappy UI)
+  // 3. LOCAL STATE
   const [showPicker, setShowPicker] = useState(false);
 
-  // Parse the global string value into a Date object for the Picker
+  // Parse global string into Date object
   const dateValue = useMemo(() => {
     if (!globalValue) return null;
     try {
@@ -44,16 +41,14 @@ const DatePickerField = ({ element, globalValue  }) => {
   }, [globalValue, getDateFormatString]);
 
   const handleDateChange = (event, selectedDate) => {
-    // Android: 'set' means user clicked OK, 'dismissed' means Cancel
-    // iOS: picker stays open, we update on every scroll
     if (Platform.OS === 'android') setShowPicker(false);
 
     if (event.type === 'set' && selectedDate) {
       const formatted = format(selectedDate, getDateFormatString);
 
-      // Update store after the picker UI transition is safe
+      // DEFERRED UPDATE: Matching SelectOne's requestAnimationFrame strategy
       requestAnimationFrame(() => {
-        updateFormData(element.name, formatted);
+        updateField(element.name, formatted);
       });
     }
   };
@@ -80,9 +75,9 @@ const DatePickerField = ({ element, globalValue  }) => {
             alignItems: 'center',
             gap: 8,
             paddingHorizontal: 15,
-            paddingVertical: 12,
+            paddingVertical: 14,
             borderRadius: 10,
-            backgroundColor: theme.colors.primary
+            backgroundColor: theme.colors.primary,
           }}
         >
           <Ionicons name="calendar-outline" size={20} color="#fff" />
@@ -97,7 +92,7 @@ const DatePickerField = ({ element, globalValue  }) => {
             fieldError ? styles.inputError : null,
           ]}
           value={globalValue || ''}
-          editable={false} // Force use of picker to prevent invalid manual strings
+          editable={false}
           placeholder={getDateFormatString.toUpperCase()}
           placeholderTextColor="#999"
         />
@@ -111,7 +106,6 @@ const DatePickerField = ({ element, globalValue  }) => {
           mode="date"
           display={Platform.OS === 'ios' ? 'spinner' : 'default'}
           onChange={handleDateChange}
-        // Note: constraints should be handled in validation logic rather than hard-locking the picker
         />
       )}
     </View>

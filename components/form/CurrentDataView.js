@@ -76,7 +76,6 @@ const CurrentDataView = ({ formData }) => {
             } catch (error) {
                 console.error("Error loading FormDataView:", error);
             } finally {
-                // 3. CRITICAL: This was missing. Without this, 'ready' stays false.
                 markAsSeen();
                 setReady(true);
             }
@@ -99,9 +98,9 @@ const CurrentDataView = ({ formData }) => {
         }
 
         return () => {
-            // Optional cleanup when the screen loses focus
+            // cleanup when the screen loses focus
         };
-    }, [formData]); // Re-run if a different record is selected
+    }, [formData]); 
 
     if (!ready) return <ActivityIndicator style={{ flex: 1 }} />;
 

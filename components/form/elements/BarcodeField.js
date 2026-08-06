@@ -1,5 +1,5 @@
-import { Camera, CameraView } from 'expo-camera';
-import { memo, useEffect, useState } from 'react';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { memo, useState } from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { getStyles } from '../../../constants/styles';
 import { useTheme } from '../../../context/ThemeContext';
@@ -7,9 +7,7 @@ import { getLabel } from '../../../lib/form/utils';
 import { useFormStore } from '../../../store/useFormStore';
 
 const BarcodeField = ({ element, globalValue }) => {
-    // 1. GRANULAR SELECTORS: Only listen to THIS field's data
-    const updateFormData = useFormStore(state => state.updateFormData);
-    //const globalValue = useFormStore(state => state.formData[element.name]);
+    const updateField = useFormStore(state => state.updateField);
     const fieldError = useFormStore(state =>
         (state.errors && state.errors[element.name]) ? state.errors[element.name] : null
     );
@@ -19,48 +17,32 @@ const BarcodeField = ({ element, globalValue }) => {
     const theme = useTheme();
     const styles = getStyles(theme);
 
-    const [hasPermission, setHasPermission] = useState(null);
+    const [permission, requestPermission] = useCameraPermissions();
     const [isScanning, setIsScanning] = useState(false);
 
     const label = getLabel(element, 'label', language, schemaLanguage);
     const hint = getLabel(element, 'hint', language, schemaLanguage);
 
-    // 2. SAFE PERMISSION REQUEST: Use isMounted guard
-    useEffect(() => {
-        let isMounted = true;
-        (async () => {
-            try {
-                const { status } = await Camera.requestCameraPermissionsAsync();
-                if (isMounted) setHasPermission(status === 'granted');
-            } catch (e) {
-                console.error("Camera permission error", e);
-            }
-        })();
-        return () => { isMounted = false; };
-    }, []);
-
     const handleBarcodeScanned = ({ data }) => {
-        setIsScanning(false); // Close camera immediately
-
-        // Defer store update to ensure the camera UI unmounts smoothly first
+        setIsScanning(false);
         requestAnimationFrame(() => {
-            updateFormData(element.name, data);
+            updateField(element.name, data);
         });
     };
 
-    if (hasPermission === null) {
+    const handleOpenScanner = async () => {
+        if (!permission || !permission.granted) {
+            const result = await requestPermission();
+            if (!result.granted) return;
+        }
+        setIsScanning(true);
+    };
+
+    if (!permission) {
         return (
             <View style={styles.container}>
                 <ActivityIndicator size="small" color={theme.colors.primary} />
                 <Text style={[styles.hint, { textAlign: 'center' }]}>Initializing camera...</Text>
-            </View>
-        );
-    }
-
-    if (hasPermission === false) {
-        return (
-            <View style={styles.container}>
-                <Text style={styles.errorText}>Camera access denied. Please check settings.</Text>
             </View>
         );
     }
@@ -76,7 +58,6 @@ const BarcodeField = ({ element, globalValue }) => {
 
             {hint && <Text style={styles.hint}>{hint}</Text>}
 
-            {/* 3. SHOW VALUE OR CAMERA */}
             {!isScanning ? (
                 <View style={[
                     styles.inputBase,
@@ -97,7 +78,7 @@ const BarcodeField = ({ element, globalValue }) => {
 
                     <TouchableOpacity
                         style={[styles.button, { marginTop: 15, width: '100%', backgroundColor: theme.colors.primary }]}
-                        onPress={() => setIsScanning(true)}
+                        onPress={handleOpenScanner}
                     >
                         <Text style={[styles.buttonText, { color: '#fff', textAlign: 'center' }]}>
                             {globalValue ? 'Rescan' : 'Open Scanner'}
@@ -105,27 +86,59 @@ const BarcodeField = ({ element, globalValue }) => {
                     </TouchableOpacity>
                 </View>
             ) : (
-                <View style={{ height: 300, overflow: 'hidden', borderRadius: 12, backgroundColor: '#000' }}>
-                    <CameraView
-                        style={{ flex: 1 }}
-                        facing="back"
-                        onBarcodeScanned={handleBarcodeScanned}
-                        barcodeScannerSettings={{
-                            barCodeTypes: ['qr', 'ean13', 'upc_a', 'code128', 'ean8', 'upc_e', 'aztec', 'pdf417'],
-                        }}
-                    />
+                /* CRITICAL: The outer View container MUST have a fixed height/width 
+                  and positioning context for absolute fill to attach to.
+                */
+                <View style={{
+                    height: 300,
+                    width: '100%',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    borderRadius: 12,
+                    backgroundColor: '#111', // Slightly off-black so you can tell if the box is there
+                    borderWidth: 2,
+                    borderColor: theme.colors.primary
+                }}>
+
+                    {!permission.granted ? (
+                        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+                            <Text style={{ color: '#fff', textAlign: 'center', marginBottom: 10 }}>Camera permission required.</Text>
+                            <TouchableOpacity onPress={requestPermission} style={{ backgroundColor: theme.colors.primary, padding: 10, borderRadius: 5 }}>
+                                <Text style={{ color: '#fff' }}>Grant Permission</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        <CameraView
+                            style={{
+                                width: '100%',
+                                height: '100%',
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                zIndex: 999 // Force it to draw above the background color layer
+                            }}
+                            facing="back"
+                            onBarcodeScanned={handleBarcodeScanned}
+                            barcodeScannerSettings={{
+                                // FIXED: lowercase 'barcodeTypes'
+                                barcodeTypes: ['qr', 'ean13', 'upc_a', 'code128', 'ean8', 'upc_e', 'aztec', 'pdf417'],
+                            }}
+                        />
+                    )}
+
                     <TouchableOpacity
                         style={{
                             position: 'absolute',
                             bottom: 20,
                             alignSelf: 'center',
                             backgroundColor: 'rgba(0,0,0,0.6)',
-                            padding: 10,
+                            paddingHorizontal: 20,
+                            paddingVertical: 10,
                             borderRadius: 20
                         }}
                         onPress={() => setIsScanning(false)}
                     >
-                        <Text style={{ color: '#fff' }}>Cancel</Text>
+                        <Text style={{ color: '#fff', fontWeight: '600' }}>Cancel</Text>
                     </TouchableOpacity>
                 </View>
             )}

@@ -26,7 +26,6 @@ export default function NewForm() {
   const language = useFormStore(state => state.language);
   const setLanguage = useFormStore(state => state.setLanguage);
 
-
   const [menuVisible, setMenuVisible] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -172,7 +171,7 @@ export default function NewForm() {
                 <TouchableOpacity
                   key={idx}
                   onPress={() => {
-                    setLanguage('::' + lang);
+                    setLanguage(lang);
                     setMenuVisible(false);
                   }}
                 >

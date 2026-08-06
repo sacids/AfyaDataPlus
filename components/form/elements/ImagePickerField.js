@@ -9,8 +9,8 @@ import { getLabel } from '../../../lib/form/utils';
 import { getParam } from '../../../lib/form/validation';
 
 
-import { useFormStore } from '../../../store/useFormStore';
 import { t } from 'i18next';
+import { useFormStore } from '../../../store/useFormStore';
 
 const ImagePickerField = ({ element, globalValue }) => {
 
@@ -42,14 +42,14 @@ const ImagePickerField = ({ element, globalValue }) => {
   const pickImage = async (fromCamera = false) => {
 
 
-    const quality = parseFloat(getParam('image-quality', '1'));
+    const quality = parseFloat(getParam(element, 'image-quality', '1'));
 
     const permission = fromCamera
       ? await ImagePicker.requestCameraPermissionsAsync()
       : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permission.granted) {
-      Alert.alert(t('errors:permissionDenied'), t(fromCamera ? 'errors:cameraPermissionMessage' : 'errors:galleryPermissionMessage') );
+      Alert.alert(t('errors:permissionDenied'), t(fromCamera ? 'errors:cameraPermissionMessage' : 'errors:galleryPermissionMessage'));
       return;
     }
 

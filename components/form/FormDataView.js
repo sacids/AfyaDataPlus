@@ -210,6 +210,7 @@ const FormDataView = ({ formData }) => {
                         );
 
                         setFormChildrenData(formChildren || []);
+
                     } else {
                         setFormChildrenData([]);
                     }
@@ -445,92 +446,116 @@ const FormDataView = ({ formData }) => {
                             showsVerticalScrollIndicator={false}
                             contentContainerStyle={{ flexGrow: 1, paddingBottom: 20, paddingLeft: 15 }}
                         >
-                            {/* AVAILABLE ACTIONS */}
-
-                            {formChildrenData.length > 0 && (
-                                <Text style={[styles.tiny, { textTransform: 'uppercase' }]} > {t('common:addNew')} </Text>
+                            {/* ADD NEW CHILD: Exclude forms with role 'CHANGE' directly inline */}
+                            {formChildrenData.some(form => form.form_role !== 'CHANGE') && (
+                                <Text style={[styles.tiny, { textTransform: 'uppercase' }]}> {t('common:addNew')} </Text>
                             )}
 
-                            {formChildrenData.map((form, index) => (
-                                <TouchableOpacity
-                                    key={`child-${form.id || index}`}
-                                    style={{
-                                        flexDirection: 'row',
-                                        alignItems: 'center',
-                                        paddingVertical: 12,
-                                        gap: 12,
-                                    }}
-                                    onPress={() => {
-                                        setWorkflowModalVisible(false);
-                                        router.push({
-                                            pathname: `/Form/New`,
-                                            params: {
-                                                fdefn_id: `${form.id}`,
-                                                parent_uuid: formData.uuid,
-                                            }
-                                        });
-                                    }}
-                                >
-                                    <MaterialIcons name="add-circle-outline" size={24} color={theme.colors.primary} />
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={styles.label}>{form.title || form.short_title}</Text>
-                                    </View>
-                                    <Ionicons name="chevron-forward" size={18} color={theme.colors.hint} />
-                                </TouchableOpacity>
-                            ))}
-
-
-                            {/* AVAILABLE ACTIONS */}
-
-                            {availableWorkflowActions.length > 0 && (
-                                <Text style={[styles.tiny, { marginTop: 20, textTransform: 'uppercase' }]} > {t('common:actions')} </Text>
-                            )}
-
-                            {availableWorkflowActions.map(
-                                (action, index) => (
-
+                            {formChildrenData
+                                .filter(form => form.form_role !== 'CHANGE')
+                                .map((form, index) => (
                                     <TouchableOpacity
-                                        key={index}
+                                        key={`child-${form.id || index}`}
+                                        style={{
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            paddingVertical: 12,
+                                            gap: 12,
+                                        }}
+                                        onPress={() => {
+                                            setWorkflowModalVisible(false);
+                                            router.push({
+                                                pathname: `/Form/New`,
+                                                params: {
+                                                    fdefn_id: `${form.id}`,
+                                                    parent_uuid: formData.uuid,
+                                                }
+                                            });
+                                        }}
+                                    >
+                                        <MaterialIcons name="add-circle-outline" size={24} color={theme.colors.primary} />
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.label}>{form.title || form.short_title}</Text>
+                                        </View>
+                                        <Ionicons name="chevron-forward" size={18} color={theme.colors.hint} />
+                                    </TouchableOpacity>
+                                ))}
+
+
+                            {/* AVAILABLE ACTIONS: Header checks if workflow actions OR CHANGE forms exist */}
+                            {(availableWorkflowActions.length > 0 || formChildrenData.some(form => form.form_role === 'CHANGE')) && (
+                                <Text style={[styles.tiny, { marginTop: 20, textTransform: 'uppercase' }]}> {t('common:actions')} </Text>
+                            )}
+
+                            {/* 1. Render CHANGE forms FIRST under Actions */}
+                            {formChildrenData
+                                .filter(form => form.form_role === 'CHANGE')
+                                .map((form, index) => (
+                                    <TouchableOpacity
+                                        key={`change-action-${form.id || index}`}
                                         style={{
                                             flexDirection: 'row',
                                             alignItems: 'center',
                                             paddingVertical: 10,
                                             gap: 12,
                                         }}
-                                        onPress={async () => {
-
+                                        onPress={() => {
                                             setWorkflowModalVisible(false);
-
-                                            // Transition form
-                                            if (action.transition_form_id) {
-                                                const fdefn_id = await select('form_defn', 'form_id = ?', [action.transition_form_id], 'id');
-                                                //console.log('action transition form', fdefn_id[0].id, JSON.stringify(action, null, 4))
-                                                router.push({
-                                                    pathname: `/Form/New`,
-                                                    params: {
-                                                        fdefn_id: `${fdefn_id[0].id}`,
-                                                        parent_uuid: formData.uuid,
-                                                        workflow_action: JSON.stringify(action),
-                                                    }
-                                                });
-
-                                            }
+                                            router.push({
+                                                pathname: `/Form/New`,
+                                                params: {
+                                                    fdefn_id: `${form.id}`,
+                                                    parent_uuid: formData.uuid,
+                                                }
+                                            });
                                         }}
                                     >
-
-                                        <FormIcons iconName={action.icon_name || 'materialicons:play-circle-outline'} size={24} color={action.icon_color || theme.colors.primary} />
-                                        <View style={{ flex: 1 }} >
-                                            <Text style={styles.label} > {action.label} </Text>
+                                        <MaterialIcons name="edit" size={24} color={theme.colors.primary} />
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.label}>{form.title || form.short_title}</Text>
                                         </View>
                                         <Ionicons name="chevron-forward" size={18} color={theme.colors.hint} />
                                     </TouchableOpacity>
-                                )
-                            )}
+                                ))}
+
+                            {/* 2. Render Workflow Actions AFTER CHANGE forms */}
+                            {availableWorkflowActions.map((action, index) => (
+                                <TouchableOpacity
+                                    key={`action-${index}`}
+                                    style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        paddingVertical: 10,
+                                        gap: 12,
+                                    }}
+                                    onPress={async () => {
+                                        setWorkflowModalVisible(false);
+
+                                        // Transition form
+                                        if (action.transition_form_id) {
+                                            const fdefn_id = await select('form_defn', 'form_id = ?', [action.transition_form_id], 'id');
+                                            router.push({
+                                                pathname: `/Form/New`,
+                                                params: {
+                                                    fdefn_id: `${fdefn_id[0].id}`,
+                                                    parent_uuid: formData.uuid,
+                                                    workflow_action: JSON.stringify(action),
+                                                }
+                                            });
+                                        }
+                                    }}
+                                >
+                                    <FormIcons iconName={action.icon_name || 'materialicons:play-circle-outline'} size={24} color={action.icon_color || theme.colors.primary} />
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.label}> {action.label} </Text>
+                                    </View>
+                                    <Ionicons name="chevron-forward" size={18} color={theme.colors.hint} />
+                                </TouchableOpacity>
+                            ))}
+
 
                             {/* WORKFLOW LOGS */}
-
                             {workflowLogs.length > 0 && (
-
                                 <TouchableOpacity
                                     style={{
                                         flexDirection: 'row',
@@ -539,30 +564,21 @@ const FormDataView = ({ formData }) => {
                                         gap: 12,
                                     }}
                                     onPress={() => {
-
                                         setWorkflowModalVisible(false);
-
                                         router.push({
-                                            pathname:
-                                                '/Workflow/Logs',
+                                            pathname: '/Workflow/Logs',
                                             params: {
-                                                form_data_uuid:
-                                                    formData.uuid
+                                                form_data_uuid: formData.uuid
                                             }
                                         });
                                     }}
                                 >
-
                                     <MaterialCommunityIcons name="history" size={22} color={theme.colors.text} />
-                                    <Text style={styles.label} > {t('common:viewWorkflowLogs')} </Text>
+                                    <Text style={styles.label}> {t('common:viewWorkflowLogs')} </Text>
                                 </TouchableOpacity>
                             )}
-
-
-
-
-
                         </ScrollView>
+
                         <TouchableOpacity
                             style={[
                                 styles.inputBase,

@@ -266,7 +266,7 @@ export const cacheProjectImage = async (imageUrl, projectId) => {
     }
 };
 
-export const getProjectData = async (project_id, setStatus, options = {}) => {
+export const getProjectData1 = async (project_id, setStatus, options = {}) => {
 
     const {
         pageSize = 50,
@@ -457,75 +457,231 @@ export const getProjectData = async (project_id, setStatus, options = {}) => {
     }
 };
 
-// Helper function to process batch efficiently
-const processFormDataBatch1 = async (records, project_id) => {
-    let inserted = 0;
-    let updated = 0;
+export const getProjectData = async (project_id, setStatus, options = {}) => {
+    const {
+        pageSize = 50,
+        maxPages = null,
+        onProgress = null,
+        incrementalSync = true,
+        forceFullSync = false,
+        syncMode = 'modified', // 'modified' | 'missing' | 'all'
+    } = options;
 
-    // Get existing UUIDs in one query
-    const uuids = records.map(r => r.uuid);
-    const placeholders = uuids.map(() => '?').join(',');
-    const existingRecords = await select(
-        'form_data',
-        `uuid IN (${placeholders})`,
-        uuids,
-        'uuid, status, status_date',
-        false,
-        true
-    );
-
-    const existingUuids = new Set(existingRecords.map(r => r.uuid));
-
-
-    // Batch insert/update using transaction
-    await db.execAsync('BEGIN TRANSACTION;');
+    let activityCounter = 0;
+    let activityInterval = null;
 
     try {
-        for (const record of records) {
-            const isExisting = existingUuids.has(record.uuid);
+        setStatus(prev => prev || 'Starting data sync...');
 
-            const formDataRecord = {
-                project: record.project || project_id,
-                form: record.form,
-                title: record.title || '',
-                uuid: record.uuid,
-                original_uuid: record.original_uuid || record.uuid,
-                parent_uuid: record.parent_uuid || null,
-                gps: record.gps || null,
-                deleted: record.deleted || 0,
-                archived: record.archived || 0,
-                form_data: typeof record.form_data === 'string'
-                    ? record.form_data
-                    : JSON.stringify(record.form_data || {}),
-                created_by: record.created_by,
-                created_by_name: record.created_by_name || record.created_by,
-                created_on: record.created_on || record.created_at,
-                status: record.status || 'sent',
-                status_date: record.status_date || record.updated_at,
-                synced: 1
-            };
+        // Activity spinner
+        activityInterval = setInterval(() => {
+            activityCounter = (activityCounter + 1) % ACTIVITY_INDICATORS.length;
+            setStatus(prevStatus => {
+                if (!prevStatus) return '';
+                const lines = prevStatus.split('\n');
+                if (lines[lines.length - 1].endsWith('...')) {
+                    lines[lines.length - 1] =
+                        lines[lines.length - 1].replace(/\.\.\.$/, '') +
+                        ACTIVITY_INDICATORS[activityCounter];
+                    return lines.join('\n');
+                }
+                return prevStatus;
+            });
+        }, 100);
 
-            //console.log('formdata record', formDataRecord);
+        const row = await db.getFirstAsync(
+            `SELECT 
+                COUNT(*) AS local_count,
+                MAX(submitted_at) AS last_sync
+            FROM form_data
+            WHERE project = ?
+            `,
+            [project_id]
+        );
 
-            if (isExisting) {
-                const result = await update('form_data', formDataRecord, 'uuid = ?', [record.uuid]);
-                if (result > 0) updated++;
-            } else {
-                const result = await insert('form_data', formDataRecord);
-                if (result && result.changes > 0) inserted++;
+        const localCount = row?.local_count ?? 0;
+        const lastSyncTime = row?.last_sync ?? null;
+        // const lastSyncTime = await getLastSyncTime(project_id);
+
+        setStatus(`Local records: ${localCount}`);
+
+        // Build initial query params
+        let queryParams = new URLSearchParams({
+            page: '1',
+            page_size: String(pageSize),
+            project_id: String(project_id),
+        });
+
+        let syncStrategy = 'full';
+
+        if (incrementalSync && !forceFullSync && lastSyncTime) {
+            if (syncMode === 'modified') {
+                queryParams.append('modified_after', lastSyncTime);
+                syncStrategy = 'incremental_modified';
+                setStatus(
+                    `Fetching records modified since ${new Date(lastSyncTime).toLocaleString()}...`
+                );
             }
+        } else {
+            setStatus('Performing full sync...');
         }
 
-        await db.execAsync('COMMIT;');
+        // ---------- Paginated fetch ----------
+        let totalFetched = 0;
+        let totalInserted = 0;
+        let totalUpdated = 0;
+        let currentPage = 1;
+        let nextUrl = null;
+        let totalCount = null;
+
+        // Optional HEAD to get total count up-front
+        try {
+            const headResponse = await api.head(`api/v1/form-data/`, {
+                params: Object.fromEntries(queryParams),
+            });
+            totalCount = parseInt(
+                headResponse.headers['x-total-count'] ||
+                headResponse.headers['X-Total-Count'] ||
+                '0',
+                10
+            );
+
+            if (totalCount === 0 && syncStrategy !== 'full') {
+                setStatus('No new records to sync');
+                return {
+                    success: true,
+                    message: 'Already up to date',
+                    fetched: 0,
+                };
+            }
+            if (totalCount > 0) {
+                setStatus(`Found ${totalCount} records to sync`);
+            }
+        } catch (_) {
+            // HEAD not supported – continue without total
+        }
+
+        do {
+            setStatus(
+                `Fetching page ${currentPage}${totalCount
+                    ? ` of ~${Math.ceil(totalCount / pageSize)}`
+                    : ''
+                }...`
+            );
+
+            const response = await api.get(`api/v1/form-data/`, {
+                params: Object.fromEntries(queryParams),
+            });
+
+            // Normalise both new (paginated object) and old (plain array) shapes
+            let results = [];
+            if (response.data?.results) {
+                results = response.data.results;
+                nextUrl = response.data.next || null;
+            } else if (Array.isArray(response.data)) {
+                results = response.data;
+                nextUrl = null;
+            } else {
+                break;
+            }
+
+            // Update totalCount from response headers if still unknown
+            if (totalCount == null) {
+                const headerTotal =
+                    response.headers['x-total-count'] ||
+                    response.headers['X-Total-Count'];
+                if (headerTotal) {
+                    totalCount = parseInt(headerTotal, 10);
+                }
+            }
+
+            if (results.length > 0) {
+                const batchResult = await processFormDataBatch(
+                    results,
+                    project_id
+                );
+                totalInserted += batchResult.inserted;
+                totalUpdated += batchResult.updated;
+                totalFetched += results.length;
+
+                if (onProgress) {
+                    onProgress(totalFetched, totalCount);
+                }
+
+                setStatus(
+                    `Synced ${totalFetched}${totalCount ? `/${totalCount}` : ''
+                    } records (${totalInserted} new, ${totalUpdated} updated)...`
+                );
+            }
+
+            // Advance to next page
+            if (nextUrl) {
+                // Follow the absolute next URL returned by the server
+                const url = new URL(nextUrl);
+                queryParams = new URLSearchParams(url.search);
+                currentPage++;
+            } else if (
+                totalCount != null &&
+                totalFetched < totalCount
+            ) {
+                // Fallback: no next URL but we know there are more records
+                currentPage++;
+                queryParams.set('page', String(currentPage));
+            } else if (
+                totalCount == null &&
+                results.length >= pageSize
+            ) {
+                // Fallback: no total count – keep going while pages are full
+                currentPage++;
+                queryParams.set('page', String(currentPage));
+                nextUrl = 'continue'; // keep the loop alive
+            } else {
+                nextUrl = null;
+            }
+
+            if (maxPages && currentPage > maxPages) {
+                setStatus(`Reached maximum page limit (${maxPages})`);
+                nextUrl = null;
+            }
+
+            if (nextUrl) {
+                await new Promise(r => setTimeout(r, 50));
+            }
+        } while (nextUrl);
+
+        // Update last sync timestamp
+        if (incrementalSync && (totalFetched > 0 || forceFullSync)) {
+            await updateLastSyncTime(project_id);
+        }
+
+        const finalMessage =
+            `Sync complete! Fetched: ${totalFetched}, ` +
+            `New: ${totalInserted}, Updated: ${totalUpdated}`;
+        setStatus(finalMessage);
+
+        return {
+            success: true,
+            fetched: totalFetched,
+            inserted: totalInserted,
+            updated: totalUpdated,
+            strategy: syncStrategy,
+        };
     } catch (error) {
-        await db.execAsync('ROLLBACK;');
-        console.error('Batch processing error:', error);
-        throw error;
+        const errorMessage = `Sync failed: ${error.message}`;
+        setStatus(errorMessage);
+        console.error('Error syncing form data:', error);
+
+        return {
+            success: false,
+            error: error.message,
+            fetched: 0,
+        };
+    } finally {
+        if (activityInterval) {
+            clearInterval(activityInterval);
+        }
     }
-
-    return { inserted, updated };
 };
-
 
 // Helper function to process batch efficiently
 const processFormDataBatch = async (records, project_id) => {
@@ -585,7 +741,7 @@ const processFormDataBatch = async (records, project_id) => {
 
                         // Download the binary file if it doesn't already exist on local disk storage
                         if (!destinationFile.exists) {
-                            console.log(`Downloading asset for field "${fileMetadata.field_name}": ${targetFileName}`);
+                            //console.log(`Downloading asset for field "${fileMetadata.field_name}": ${targetFileName}`);
                             const fileResponse = await fetch(fileMetadata.file_url);
 
                             if (fileResponse.ok) {
@@ -1155,7 +1311,7 @@ const handleFormSubmission = async (data, onProgress) => { // Added onProgress
     }
 };
 
-export const submitSingleForm = async (formItem) => {
+export const submitSingleForm1 = async (formItem) => {
     //console.log('formdata', JSON.stringify(formItem, null, 5))
     const formData = new FormData();
 
@@ -1288,7 +1444,111 @@ const processSingleImage = async (fileItem, formData) => {
     }
 };
 
-const updateFormStatus = async (formId) => {
+export const submitSingleForm = async (formItem) => {
+    const formData = new FormData();
+
+    // Process images from directory
+    await processFormImages(formItem, formData);
+
+    // Add form fields (skip objects/arrays – they break multipart)
+    for (const field in formItem) {
+        if (!Object.prototype.hasOwnProperty.call(formItem, field)) continue;
+
+        const value = formItem[field];
+        if (value === null || value === undefined) continue;
+        if (typeof value === 'object') continue; // form_data JSON, files, etc. handled elsewhere
+
+        formData.append(field, String(value));
+    }
+
+    // form_data is required as a JSON string by the backend
+    if (formItem.form_data != null) {
+        const payload =
+            typeof formItem.form_data === 'string'
+                ? formItem.form_data
+                : JSON.stringify(formItem.form_data);
+        formData.append('form_data', payload);
+    }
+
+    let result;
+    try {
+        result = await postData('form-data', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+    } catch (error) {
+        console.error('Network request failed:', error);
+        return { success: false, error: error.message };
+    }
+
+    if (!result) {
+        return { success: false, error: 'No response from server' };
+    }
+
+    // New API shape: { success: true, data: { uuid, synced, submitted_at, message } }
+    // Also tolerate older shapes for safety
+    const ok =
+        result.success === true ||
+        (result.data && !result.error && !(result.status >= 400));
+
+    if (!ok || result.error || result.status >= 400) {
+        return {
+            success: false,
+            error:
+                result.message ||
+                result.error ||
+                `Server error: ${result.status ?? 'unknown'}`,
+        };
+    }
+
+    const serverData = result.data || {};
+    const submittedAt =
+        serverData.submitted_at ||
+        serverData.updated_at ||
+        new Date().toISOString();
+
+    // Persist server timestamp + mark as sent
+    await updateFormStatus(formItem.id, {
+        submitted_at: submittedAt,
+        synced: serverData.synced ?? 1,
+        uuid: serverData.uuid || formItem.uuid,
+    });
+
+    return {
+        success: true,
+        uuid: serverData.uuid || formItem.uuid,
+        submitted_at: submittedAt,
+        message: serverData.message,
+    };
+};
+
+/**
+ * Mark a local form_data row as successfully submitted.
+ * @param {number|string} formId  Local row id
+ * @param {object} extra          Optional fields from the server response
+ */
+const updateFormStatus = async (formId, extra = {}) => {
+    const payload = {
+        status: 'sent',
+        status_date: new Date().toISOString(),
+        synced: 1,
+        ...extra,
+    };
+
+    // Only keep columns that exist / we care about
+    const allowed = {
+        status: payload.status,
+        status_date: payload.status_date,
+        synced: payload.synced,
+    };
+
+    if (payload.submitted_at) {
+        allowed.submitted_at = payload.submitted_at;
+    }
+
+    await update('form_data', allowed, 'id = ?', [formId]);
+};
+
+const updateFormStatus1 = async (formId) => {
     await update(
         'form_data',
         {

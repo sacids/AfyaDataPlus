@@ -1,4 +1,5 @@
 import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import axios from 'axios';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
@@ -22,9 +23,7 @@ import LanguageManager from '../../../i18n/languageManager';
 import { useAuthStore } from '../../../store/authStore';
 import useProjectStore from '../../../store/projectStore';
 import { useThemeStore } from '../../../store/ThemeStore';
-import { createTables, dropTables, select, update } from '../../../utils/database';
-import api from '../../../api/axiosInstance';
-import axios from 'axios';
+import { resetDatabase, select, update } from '../../../utils/database';
 
 const Settings = () => {
     const { t, i18n } = useTranslation();
@@ -32,7 +31,7 @@ const Settings = () => {
     const { toggleMode, mode } = useThemeStore();
 
     // Read current workspace configuration mapping from Zustand store
-    const { currentProject,setCurrentData, setCurrentProject } = useProjectStore();
+    const { currentProject, setCurrentData, setCurrentProject } = useProjectStore();
 
     // Auth Store for logout and user info
     const { user, logout } = useAuthStore();
@@ -149,8 +148,7 @@ const Settings = () => {
                         setIsResetting(true);
                         try {
                             // 1. Drop and Recreate SQLite Tables
-                            await dropTables();
-                            await createTables();
+                            await resetDatabase(); // Ensure migrations are run after recreating tables
 
                             // 2. Clear Project specific storage (AsyncStorage)
                             //await AsyncStorage.clear();

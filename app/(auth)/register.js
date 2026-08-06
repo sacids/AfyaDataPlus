@@ -12,9 +12,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuthStore } from '../../store/authStore';
+import { resetDatabase } from '../../utils/database';
 import { getGlobalUsername } from '../../utils/deviceUtils';
-import { createTables, dropTables } from '../../utils/database';
-import { create } from 'zustand';
 
 const logo = require('../../assets/images/AfyaDataLogo.png');
 
@@ -80,8 +79,7 @@ const RegisterScreen = () => {
       await setUser(userProfile);
 
       // reset db and navigate to main app
-      await dropTables();
-      await createTables();
+      await resetDatabase(); // Ensure migrations are run after recreating tables
 
       router.replace('/(app)/Main');
     } catch (err) {
