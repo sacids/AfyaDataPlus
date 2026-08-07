@@ -3,38 +3,40 @@ import { File, Paths } from 'expo-file-system';
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, LayoutAnimation, Modal, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, LayoutAnimation, Text, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker, Polygon, PROVIDER_GOOGLE } from 'react-native-maps';
-import ImageViewer from 'react-native-image-zoom-viewer';
-
 import { getStyles } from '../../constants/styles';
 import { useTheme } from '../../context/ThemeContext';
 import { getLabel } from '../../lib/form/utils';
 import { useFormStore } from '../../store/useFormStore';
 import { select } from '../../utils/database';
 import { hasSeen, updateSeenBy } from '../../utils/services';
+
+
+
 import { useAuthStore } from '../../store/authStore';
 
+// Enable LayoutAnimation for Android
 const CurrentDataView = ({ formData }) => {
+
     const initForm = useFormStore(state => state.initForm);
     const schema = useFormStore(state => state.schema);
     const { user } = useAuthStore.getState();
+
 
     const isRelevant = useFormStore(state => state.isRelevant);
     const { t, i18n } = useTranslation();
 
     const schemaLanguage = useFormStore(state => state.schema?.form_defn?.languages);
-    const language = useFormStore(state => state.language);
-    
-    const [ready, setReady] = useState(false);
-    const [expandedGroups, setExpandedGroups] = useState({});
 
-    // State for Full-Screen Image Zoom Modal
-    const [modalVisible, setModalVisible] = useState(false);
-    const [selectedImageUri, setSelectedImageUri] = useState(null);
+    const language = useFormStore(state => state.language);
+    const [ready, setReady] = useState(false);
+
+    const [expandedGroups, setExpandedGroups] = useState({});
 
     const theme = useTheme();
     const styles = getStyles(theme);
+
 
     const interpolateText = (text) => {
         if (!text) return null;
@@ -43,21 +45,34 @@ const CurrentDataView = ({ formData }) => {
         });
     };
 
+
+
+
+
     useEffect(() => {
         async function load() {
+
             try {
+                // 1. Fetch the Schema for this specific form
                 const schemaData = await select('form_defn', 'form_id = ?', [formData.form]);
 
                 if (schemaData && schemaData.length > 0) {
+                    // Ensure we parse the stringified JSON from the DB
+
                     const parsedSchema = {
                         ...schemaData[0],
                         form_defn: JSON.parse(schemaData[0]?.form_defn)
                     };
                     const existingData = JSON.parse(formData.form_data);
+
+                    // 2. Initialize the store so helper functions (isRelevant, etc) work
                     initForm(parsedSchema, existingData, formData.uuid, formData.parent_uuid);
+
                 } else {
                     console.error("No schema found for ID:", formData.form);
                 }
+
+
             } catch (error) {
                 console.error("Error loading FormDataView:", error);
             } finally {
@@ -69,18 +84,27 @@ const CurrentDataView = ({ formData }) => {
         const markAsSeen = async () => {
             if (formData.id && user?.globalUsername) {
                 const wasSeen = await hasSeen(formData.id, user.globalUsername);
+
                 if (!wasSeen) {
                     await updateSeenBy(formData.id, user.globalUsername);
+                    //console.log('Record marked as seen');
                 }
             }
         };
 
+
         if (formData) {
             load();
         }
+
+        return () => {
+            // cleanup when the screen loses focus
+        };
     }, [formData]); 
 
     if (!ready) return <ActivityIndicator style={{ flex: 1 }} />;
+
+
 
     const parsedFormData = JSON.parse(formData.form_data || '{}');
 
@@ -102,24 +126,22 @@ const CurrentDataView = ({ formData }) => {
         } catch (error) { return null; }
     };
 
+    // 1. Define a reusable, optimized formatter outside your component render loop
     const shortDateFormatter = new Intl.DateTimeFormat('en-US', {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-        hour12: true
+        hour12: true // Set to false if you prefer 24-hour time format
     });
 
+    // 2. Add a defensive formatting helper function
     const formatTimestamp = (dateValue) => {
         if (!dateValue) return 'N/A';
         const parsed = new Date(dateValue);
+        // Returns 'N/A' safely if the timestamp string can't be parsed correctly
         return isNaN(parsed.getTime()) ? 'N/A' : shortDateFormatter.format(parsed);
-    };
-
-    const openImageModal = (uri) => {
-        setSelectedImageUri(uri);
-        setModalVisible(true);
     };
 
     let page_holder = [];
@@ -145,13 +167,16 @@ const CurrentDataView = ({ formData }) => {
                 <Text style={[styles.tiny, { color: theme.colors.inputBorder }]}>Created On: </Text><Text style={styles.tiny}>{formatTimestamp(formData?.created_on)}</Text>
             </View>
         </View>
-    );
+    )
 
     // --- LOOP 1: PAGES ---
-    for (const [pageIndex, page] of Object.entries(schema?.form_defn?.pages || {})) {
-        if (!isRelevant(page)) continue;
+    for (const [pageIndex, page] of Object.entries(schema?.form_defn?.pages)) {
+
+        if (!isRelevant(page)) continue
+
 
         let group_holder = [];
+        //console.log('page group', JSON.stringify(page, null, 6))
 
         // --- LOOP 2: GROUPS ---
         for (const [groupIndex, fieldGroup] of Object.entries(page.fields)) {
@@ -161,26 +186,30 @@ const CurrentDataView = ({ formData }) => {
             const groupId = `${pageIndex}-${groupIndex}`;
             const isExpanded = !!expandedGroups[groupId];
 
-            let label = '';
-            let hint = '';
 
+            let label = ''
+            let hint = ''
             // --- LOOP 3: FIELDS ---
             for (const [colName, field] of Object.entries(fieldGroup)) {
                 if (field.type === 'calculate') continue;
-                if (!isRelevant(field)) continue;
+                if (!isRelevant(field)) continue
 
                 const value = parsedFormData[field.name];
 
-                label = getLabel(field, 'label', language, schemaLanguage);
-                hint = getLabel(field, 'hint', language, schemaLanguage);
+                label = getLabel(field, 'label', language, schemaLanguage)
+                hint = getLabel(field, 'hint', language, schemaLanguage)
 
                 label = interpolateText(label);
                 hint = interpolateText(hint);
 
+                // FIELD RENDERING LOGIC
                 let inputContent = null;
 
                 if (field.type === 'geopoint' && value?.latitude) {
+
+                    let value = parsedFormData[field.name]
                     let geoValue = value && typeof value === 'object' && value.latitude && value.longitude ? value : null;
+
                     if (!geoValue) continue;
 
                     inputContent = (
@@ -203,7 +232,7 @@ const CurrentDataView = ({ formData }) => {
                                 {geoValue.latitude}, {geoValue.longitude}, {geoValue.accuracy}
                             </Text>
                         </View>
-                    );
+                    )
 
                 } else if (field.type === 'geoshape') {
                     let polygonCoords = [];
@@ -254,37 +283,38 @@ const CurrentDataView = ({ formData }) => {
                                 />
                             </MapView>
                         </View>
-                    );
+                    )
 
                 } else if (field.type === 'image') {
+
                     const imageFileName = parsedFormData[field.name];
                     const imageUri = getImageUri(imageFileName);
 
                     if (imageUri) {
                         inputContent = (
-                            <TouchableOpacity 
-                                activeOpacity={0.8}
-                                onPress={() => openImageModal(imageUri)}
-                                style={[
-                                    styles.mapContainer,
-                                    {
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        backgroundColor: theme.colors.inputBackground,
-                                    },
-                                ]}
-                            >
+                            <View style={[
+                                styles.mapContainer,
+                                {
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    backgroundColor: theme.colors.inputBackground,
+                                },]}>
                                 <Image
                                     source={{ uri: imageUri }}
                                     style={[{ width: 165, height: 165, borderRadius: 4 }, styles.noLocation]}
                                     contentFit='contain'
+                                    onError={(e) => {
+                                        console.log('Image failed to load from URI:', imageUri);
+                                    }}
+                                    onLoad={() => {
+                                        // console.log('Image loaded successfully:', imageUri);
+                                    }}
                                 />
-                                <Text style={{ fontSize: 11, color: theme.colors.hint, marginTop: 4 }}>
-                                    Tap to enlarge
-                                </Text>
-                            </TouchableOpacity>
-                        );
+                            </View>
+                        )
+
                     } else {
+                        // Show placeholder
                         inputContent = (
                             <View key={`${pageIndex}-${groupIndex}-${colName}`} style={{ marginBottom: 15 }}>
                                 <Text style={[styles.label, { fontSize: 14 }]}>{field.label}</Text>
@@ -300,19 +330,32 @@ const CurrentDataView = ({ formData }) => {
                                     <Text style={[styles.textInput, { fontStyle: 'italic', textAlign: 'center', marginTop: 10 }]}>
                                         {!imageFileName ? 'No image captured' : 'Image not available'}
                                     </Text>
+                                    {imageFileName && (
+                                        <Text style={[styles.textInput, { fontSize: 12, textAlign: 'center', marginTop: 5 }]}>
+                                            File: {imageFileName}
+                                        </Text>
+                                    )}
+                                    {!Paths.document && (
+                                        <Text style={[styles.textInput, { fontSize: 10, textAlign: 'center', marginTop: 5, color: 'orange' }]}>
+                                            Document directory not available
+                                        </Text>
+                                    )}
                                 </View>
                             </View>
-                        );
+                        )
                     }
                 } else if (field.type === 'select_multiple') {
-                    let value = parsedFormData[field.name];
-                    let currentField = field;
+
+
+                    let value = parsedFormData[field.name]
+                    let currentField = field
 
                     const selectedItems = value === '' || value === 'NA' ? [] : Array.isArray(value) ? value : JSON.parse(value || '[]');
-                    let tmp = [];
+                    let tmp = []
                     if (currentField['options']) {
                         for (const option in currentField['options']) {
                             if (selectedItems.includes(currentField['options'][option].name)) {
+
                                 tmp.push(
                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }} key={option}>
                                         <Ionicons name="chevron-forward-outline" size={14} color={theme.colors.text} />
@@ -320,14 +363,15 @@ const CurrentDataView = ({ formData }) => {
                                             {getLabel(currentField['options'][option], 'label', language, schemaLanguage)}
                                         </Text>
                                     </View>
-                                );
+                                )
                             }
                         }
                     }
-                    inputContent = tmp;
+
+                    inputContent = tmp
                 } else if (field.type === 'select_one') {
-                    let value = parsedFormData[field.name];
-                    let currentField = field;
+                    let value = parsedFormData[field.name]
+                    let currentField = field
                     let displayValue = value;
 
                     if (currentField['options']) {
@@ -342,6 +386,8 @@ const CurrentDataView = ({ formData }) => {
                 } else {
                     inputContent = <Text style={[styles.bodyText, { marginTop: 4 }]}>{value || '—'}</Text>;
                 }
+
+                //console.log('text label color', JSON.stringify(field, null, 4))
 
                 field_holder.push(
                     <View key={`${groupId}-${colName}`} style={{ marginBottom: 20 }}>
@@ -365,7 +411,8 @@ const CurrentDataView = ({ formData }) => {
                             }}>
                             <Text style={[styles.tiny, { color: theme.colors.inputBorder, paddingHorizontal: 15, paddingVertical: 6 }]}>Page {parseInt(pageIndex) + 1}</Text>
                         </View>
-                        <View>
+                        <View >
+                            {/* Group Header / Toggle Button */}
                             <TouchableOpacity
                                 onPress={() => toggleGroup(groupId)}
                                 activeOpacity={0.7}
@@ -393,6 +440,7 @@ const CurrentDataView = ({ formData }) => {
                                 </Text>
                             </TouchableOpacity>
 
+                            {/* Collapsible Field Holder */}
                             {isExpanded && (
                                 <View style={{
                                     padding: 16,
@@ -423,43 +471,12 @@ const CurrentDataView = ({ formData }) => {
     }
 
     return (
-        <View>
+        <View style={{}}>
             {page_meta}
             {page_holder}
-
-            {/* FULLSCREEN IMAGE MODAL WITH PINCH-TO-ZOOM */}
-            <Modal
-                visible={modalVisible}
-                transparent={true}
-                onRequestClose={() => setModalVisible(false)}
-            >
-                {selectedImageUri && (
-                    <ImageViewer
-                        imageUrls={[{ url: selectedImageUri }]}
-                        enableSwipeDown={true}
-                        onCancel={() => setModalVisible(false)}
-                        renderIndicator={() => null} // Hide index indicator
-                        renderHeader={() => (
-                            <TouchableOpacity
-                                style={{
-                                    position: 'absolute',
-                                    top: 40,
-                                    right: 20,
-                                    zIndex: 9999,
-                                    backgroundColor: 'rgba(0,0,0,0.6)',
-                                    borderRadius: 20,
-                                    padding: 8,
-                                }}
-                                onPress={() => setModalVisible(false)}
-                            >
-                                <Ionicons name="close" size={28} color="#FFFFFF" />
-                            </TouchableOpacity>
-                        )}
-                    />
-                )}
-            </Modal>
         </View>
     );
 };
 
 export default CurrentDataView;
+
